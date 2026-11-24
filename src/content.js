@@ -113,6 +113,11 @@
       status.textContent = "O áudio deve ter até 8 MB.";
       return;
     }
+    const queuedBytes = pendingAttachments.reduce((total, item) => total + item.size, 0);
+    if (queuedBytes + file.size > 12 * 1024 * 1024) {
+      status.textContent = "O total de anexos por mensagem deve ter até 12 MB para manter o envio estável.";
+      return;
+    }
     if (isImage && pendingAttachments.filter(item => item.mediaType.startsWith("image/")).length >= 3) {
       status.textContent = "Envie no máximo três imagens por mensagem.";
       return;
@@ -123,7 +128,7 @@
     }
     try {
       const url = await fileAsDataUrl(file);
-      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: file.type, url });
+      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: isAudio ? "audio/webm" : file.type, size: file.size, url });
       renderPendingAttachments();
       status.textContent = "Anexo pronto. Escreva sua pergunta ou envie diretamente.";
     } catch (error) {
@@ -169,8 +174,8 @@
         clearTimeout(recordingTimer);
         recordingStream?.getTracks().forEach(track => track.stop());
         recordingStream = null;
-        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
-        if (blob.size) await addAttachment(new File([blob], "gravacao-future.webm", { type: blob.type }));
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        if (blob.size) await addAttachment(new File([blob], "gravacao-future.webm", { type: "audio/webm" }));
         mediaRecorder = null;
         recordButton.disabled = false;
         recordButton.textContent = "🎙";
