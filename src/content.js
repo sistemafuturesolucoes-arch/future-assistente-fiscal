@@ -62,7 +62,7 @@
   let recordingStream = null;
   let recordingTimer = null;
   const status = panel.querySelector(".status");
-  const conversationMessages = [];
+  let conversationMessages = [];
   let guideState = null;
   const GUIDE_SESSION_KEY = "futureAssistenteGuideSession";
   const SOUND_KEY = "futureAssistenteErrorSound";
@@ -1591,7 +1591,7 @@
     let answer = "";
     let completed = false;
     function render() {
-      target.textContent = initialAnswer + answer;
+      target.textContent = initialAnswer ? initialAnswer + "\\n\\n" + answer : answer;
       messages.scrollTop = messages.scrollHeight;
     }
     function consumeChunk(chunk) {
@@ -1686,7 +1686,7 @@
         conversationMessages.push(partialAnswerMessage, continuationRequestMessage);
         try {
           const continuation = await requestAssistantStream(answer);
-          answer += continuation.answer;
+          answer += (continuation.answer ? "\\n\\n" + continuation.answer : "");
           streamResult = { answer, completed: continuation.completed };
           if (continuation.completed) {
             conversationMessages = conversationMessages.filter(message =>
