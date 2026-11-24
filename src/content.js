@@ -391,7 +391,8 @@
     const add = (element, message, source) => {
       if (!element || !isVisibleOnPage(element)) return;
       const names = getElementNames(element).filter(Boolean);
-      const title = names[0] || (element.matches?.("input,select,textarea") ? "Campo sem rótulo acessível" : "Mensagem de validação");
+      const errorCode = String(message || "").match(/\\bE\\d{4,5}\\b/i)?.[0];
+      const title = names[0] || (errorCode ? "Retorno da Prefeitura — " + errorCode : element.matches?.("input,select,textarea") ? "Campo sem rótulo acessível" : "Mensagem de validação");
       const key = title + "|" + normalize(message || source);
       if (seen.has(key)) return;
       seen.add(key);
@@ -490,7 +491,8 @@
       "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
       "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
       "",
-      "Use o Manual Future e os metadados da tela para explicar o que precisa ser conferido. Separe erros confirmados pelo navegador de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores.",
+      "RESPOSTA DIRETA E CURTA: comece pelo erro identificado e pelo código. Use este formato: ERRO: [o que a prefeitura rejeitou]. ONDE: [nome exato do campo destacado]. CORREÇÃO: [uma ação objetiva para o usuário conferir/fazer]. Se houver dois campos envolvidos, liste os dois separadamente. Explique por que em no máximo duas frases. Não comece com saudação, não faça introdução longa, não repita o manual e não gere roteiro genérico de emissão de nota.",
+      "Use o Manual Future e os metadados da tela para explicar a correção. Separe erros confirmados de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores. Se o contexto não permitir afirmar qual valor deve ser usado, diga exatamente qual campo conferir e qual informação falta; não mande alterar por tentativa.",
       "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
       "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
     ].join("\n");
