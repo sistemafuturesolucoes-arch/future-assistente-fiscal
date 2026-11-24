@@ -1,7 +1,7 @@
 (() => {
   const SUPABASE_URL = "https://itbppoailqkuxajesgys.supabase.co";
   const PUBLISHABLE_KEY = "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof";
-  const CACHE_KEY = "future-manual-knowledge-cache-v2";
+  const CACHE_KEY = "future-manual-knowledge-cache-v3";
   const MAX_CHARS = 58000;
   let lastLessons = [];
   let lastStatus = null;
@@ -87,41 +87,45 @@
     return text;
   }
 
-  async function load(options = {}) {
-    const route = options.route || location.pathname;
-    const question = options.question || "";
-    const cache = window.chrome?.storage?.local
-      ? await chrome.storage.local.get(CACHE_KEY)
-      : {};
-    const item = cache[CACHE_KEY];
-    const cacheMatches = item?.text && item.route === route &&
-      Date.now() - item.savedAt < 5 * 60 * 1000;
-    if (cacheMatches) {
-      lastLessons = item.lessons || [];
-      lastStatus = item.status || null;
-      return item.text;
-    }
+  let lastModulesCount = 0;
 
-    const [modules, lessons] = await Promise.all([
-      fetchRows("course_modules", "select=id,title,description,position,is_published&is_published=eq.true&order=position.asc"),
-      fetchRows("course_lessons", "select=id,module_id,title,summary,path,content,hotspots,screenshots,position,is_published&is_published=eq.true&order=position.asc")
-    ]);
-    lastLessons = lessons;
-    const text = buildKnowledge(modules, lessons, route, question);
+  function buildStatus(lessons, route, question, text) {
     const prioritized = [...lessons].sort((a, b) =>
-      relevance(b, route, question) - relevance(a, route, question)
+      relevance(b, route, question) - relevance(a, route, question) ||
+      (a.position || 0) - (b.position || 0)
     );
-    lastStatus = {
-      modules: modules.length,
+    return {
+      modules: lastModulesCount,
       lessons: lessons.length,
       prioritized: prioritized.filter(l => relevance(l, route, question) > 0).slice(0, 4).map(l => l.title),
       chars: text.length
     };
-    if (window.chrome?.storage?.local) {
-      await chrome.storage.local.set({
-        [CACHE_KEY]: { text, route, lessons, status: lastStatus, savedAt: Date.now() }
-      });
+  }
+
+  async function load(options = {}) {
+    const route = options.route || location.pathname;
+    const question = options.question || "";
+    const cache = window.chrome?.storage?.local ? await chrome.storage.local.get(CACHE_KEY) : {};
+    const item = cache[CACHE_KEY];
+    const cacheMatches = Array.isArray(item?.modules) && Array.isArray(item?.lessons) &&
+      item.route === route && Date.now() - item.savedAt < 5 * 60 * 1000;
+    let modules, lessons;
+    if (cacheMatches) {
+      modules = item.modules;
+      lessons = item.lessons;
+    } else {
+      [modules, lessons] = await Promise.all([
+        fetchRows("course_modules", "select=id,title,description,position,is_published&is_published=eq.true&order=position.asc"),
+        fetchRows("course_lessons", "select=id,module_id,title,summary,path,content,hotspots,screenshots,position,is_published&is_published=eq.true&order=position.asc")
+      ]);
+      if (window.chrome?.storage?.local) {
+        await chrome.storage.local.set({ [CACHE_KEY]: { route, modules, lessons, savedAt: Date.now() } });
+      }
     }
+    lastLessons = lessons;
+    lastModulesCount = modules.length;
+    const text = buildKnowledge(modules, lessons, route, question);
+    lastStatus = buildStatus(lessons, route, question, text);
     return text;
   }
 

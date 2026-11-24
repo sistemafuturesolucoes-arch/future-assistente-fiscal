@@ -30,3 +30,6 @@ jobs:
 
       - name: Verificar sintaxe do carregador do Manual
         run: node --check src/knowledge.js
+
+      - name: Executar testes automatizados
+        run: node --test tests/*.test.cjs

@@ -133,7 +133,7 @@
     }
     try {
       const url = await fileAsDataUrl(file);
-      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: isAudio ? "audio/webm" : file.type, size: file.size, url });
+      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: isAudio ? (file.type || "audio/webm") : file.type, size: file.size, url });
       renderPendingAttachments();
       status.textContent = "Anexo pronto. Escreva sua pergunta ou envie diretamente.";
     } catch (error) {
@@ -429,7 +429,7 @@
   function findGuideSteps(answer) {
     const answerNorm = normalize(answer);
     const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
-    const lines = answer.split(/\\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const lines = answer.split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
     const candidates = [];
     for (const el of nodes) {
       const names = getElementNames(el).filter(name => normalize(name).length >= 4);
@@ -879,6 +879,7 @@
 
   function renderFieldProposals(answer, target) {
     const { cleanAnswer, proposals } = extractFieldProposals(answer);
+    const proposalRoute = location.pathname;
     target.textContent = cleanAnswer;
     if (!proposals.length) return cleanAnswer;
     const card = document.createElement("section");
@@ -906,6 +907,11 @@
       cancel.className = "proposal-cancel";
       cancel.textContent = "Cancelar";
       confirm.addEventListener("click", () => {
+        if (location.pathname !== proposalRoute) {
+          value.textContent = "A tela mudou desde esta sugestão. Peça uma nova análise antes de preencher. Nada foi alterado.";
+          confirm.disabled = true;
+          return;
+        }
         const resolved = resolveSafeField(proposal.field);
         if (resolved.error) {
           value.textContent = resolved.error;
@@ -915,13 +921,18 @@
         const el = resolved.element;
         let nextValue = proposal.value;
         if (el.matches("select")) {
-          const option = [...el.options].find(opt => opt.value === nextValue || normalize(opt.textContent) === normalize(nextValue));
-          if (!option) {
-            value.textContent = "A opção sugerida não corresponde exatamente a uma opção disponível. Nada foi alterado.";
+          const options = [...el.options].filter(opt =>
+            !opt.disabled && !opt.closest("optgroup")?.disabled &&
+            (opt.value === nextValue || normalize(opt.textContent) === normalize(nextValue))
+          );
+          if (options.length !== 1) {
+            value.textContent = options.length
+              ? "Há mais de uma opção correspondente. Nada foi alterado."
+              : "A opção sugerida não corresponde a uma opção disponível. Nada foi alterado.";
             confirm.disabled = true;
             return;
           }
-          nextValue = option.value;
+          nextValue = options[0].value;
         } else if (el.matches("input") && el.type === "number") {
           if (!/^-?(?:\d+|\d*[.,]\d+)$/.test(nextValue)) {
             value.textContent = "O valor sugerido não é um número válido para este campo. Nada foi alterado.";
@@ -930,8 +941,13 @@
           }
           nextValue = nextValue.replace(",", ".");
         } else if (el.matches("input") && el.type === "date") {
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(nextValue)) {
-            value.textContent = "A data sugerida não está no formato esperado. Nada foi alterado.";
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(nextValue) ||
+              (() => {
+                const [year, month, day] = nextValue.split("-").map(Number);
+                const date = new Date(Date.UTC(year, month - 1, day));
+                return date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day;
+              })()) {
+            value.textContent = "A data sugerida não é uma data válida. Nada foi alterado.";
             confirm.disabled = true;
             return;
           }
@@ -970,31 +986,41 @@
       const detail = await response.text().catch(() => "");
       throw new Error("A IA retornou HTTP " + response.status + (detail ? ": " + detail.slice(0, 300) : ""));
     }
+    if (!response.body?.getReader) throw new Error("A resposta da IA não disponibilizou um fluxo de leitura.");
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let answer = "";
+    function consumeChunk(chunk) {
+      const dataLines = chunk.split("\n").filter(line => line.startsWith("data: "));
+      if (!dataLines.length) return;
+      const payload = dataLines.map(line => line.slice(6)).join("\n");
+      if (payload === "[DONE]") return;
+      try {
+        const event = JSON.parse(payload);
+        if (event.type === "text-delta" && typeof event.delta === "string") {
+          answer += event.delta;
+          target.textContent = answer;
+          messages.scrollTop = messages.scrollHeight;
+        }
+      } catch (error) {
+        console.warn("Evento SSE ignorado por formato inválido.", error);
+      }
+    }
+    function consumeBuffer(final = false) {
+      const chunks = buffer.split("\n\n");
+      buffer = final ? "" : (chunks.pop() || "");
+      for (const chunk of chunks) if (chunk.trim()) consumeChunk(chunk);
+      if (final && buffer.trim()) consumeChunk(buffer);
+    }
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
-      const chunks = buffer.split("\n\n");
-      buffer = chunks.pop() || "";
-      for (const chunk of chunks) {
-        const line = chunk.split("\n").find(item => item.startsWith("data: "));
-        if (!line) continue;
-        const payload = line.slice(6);
-        if (payload === "[DONE]") continue;
-        try {
-          const event = JSON.parse(payload);
-          if (event.type === "text-delta" && typeof event.delta === "string") {
-            answer += event.delta;
-            target.textContent = answer;
-            messages.scrollTop = messages.scrollHeight;
-          }
-        } catch {}
-      }
+      consumeBuffer();
     }
+    buffer += decoder.decode().replace(/\r\n/g, "\n");
+    consumeBuffer(true);
     return answer;
   }
 

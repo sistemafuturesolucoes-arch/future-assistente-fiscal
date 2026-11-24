@@ -1,0 +1,68 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const source = fs.readFileSync(path.join(__dirname, "../src/knowledge.js"), "utf8");
+
+test("recalcula a relevância por pergunta usando o cache da mesma rota", async () => {
+  const storageData = {};
+  let fetchCount = 0;
+  const modules = [{ id: "m1", title: "Emissão", position: 1 }];
+  const lessons = [
+    { id: "l1", module_id: "m1", title: "Cadastro de Serviço", summary: "Configuração do serviço", content: "Serviço municipal", position: 1 },
+    { id: "l2", module_id: "m1", title: "Cadastro de Produto", summary: "Configuração do produto", content: "Produto comercial", position: 2 }
+  ];
+  const storage = {
+    async get(key) { return { [key]: storageData[key] }; },
+    async set(value) { Object.assign(storageData, value); }
+  };
+  const context = {
+    window: { chrome: { storage: { local: storage } } },
+    chrome: { storage: { local: storage } },
+    location: { pathname: "/app/dashboard" },
+    Date, Map, Set, Promise, String, Array, Object, Math,
+    fetch: async url => {
+      fetchCount++;
+      const isModules = String(url).includes("course_modules");
+      return { ok: true, async json() { return isModules ? modules : lessons; } };
+    },
+    console
+  };
+  vm.runInNewContext(source, context, { filename: "knowledge.js" });
+  const first = await context.window.FutureManualKnowledge.load({ route: "/app/dashboard", question: "serviço municipal" });
+  assert.ok(first.indexOf("Cadastro de Serviço") < first.indexOf("Cadastro de Produto"));
+  const second = await context.window.FutureManualKnowledge.load({ route: "/app/dashboard", question: "produto comercial" });
+  assert.ok(second.indexOf("Cadastro de Produto") < second.indexOf("Cadastro de Serviço"));
+  assert.equal(fetchCount, 2);
+  assert.equal(context.window.FutureManualKnowledge.getStatus().prioritized[0], "Cadastro de Produto");
+});
+
+test("não reutiliza o cache de outra rota", async () => {
+  const storageData = {};
+  let fetchCount = 0;
+  const storage = {
+    async get(key) { return { [key]: storageData[key] }; },
+    async set(value) { Object.assign(storageData, value); }
+  };
+  const context = {
+    window: { chrome: { storage: { local: storage } } },
+    chrome: { storage: { local: storage } },
+    location: { pathname: "/app/one" },
+    Date, Map, Set, Promise, String, Array, Object, Math,
+    fetch: async url => {
+      fetchCount++;
+      return { ok: true, async json() {
+        return String(url).includes("course_modules")
+          ? [{ id: "m1", title: "Módulo", position: 1 }]
+          : [{ id: "l1", module_id: "m1", title: "Aula", summary: "", content: "Conteúdo", position: 1 }];
+      } };
+    },
+    console
+  };
+  vm.runInNewContext(source, context, { filename: "knowledge.js" });
+  await context.window.FutureManualKnowledge.load({ route: "/app/one", question: "aula" });
+  await context.window.FutureManualKnowledge.load({ route: "/app/two", question: "aula" });
+  assert.equal(fetchCount, 4);
+});

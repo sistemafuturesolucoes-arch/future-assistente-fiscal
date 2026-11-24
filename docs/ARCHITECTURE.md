@@ -7,7 +7,7 @@
 - Recuperação das 26 aulas publicadas do Supabase Academy compartilhado com o Manual.
 - Ordenação contextual por rota e pergunta. A rota de emissão de serviço prioriza a aula de NFSe.
 - Textos-base das aulas são mantidos no contexto; hotspots e descrições visuais detalhados são incluídos prioritariamente para as aulas relevantes, sem desperdiçar o limite com URLs de imagens.
-- Cache por rota com validade de cinco minutos.
+- Cache local dos registros publicados por rota com validade de cinco minutos; a priorização é recalculada para cada pergunta.
 - Guia visual no DOM: identifica campos/botões citados na resposta, destaca o elemento com contorno luminoso e apresenta descrição e navegação Anterior/Próximo/Encerrar.
 
 ## Limites do guia visual
@@ -19,6 +19,9 @@ A primeira versão envia apenas rota, títulos, rótulos, alertas e metadados de
 A função compartilhada `ai-assistant` registra interações e conhecimento no projeto Academy. O schema atual tem `assistant_knowledge.status` com default `approved`, e a função pode inserir respostas sem outro status. Portanto, o conhecimento automático não deve ser tratado como solução fiscal validada. A revisão/moderação precisa ser corrigida com cuidado porque a função é compartilhada com o Manual.
 
 A Edge Function está atualmente com `verify_jwt=false`. Antes de distribuir amplamente, revisar autenticação, limites por identidade e controles contra abuso sem expor service_role ou segredos do provedor.
+
+## Testes automatizados
+O teste de integração do carregador simula o Supabase e o armazenamento local para garantir que perguntas diferentes na mesma rota recebam priorização atualizada sem novas consultas enquanto o cache estiver válido.
 
 ## Próximas etapas
 1. Testar no Chrome as rotas de NFSe, cadastro de serviço e outras telas.
