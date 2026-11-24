@@ -445,8 +445,9 @@
       "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
     ].join("\n");
     try {
-      await ask(question, []);
-      status.textContent = "Revisão concluída. Confira as orientações no chat; os destaques serão removidos ao finalizar.";
+      const reviewMessage = await ask(question, []);
+      if (reviewMessage) renderReviewIssueCards(issues, reviewMessage);
+      status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
     } catch (error) {
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
@@ -1159,6 +1160,49 @@
     return cleanAnswer;
   }
 
+  function renderReviewIssueCards(issues, target) {
+    if (!issues.length) return;
+    const card = document.createElement("section");
+    card.className = "proposal-card";
+    const heading = document.createElement("div");
+    heading.className = "proposal-title";
+    heading.textContent = "Pontos encontrados nesta revisão — confira um por um";
+    card.appendChild(heading);
+    issues.forEach((issue, index) => {
+      const item = document.createElement("div");
+      item.className = "review-issue-item";
+      const field = document.createElement("div");
+      field.className = "proposal-field";
+      field.textContent = (index + 1) + ". " + issue.title;
+      const description = document.createElement("div");
+      description.className = "proposal-value";
+      description.textContent = issue.message;
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "proposal-confirm";
+      action.textContent = "Destacar no Emissor";
+      action.addEventListener("click", () => {
+        const current = reviewFrames.find(entry => entry.element === issue.element);
+        if (!current || !issue.element.isConnected) {
+          description.textContent = "O elemento não está mais disponível nesta tela. Faça uma nova revisão.";
+          action.disabled = true;
+          return;
+        }
+        issue.element.scrollIntoView?.({ block: "center", inline: "nearest" });
+        positionReviewFrames();
+        current.frame.animate?.([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.035)", opacity: .55 }, { transform: "scale(1)", opacity: 1 }], { duration: 650, iterations: 2 });
+        status.textContent = "Campo ou mensagem destacado. Confira a orientação da IA antes de alterar qualquer informação.";
+      });
+      item.append(field, description, action);
+      card.appendChild(item);
+    });
+    const note = document.createElement("div");
+    note.className = "proposal-note";
+    note.textContent = "Cada item pode ser destacado novamente. A extensão não altera dados fiscais sem confirmação explícita e nunca executa emissão ou transmissão.";
+    card.appendChild(note);
+    target.appendChild(card);
+  }
+
   async function readStream(response, target) {
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
@@ -1219,7 +1263,10 @@
       : files.some(file => file.mediaType.startsWith("image/"))
         ? "\n\nO usuário anexou um print ou imagem. Analise o que está visível, leia mensagens de erro e oriente com cuidado. Não presuma dados que não aparecem na imagem."
         : "";
-    const proposalProtocol = "\n\nRECURSO OPCIONAL DE SUGESTÃO DE PREENCHIMENTO: Se, e somente se, você tiver base suficiente no Manual e na conversa para sugerir valores concretos para campos visíveis da tela atual, acrescente ao final um bloco isolado exatamente neste formato: [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]]. Use JSON válido, no máximo 8 itens, strings simples. O campo deve ser identificado pelo rótulo visível exato; não invente campos. Não inclua CPF, CNPJ, e-mail, telefone, senha, PIN, token ou dados de certificado. Se não houver certeza, não inclua bloco. Antes do bloco, explique a origem e a incerteza de cada sugestão. A extensão só apresentará botão para confirmação explícita; jamais sugira clicar em emitir, transmitir, autorizar ou encerrar.";
+    const isDocumentReview = (question || "").includes("Faça uma revisão orientativa do documento");
+    const proposalProtocol = isDocumentReview
+      ? "\n\nREVISÃO DE DOCUMENTO — FORMATO OBRIGATÓRIO: Para CADA erro ou campo que você identificar com base nos sinais fornecidos e no Manual, explique o problema e o que o usuário deve conferir. Quando houver base segura e suficiente para um valor específico, acrescente ao final um bloco isolado [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato e visível do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]] com uma entrada por campo (máximo 8). Esse bloco é obrigatório sempre que houver ao menos uma sugestão de valor realmente fundamentada. Nunca invente valores fiscais nem use dados pessoais/sensíveis. Se não houver base para preencher com segurança, não invente: explique isso e ainda assim indique o campo e a ação manual de conferência. Não omita os erros identificados. A extensão mostrará cartões de revisão e botões para destacar cada item; o preenchimento continua sujeito à confirmação explícita. Nunca recomende emissão, transmissão, autorização ou encerramento automáticos."
+      : "\n\nRECURSO OPCIONAL DE SUGESTÃO DE PREENCHIMENTO: Se, e somente se, você tiver base suficiente no Manual e na conversa para sugerir valores concretos para campos visíveis da tela atual, acrescente ao final um bloco isolado exatamente neste formato: [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]]. Use JSON válido, no máximo 8 itens, strings simples. O campo deve ser identificado pelo rótulo visível exato; não invente campos. Não inclua CPF, CNPJ, e-mail, telefone, senha, PIN, token ou dados de certificado. Se não houver certeza, não inclua bloco. Antes do bloco, explique a origem e a incerteza de cada sugestão. A extensão só apresentará botão para confirmação explícita; jamais sugira clicar em emitir, transmitir, autorizar ou encerrar.";
     const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
@@ -1252,6 +1299,7 @@
       input.focus();
       if (pendingErrorDiagnostic && !autoDiagnosisInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
     }
+    return target;
   }
 
   form.addEventListener("submit", event => {
