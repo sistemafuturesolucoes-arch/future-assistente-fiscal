@@ -1,0 +1,36 @@
+name: Package Chrome Extension
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate manifest and JavaScript
+        run: |
+          node -e "const m=require('./manifest.json'); if(m.manifest_version!==3) process.exit(1); console.log('Manifest',m.version)"
+          node --check src/background.js
+          node --check src/knowledge.js
+          node --check src/content.js
+
+      - name: Build Chrome Web Store package
+        run: |
+          mkdir -p dist
+          zip -r dist/future-assistente-fiscal-chrome.zip manifest.json src
+
+      - name: Upload install package
+        uses: actions/upload-artifact@v4
+        with:
+          name: future-assistente-fiscal-chrome
+          path: dist/future-assistente-fiscal-chrome.zip
+          if-no-files-found: error
+          retention-days: 30
