@@ -368,6 +368,23 @@
     return null;
   }
 
+  function collectVisibleFiscalReturnMessages() {
+    const candidates = [...document.querySelectorAll("body *")].filter(el => {
+      if (host.contains(el) || !isVisibleOnPage(el)) return false;
+      const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+      return text.length >= 20 && text.length <= 1200 &&
+        (/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text)) &&
+        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text);
+    });
+    const minimal = candidates.filter(el => ![...el.children].some(child => {
+      const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim();
+      return t.length >= 20 && t.length <= 1200 &&
+        (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) &&
+        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t);
+    }));
+    return minimal.map(el => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 5);
+  }
+
   function collectDocumentIssues() {
     const issues = [];
     const seen = new Set();
@@ -386,11 +403,37 @@
       add(control, message, "campo inválido");
     }
     const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[data-testid*="error" i],[data-testid*="alert" i]')].filter(isVisibleOnPage);
+    const fiscalReturnNodes = [...document.querySelectorAll("body *")].filter(el => {
+      if (host.contains(el) || !isVisibleOnPage(el)) return false;
+      const text = String(el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim();
+      if (text.length < 20 || text.length > 1200) return false;
+      if (!(/\\bE\\d{4,5}\\b/i.test(text) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(text))) return false;
+      return /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
+        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\\bE\\d{4,5}\\b/i.test(t) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
+    });
+    for (const node of fiscalReturnNodes) if (!errorNodes.includes(node)) errorNodes.push(node);
     for (const node of errorNodes) {
       const message = getVisibleErrorMessage(node);
-      if (!isLikelyFiscalError(node, message)) continue;
+      const fiscalReturn = /\bE\d{4,5}\b/i.test(message) || /retorno\s+(?:da\s+)?prefeitura/i.test(message);
+      if (!isLikelyFiscalError(node, message) && !fiscalReturn) continue;
       const target = fieldForErrorNode(node);
-      add(target || node, message, target ? "erro associado ao campo" : "mensagem geral do emissor");
+      add(target || node, message, target ? "erro associado ao campo" : "rejeição fiscal da prefeitura");
+      const normalizedMessage = normalize(message);
+      if (/\bE0625\b/i.test(message) || (normalizedMessage.includes("aliquota") && normalizedMessage.includes("issqn") && normalizedMessage.includes("retencao"))) {
+        const controls = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=checkbox]")].filter(isGuideNodeVisible);
+        const targets = controls.filter(control => getElementNames(control).some(name => {
+          const n = normalize(name);
+          return n.includes("aliq") && n.includes("iss") || n.includes("iss retido") || n === "retido";
+        }));
+        for (const control of targets.slice(0, 3)) {
+          const names = getElementNames(control);
+          const name = names.find(value => /aliq.*iss|iss.*retido|retido/i.test(value)) || names[0] || "Campo relacionado ao ISSQN";
+          const guidance = /aliq/i.test(name)
+            ? "A rejeição E0625 menciona informação de alíquota do ISSQN. Confira se a alíquota informada é permitida para esta operação e para o enquadramento do prestador."
+            : "A rejeição E0625 também depende da indicação de retenção do ISSQN. Confira se o ISS deve ser retido nesta operação. Não marque ou desmarque sem validar o enquadramento e a regra aplicável.";
+          add(control, guidance, "campo relacionado à rejeição E0625");
+        }
+      }
     }
     return issues.slice(0, 12);
   }
@@ -513,8 +556,10 @@
       });
     const buttons = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")]
       .filter(isVisible).slice(0, 45).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
-    const errors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
+    const semanticErrors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
       .filter(isVisible).slice(0, 15).map(el => (el.innerText || "").trim()).filter(Boolean);
+    const fiscalReturns = collectVisibleFiscalReturnMessages();
+    const errors = [...new Set([...semanticErrors, ...fiscalReturns])].slice(0, 15);
     const redact = value => value
       .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[CPF ocultado]")
       .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "[CNPJ ocultado]")
@@ -1001,6 +1046,7 @@
   window.setTimeout(detectVisibleErrors, 1200);
 
   function maybeStartAutomaticGuide(answer) {
+    if (lastRequestKind === "document-review" || lastRequestKind === "error-diagnosis") return false;
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
     if (!instructionIntent) return false;
     const steps = findGuideSteps(answer);
@@ -1243,8 +1289,10 @@
     return answer;
   }
 
+  let lastRequestKind = "chat";
   async function ask(question, files = []) {
     if (requestInProgress) return;
+    lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : "chat";
     requestInProgress = true;
     send.disabled = true;
     const context = safeScreenContext();
