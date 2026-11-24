@@ -523,6 +523,35 @@
     panel.style.bottom = "auto";
   }
 
+  const panelHeader = panel.querySelector(".head");
+  let panelDrag = null;
+  panelHeader.style.cursor = "move";
+  panelHeader.style.touchAction = "pan-y";
+  panelHeader.addEventListener("pointerdown", event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (event.target.closest("button, a, input, textarea, select")) return;
+    const rect = panel.getBoundingClientRect();
+    panelDrag = { id: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+    panelHeader.setPointerCapture?.(event.pointerId);
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+  });
+  panelHeader.addEventListener("pointermove", event => {
+    if (!panelDrag || panelDrag.id !== event.pointerId) return;
+    const maxX = Math.max(0, window.innerWidth - panel.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - panel.offsetHeight);
+    const left = Math.min(maxX, Math.max(0, event.clientX - panelDrag.offsetX));
+    const top = Math.min(maxY, Math.max(0, event.clientY - panelDrag.offsetY));
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
+  });
+  const finishPanelDrag = event => {
+    if (!panelDrag || (event && panelDrag.id !== event.pointerId)) return;
+    panelDrag = null;
+  };
+  panelHeader.addEventListener("pointerup", finishPanelDrag);
+  panelHeader.addEventListener("pointercancel", finishPanelDrag);
+
   launcher.addEventListener("click", () => {
     if (Date.now() < suppressLauncherClickUntil) return;
     panel.classList.toggle("open");
