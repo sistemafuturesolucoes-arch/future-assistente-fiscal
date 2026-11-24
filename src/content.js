@@ -418,7 +418,7 @@
     return steps;
   }
 
-  function persistGuideProgress(index = guideState?.index || 0) {
+  function persistGuideProgress(index = guideState?.pendingIndex ?? guideState?.index ?? 0) {
     if (!guideState) return;
     try {
       sessionStorage.setItem(GUIDE_SESSION_KEY, JSON.stringify({
@@ -466,6 +466,7 @@
       return;
     }
     guideState.index = index;
+    guideState.pendingIndex = null;
     persistGuideProgress(index);
     step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     const rect = step.element.getBoundingClientRect();
@@ -507,6 +508,7 @@
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
       const nextIndex = guideState.index + 1;
+      guideState.pendingIndex = nextIndex;
       persistGuideProgress(nextIndex);
       window.setTimeout(() => {
         if (!guideState) return;
@@ -514,7 +516,7 @@
         else showGuideStep(nextIndex);
       }, 280);
     };
-    guideState = { steps, index: 0, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
     card.querySelector(".guide-prev").addEventListener("click", () => showGuideStep(Math.max(0, guideState.index - 1)));
     card.querySelector(".guide-next").addEventListener("click", () => {
       if (guideState.index >= guideState.steps.length - 1) closeGuide();
