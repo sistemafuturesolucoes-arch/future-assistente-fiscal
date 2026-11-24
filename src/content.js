@@ -12,7 +12,7 @@
   const style = document.createElement("style");
   style.textContent = `
     :host{all:initial}
-    .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;width:60px;height:60px;border:0;border-radius:50%;cursor:pointer;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui}
+    .launcher{position:fixed;z-index:2147483646;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
     .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:8px}.manual-link{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
@@ -34,7 +34,7 @@
   const launcher = document.createElement("button");
   launcher.className = "launcher";
   launcher.type = "button";
-  launcher.title = "Abrir Assistente Future";
+  launcher.title = "Abrir Assistente Future — arraste para mover";
   launcher.textContent = "🤖";
   const panel = document.createElement("section");
   panel.className = "panel";
@@ -63,7 +63,84 @@
     messages.scrollTop = messages.scrollHeight;
     return el;
   };
-  launcher.addEventListener("click", () => panel.classList.toggle("open"));
+  const LAUNCHER_POSITION_KEY = "futureAssistenteLauncherPosition";
+  let launcherPosition = null;
+  let dragPointer = null;
+  let suppressLauncherClickUntil = 0;
+
+  function applyLauncherPosition(xRatio, yRatio) {
+    const maxX = Math.max(0, window.innerWidth - launcher.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - launcher.offsetHeight);
+    const x = Math.min(maxX, Math.max(0, xRatio * maxX));
+    const y = Math.min(maxY, Math.max(0, yRatio * maxY));
+    launcher.style.left = x + "px";
+    launcher.style.top = y + "px";
+    launcher.style.right = "auto";
+    launcher.style.bottom = "auto";
+    launcherPosition = { xRatio: maxX ? x / maxX : 1, yRatio: maxY ? y / maxY : 1 };
+  }
+
+  function saveLauncherPosition() {
+    if (!launcherPosition || !globalThis.chrome?.storage?.local) return;
+    chrome.storage.local.set({ [LAUNCHER_POSITION_KEY]: launcherPosition });
+  }
+
+  if (globalThis.chrome?.storage?.local) {
+    chrome.storage.local.get(LAUNCHER_POSITION_KEY, result => {
+      const saved = result?.[LAUNCHER_POSITION_KEY];
+      if (saved && Number.isFinite(saved.xRatio) && Number.isFinite(saved.yRatio)) {
+        applyLauncherPosition(saved.xRatio, saved.yRatio);
+      }
+    });
+  }
+
+  launcher.addEventListener("pointerdown", event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    const rect = launcher.getBoundingClientRect();
+    dragPointer = {
+      id: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      moved: false
+    };
+    launcher.setPointerCapture?.(event.pointerId);
+  });
+
+  launcher.addEventListener("pointermove", event => {
+    if (!dragPointer || dragPointer.id !== event.pointerId) return;
+    const dx = event.clientX - dragPointer.startX;
+    const dy = event.clientY - dragPointer.startY;
+    if (!dragPointer.moved && Math.hypot(dx, dy) < 5) return;
+    dragPointer.moved = true;
+    launcher.classList.add("dragging");
+    const maxX = Math.max(0, window.innerWidth - launcher.offsetWidth);
+    const maxY = Math.max(0, window.innerHeight - launcher.offsetHeight);
+    const x = Math.min(maxX, Math.max(0, event.clientX - dragPointer.offsetX));
+    const y = Math.min(maxY, Math.max(0, event.clientY - dragPointer.offsetY));
+    applyLauncherPosition(maxX ? x / maxX : 1, maxY ? y / maxY : 1);
+  });
+
+  function finishLauncherDrag(event) {
+    if (!dragPointer || (event && dragPointer.id !== event.pointerId)) return;
+    if (dragPointer.moved) {
+      saveLauncherPosition();
+      suppressLauncherClickUntil = Date.now() + 350;
+    }
+    dragPointer = null;
+    launcher.classList.remove("dragging");
+  }
+  launcher.addEventListener("pointerup", finishLauncherDrag);
+  launcher.addEventListener("pointercancel", finishLauncherDrag);
+  window.addEventListener("resize", () => {
+    if (launcherPosition) applyLauncherPosition(launcherPosition.xRatio, launcherPosition.yRatio);
+  });
+
+  launcher.addEventListener("click", () => {
+    if (Date.now() < suppressLauncherClickUntil) return;
+    panel.classList.toggle("open");
+  });
   panel.querySelector(".close").addEventListener("click", () => panel.classList.remove("open"));
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
 
