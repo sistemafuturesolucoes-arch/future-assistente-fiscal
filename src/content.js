@@ -391,7 +391,7 @@
     const add = (element, message, source) => {
       if (!element || !isVisibleOnPage(element)) return;
       const names = getElementNames(element).filter(Boolean);
-      const errorCode = String(message || "").match(/\\bE\\d{4,5}\\b/i)?.[0];
+      const errorCode = String(message || "").match(/\bE\d{4,5}\b/i)?.[0];
       const title = names[0] || (errorCode ? "Retorno da Prefeitura — " + errorCode : element.matches?.("input,select,textarea") ? "Campo sem rótulo acessível" : "Mensagem de validação");
       const key = title + "|" + normalize(message || source);
       if (seen.has(key)) return;
