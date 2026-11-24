@@ -129,7 +129,7 @@
     const labels = el.labels ? [...el.labels].map(x => x.innerText || "").join(" ") : "";
     const wrappingLabel = el.closest("label")?.innerText || "";
     return (labels || wrappingLabel || el.getAttribute("aria-label") || el.getAttribute("placeholder") ||
-      el.getAttribute("title") || el.innerText || el.value || el.getAttribute("name") || el.id || "").trim();
+      el.getAttribute("title") || el.innerText || el.getAttribute("name") || el.id || "").trim();
   }
 
   function findGuideSteps(answer) {
