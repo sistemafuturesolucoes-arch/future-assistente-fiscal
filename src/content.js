@@ -15,7 +15,7 @@
     .launcher{position:fixed;z-index:2147483646;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
-    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:8px}.manual-link{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
+    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
     .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid #eee9f4}.composer textarea{resize:none;flex:1;min-width:0;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}
     .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
@@ -26,7 +26,7 @@
     .guide-card .guide-desc{font-size:12px;color:#f2eafa;white-space:pre-wrap}
     .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px}
     .guide-card button{border:1px solid #9d73c8;border-radius:8px;background:#48216e;color:#fff;padding:7px 9px;font:600 11px system-ui;cursor:pointer}
-    .guide-card button:disabled{opacity:.35;cursor:default}.guide-card .guide-end{margin-left:auto;background:#fff;color:#35105f}
+    .guide-card button:disabled{opacity:.35;cursor:default}.guide-card .guide-end{margin-left:auto;background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
     @media(max-width:520px){.panel{right:8px;left:8px;bottom:82px;width:auto;height:calc(100vh - 105px)}.launcher{right:14px;bottom:14px}}
   `;
   shadow.appendChild(style);
@@ -39,7 +39,7 @@
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
-    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
+    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
     <form class="composer"><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
@@ -54,6 +54,11 @@
   const status = panel.querySelector(".status");
   const conversationMessages = [];
   let guideState = null;
+  const SOUND_KEY = "futureAssistenteErrorSound";
+  let soundEnabled = true;
+  let audioContext = null;
+  let lastErrorFingerprint = "";
+  let lastErrorAt = 0;
 
   const addMessage = (text, role) => {
     const el = document.createElement("div");
@@ -143,6 +148,32 @@
   });
   panel.querySelector(".close").addEventListener("click", () => panel.classList.remove("open"));
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
+  const soundToggle = panel.querySelector(".sound-toggle");
+  function renderSoundToggle() {
+    soundToggle.textContent = soundEnabled ? "🔔" : "🔕";
+    soundToggle.setAttribute("aria-pressed", String(soundEnabled));
+    soundToggle.title = soundEnabled ? "Alertas sonoros ativados" : "Alertas sonoros desativados";
+  }
+  if (globalThis.chrome?.storage?.local) {
+    chrome.storage.local.get(SOUND_KEY, result => {
+      if (typeof result?.[SOUND_KEY] === "boolean") soundEnabled = result[SOUND_KEY];
+      renderSoundToggle();
+    });
+  }
+  soundToggle.addEventListener("click", async () => {
+    soundEnabled = !soundEnabled;
+    renderSoundToggle();
+    if (globalThis.chrome?.storage?.local) chrome.storage.local.set({ [SOUND_KEY]: soundEnabled });
+    if (soundEnabled) {
+      try {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtor) {
+          audioContext ||= new AudioCtor();
+          await audioContext.resume();
+        }
+      } catch {}
+    }
+  });
 
   function safeScreenContext() {
     const title = (document.title || "").slice(0, 120);
@@ -194,25 +225,57 @@
       el.getAttribute("title") || el.innerText || el.getAttribute("name") || el.id || "").trim();
   }
 
+  function findElementByName(name) {
+    const wanted = normalize(name);
+    if (!wanted) return null;
+    const nodes = [...document.querySelectorAll("input,select,textarea,button,[role=button],[role=combobox],[role=checkbox],[role=tab],a")];
+    return nodes.find(el => {
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" &&
+        normalize(getElementName(el)) === wanted;
+    }) || null;
+  }
+
   function findGuideSteps(answer) {
     const answerNorm = normalize(answer);
-    const nodes = [...document.querySelectorAll("input,select,textarea,button,[role=button],[role=combobox],[role=checkbox]")]
+    const nodes = [...document.querySelectorAll("input,select,textarea,button,[role=button],[role=combobox],[role=checkbox],[role=tab],a")]
       .filter(el => {
         const r = el.getBoundingClientRect();
         const s = getComputedStyle(el);
         return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
       });
     const lines = answer.split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
-    const steps = [];
-    const seen = new Set();
+    const candidates = [];
     for (const el of nodes) {
       const name = getElementName(el);
       const key = normalize(name);
-      if (key.length < 4 || seen.has(key) || !answerNorm.includes(key)) continue;
-      seen.add(key);
-      const line = lines.find(x => normalize(x).includes(key)) || "";
-      const description = line.length > name.length + 8 ? line : "Este é o elemento **" + name + "** mencionado na orientação. Confira as instruções antes de alterar qualquer informação.";
-      steps.push({ element: el, title: name.slice(0, 90), description: description.slice(0, 420) });
+      if (key.length < 4) continue;
+      const exactAt = answerNorm.indexOf(key);
+      let score = exactAt >= 0 ? 1 : 0;
+      if (!score) {
+        const tokens = key.split(" ").filter(t => t.length > 2);
+        const hits = tokens.filter(t => answerNorm.includes(t)).length;
+        score = tokens.length ? hits / tokens.length : 0;
+      }
+      if (score >= 0.78) candidates.push({ el, name, key, exactAt, score });
+    }
+    candidates.sort((a, b) => {
+      if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
+      if (a.exactAt >= 0) return -1;
+      if (b.exactAt >= 0) return 1;
+      return b.score - a.score;
+    });
+    const steps = [];
+    const seen = new Set();
+    for (const candidate of candidates) {
+      if (seen.has(candidate.key)) continue;
+      seen.add(candidate.key);
+      const line = lines.find(x => normalize(x).includes(candidate.key)) ||
+        lines.find(x => candidate.key.split(" ").filter(t => t.length > 2).some(t => normalize(x).includes(t))) || "";
+      const description = line.length > candidate.name.length + 8 ? line :
+        "Confira este elemento indicado pela orientação antes de fazer qualquer alteração.";
+      steps.push({ element: candidate.el, title: candidate.name.slice(0, 90), description: description.slice(0, 420) });
       if (steps.length >= 12) break;
     }
     return steps;
@@ -221,6 +284,7 @@
   function closeGuide() {
     if (!guideState) return;
     document.removeEventListener("scroll", guideState.reposition, true);
+    document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
     guideState.frame.remove();
     guideState.card.remove();
@@ -265,10 +329,22 @@
     card.className = "guide-card";
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-prev" type="button">Anterior</button><button class="guide-next" type="button">Próximo</button><button class="guide-end" type="button">Encerrar</button></div>
+      <div class="guide-controls"><button class="guide-prev" type="button">Anterior</button><button class="guide-next" type="button">Pular</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Ao clicar no elemento destacado, avançarei para o próximo passo.</div>
     `;
     shadow.append(frame, card);
-    guideState = { steps, index: 0, frame, card, reposition: () => showGuideStep(guideState?.index || 0) };
+    const onTargetClick = event => {
+      if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.element) return;
+      const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
+      if (!clicked) return;
+      window.setTimeout(() => {
+        if (!guideState) return;
+        if (guideState.index >= guideState.steps.length - 1) closeGuide();
+        else showGuideStep(guideState.index + 1);
+      }, 280);
+    };
+    guideState = { steps, index: 0, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
     card.querySelector(".guide-prev").addEventListener("click", () => showGuideStep(Math.max(0, guideState.index - 1)));
     card.querySelector(".guide-next").addEventListener("click", () => {
       if (guideState.index >= guideState.steps.length - 1) closeGuide();
@@ -276,9 +352,73 @@
     });
     card.querySelector(".guide-end").addEventListener("click", closeGuide);
     document.addEventListener("scroll", guideState.reposition, true);
+    document.addEventListener("click", onTargetClick, true);
     window.addEventListener("resize", guideState.reposition);
     showGuideStep(0);
   }
+
+  function playErrorBeeps() {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return;
+      audioContext ||= new AudioCtor();
+      audioContext.resume().then(() => {
+        for (let i = 0; i < 5; i++) {
+          const start = audioContext.currentTime + i * 0.22;
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = "sine";
+          oscillator.frequency.value = 880;
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.11);
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start(start);
+          oscillator.stop(start + 0.12);
+        }
+      }).catch(() => {});
+    } catch {}
+  }
+
+  function detectVisibleErrors() {
+    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error';
+    const candidates = [...document.querySelectorAll(selectors)].filter(el => {
+      if (host.contains(el)) return false;
+      const r = el.getBoundingClientRect();
+      const s = getComputedStyle(el);
+      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
+    });
+    for (const el of candidates) {
+      const message = (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ");
+      if (message.length < 4 || message.length > 500) continue;
+      const fingerprint = normalize(message);
+      if (fingerprint === lastErrorFingerprint && Date.now() - lastErrorAt < 8000) continue;
+      lastErrorFingerprint = fingerprint;
+      lastErrorAt = Date.now();
+      playErrorBeeps();
+      panel.classList.add("open");
+      addMessage("⚠️ Detectei uma mensagem de possível erro na tela:\n" + message + "\n\nVou ajudar a interpretar. Confira o campo destacado e, se necessário, envie sua dúvida no chat.", "bot");
+      status.textContent = "Possível erro detectado. Confira a mensagem e a orientação.";
+      const rect = el.getBoundingClientRect();
+      const frame = document.createElement("div");
+      frame.className = "spotlight";
+      Object.assign(frame.style, {
+        left: Math.max(2, rect.left - 5) + "px",
+        top: Math.max(2, rect.top - 5) + "px",
+        width: Math.max(12, rect.width + 10) + "px",
+        height: Math.max(12, rect.height + 10) + "px"
+      });
+      shadow.appendChild(frame);
+      window.setTimeout(() => frame.remove(), 6500);
+      break;
+    }
+  }
+
+  const errorObserver = new MutationObserver(() => detectVisibleErrors());
+  errorObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "role", "aria-live", "data-state"] });
+  window.setTimeout(detectVisibleErrors, 1200);
 
   function maybeStartAutomaticGuide(answer) {
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
