@@ -1700,7 +1700,6 @@
       if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
-        conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
       } else {
         const safeAnswer = renderFieldProposals(answer, target);
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
