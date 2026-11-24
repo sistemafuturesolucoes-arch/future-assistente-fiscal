@@ -1740,13 +1740,15 @@
       };
       let streamResult = await requestAssistantStream();
       let answer = streamResult.answer;
-      if (!streamResult.completed && answer.trim()) {
-        status.textContent = "A resposta foi interrompida. Estou recuperando a continuação automaticamente...";
+      let recoveryAttempts = 0;
+      while (!streamResult.completed && answer.trim() && recoveryAttempts < 3) {
+        recoveryAttempts += 1;
+        status.textContent = "A resposta foi interrompida. Recuperando automaticamente (" + recoveryAttempts + "/3)...";
         const partialAnswerMessage = { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] };
         const continuationRequestMessage = {
           id: crypto.randomUUID(),
           role: "user",
-          parts: [{ type: "text", text: "[CONTINUAÇÃO AUTOMÁTICA] Sua resposta anterior foi interrompida pela conexão. Continue exatamente do ponto em que parou, sem repetir o que já foi explicado. Termine a orientação com uma frase completa e o próximo passo claro. Consulte novamente o Manual já fornecido e não invente etapas." }]
+          parts: [{ type: "text", text: "[CONTINUAÇÃO AUTOMÁTICA " + recoveryAttempts + "/3] Sua resposta anterior foi interrompida pela conexão. Continue exatamente do ponto em que parou, sem repetir o que já foi explicado. Termine a orientação com uma frase completa e o próximo passo claro. Consulte novamente o Manual já fornecido e não invente etapas." }]
         };
         conversationMessages.push(partialAnswerMessage, continuationRequestMessage);
         try {
@@ -1760,6 +1762,7 @@
           }
         } catch (continuationError) {
           console.warn("Falha ao recuperar continuação da resposta", continuationError);
+          break;
         }
       }
       if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
