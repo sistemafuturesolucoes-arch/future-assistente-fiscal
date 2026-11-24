@@ -47,3 +47,10 @@ A extensão não cria uma segunda IA nem um segundo banco de conhecimento. Ela c
 - Não lê valores de CPF/CNPJ, valores monetários, dados preenchidos da nota, senhas ou PINs.
 - O contexto textual de alertas passa por mascaramento de CPF, CNPJ e e-mail, mas isso não garante anonimização completa. Não envie dados pessoais ou segredos na conversa.
 - A chave incluída no cliente é a chave **publishable** já utilizada pelo Manual; nunca inclua service_role, chaves Gemini, senhas ou certificados no repositório público.
+
+
+## Navegação assistida e atualizações
+- A navegação assistida apresenta uma ação por vez: destaca o elemento atual, aguarda o clique do usuário, lê novamente a tela e pede à IA a próxima ação. O progresso da tarefa é preservado durante navegações da mesma aba por até 20 minutos.
+- A extensão não clica nem executa ações fiscais pelo usuário. Ações irreversíveis como emitir, transmitir, autorizar e encerrar continuam sob controle humano.
+- A notificação interna de versão aparece depois que o Chrome instala uma atualização oficial. Para distribuição com atualização automática, publique a extensão na Chrome Web Store e mantenha o mesmo ID de extensão. A instalação de desenvolvimento por “Carregar sem compactação” não recebe atualizações automáticas da Web Store.
+- O Chrome gerencia a verificação e instalação das atualizações da Web Store; o aviso dentro do chat apenas informa a versão que já foi instalada, não substitui o mecanismo oficial de atualização.
