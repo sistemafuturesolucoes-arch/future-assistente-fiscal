@@ -12,7 +12,7 @@
   const style = document.createElement("style");
   style.textContent = `
     :host{all:initial}
-    .launcher{position:fixed;z-index:2147483646;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
+    .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;left:auto;top:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
     .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
@@ -266,6 +266,7 @@
     const x = Math.min(maxX, Math.max(0, event.clientX - dragPointer.offsetX));
     const y = Math.min(maxY, Math.max(0, event.clientY - dragPointer.offsetY));
     applyLauncherPosition(maxX ? x / maxX : 1, maxY ? y / maxY : 1);
+    positionPanelNearLauncher();
   });
 
   function finishLauncherDrag(event) {
@@ -281,12 +282,39 @@
   launcher.addEventListener("pointercancel", finishLauncherDrag);
   window.addEventListener("resize", () => {
     if (launcherPosition) applyLauncherPosition(launcherPosition.xRatio, launcherPosition.yRatio);
+    positionPanelNearLauncher();
   });
+
+  function positionPanelNearLauncher() {
+    if (!panel.classList.contains("open")) return;
+    const launcherRect = launcher.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const width = panelRect.width || Math.min(370, window.innerWidth - 16);
+    const height = panelRect.height || Math.min(590, window.innerHeight - 125);
+    let left = Math.max(8, Math.min(window.innerWidth - width - 8, launcherRect.right - width));
+    let top = launcherRect.top - height - 12;
+    if (top < 8) top = launcherRect.bottom + 12;
+    top = Math.max(8, Math.min(window.innerHeight - height - 8, top));
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+  }
 
   launcher.addEventListener("click", () => {
     if (Date.now() < suppressLauncherClickUntil) return;
     panel.classList.toggle("open");
+    positionPanelNearLauncher();
   });
+  if (globalThis.chrome?.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener(message => {
+      if (message?.type === "FUTURE_ASSISTENTE_OPEN") {
+        panel.classList.add("open");
+        positionPanelNearLauncher();
+        input.focus();
+      }
+    });
+  }
   panel.querySelector(".close").addEventListener("click", () => panel.classList.remove("open"));
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
   const soundToggle = panel.querySelector(".sound-toggle");
