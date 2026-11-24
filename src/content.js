@@ -25,9 +25,11 @@
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
     .guide-card .guide-title{font-size:15px;font-weight:800;margin:4px 0 6px}
     .guide-card .guide-desc{font-size:12px;color:#f2eafa;white-space:pre-wrap}
-    .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px}
+    .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
     .guide-card button{border:1px solid #9d73c8;border-radius:8px;background:#48216e;color:#fff;padding:7px 9px;font:600 11px system-ui;cursor:pointer}
-    .guide-card button:disabled{opacity:.35;cursor:default}.guide-card .guide-end{margin-left:auto;background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
+    .guide-card .guide-end{background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
+    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+    .guide-card[hidden],.guide-question[hidden]{display:none!important}
     .proposal-card{margin-top:9px;padding:10px;border:1px solid #d8c5ef;border-radius:11px;background:#fbf8ff;color:#30213e;font-size:12px}.proposal-title{font-weight:750;margin-bottom:5px}.proposal-field{font-weight:700;margin-top:7px}.proposal-value{padding:7px;margin:4px 0 8px;background:#fff;border:1px solid #e7deef;border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere}.proposal-actions{display:flex;gap:7px}.proposal-actions button{border:0;border-radius:8px;padding:7px 10px;font:650 11px system-ui;cursor:pointer}.proposal-confirm{background:#54218a;color:#fff}.proposal-cancel{background:#eee8f4;color:#4d3b5c}.proposal-note{font-size:10px;color:#756782;margin-top:7px}
     @media(max-width:520px){.panel{right:8px;left:8px;top:8px;bottom:8px;width:auto;height:auto;max-height:none;min-height:0;border-radius:14px}.head{padding:10px 11px;gap:8px}.head-tools{gap:5px}.head-tools button{font-size:10px;padding:6px 7px;min-height:30px}.close{width:34px;height:34px;flex-basis:34px}.launcher{right:14px;bottom:14px}.messages{min-height:0}.notice{padding-bottom:7px}}
   `;
@@ -963,6 +965,7 @@
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
     guideState.frame.remove();
+    guideState.marker?.remove();
     guideState.card.remove();
     guideState = null;
     clearGuideProgress();
@@ -975,6 +978,7 @@
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
     guideState.frame.remove();
+    guideState.marker?.remove();
     guideState.card.remove();
     guideState = null;
   }
@@ -1001,12 +1005,19 @@
     guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
-    guideState.card.querySelector(".guide-prev").disabled = index === 0;
-    guideState.card.querySelector(".guide-next").textContent = index === guideState.steps.length - 1 ? "Concluir" : "Próximo";
+    guideState.card.hidden = true;
+    guideState.marker.hidden = false;
+    const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
+    const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
+    guideState.marker.style.left = markerLeft + "px";
+    guideState.marker.style.top = markerTop + "px";
+    const cardWidth = Math.min(330, window.innerWidth - 28);
     const cardHeight = guideState.card.getBoundingClientRect().height || 170;
+    const roomRight = window.innerWidth - rect.right;
+    const roomLeft = rect.left;
+    const left = roomRight >= cardWidth + 18 ? rect.right + 12 : roomLeft >= cardWidth + 18 ? rect.left - cardWidth - 12 : Math.max(8, Math.min(window.innerWidth - cardWidth - 8, rect.left));
     const top = rect.bottom + cardHeight + 18 < window.innerHeight ? rect.bottom + 12 : Math.max(8, rect.top - cardHeight - 12);
-    const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 346));
-    guideState.card.style.top = top + "px";
+    guideState.card.style.top = Math.max(8, Math.min(window.innerHeight - cardHeight - 8, top)) + "px";
     guideState.card.style.left = left + "px";
     if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
     const waitingAtStep = index;
@@ -1070,13 +1081,20 @@
     if (!steps.length) return;
     const frame = document.createElement("div");
     frame.className = "spotlight";
+    const marker = document.createElement("button");
+    marker.className = "guide-question";
+    marker.type = "button";
+    marker.textContent = "?";
+    marker.title = "Ver orientação deste item";
+    marker.setAttribute("aria-label", "Ver orientação deste item");
     const card = document.createElement("div");
     card.className = "guide-card";
+    card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-prev" type="button">Anterior</button><button class="guide-next" type="button">Pular</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Ao clicar no elemento destacado, avançarei para o próximo passo.</div>
+      <div class="guide-controls"><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Abra ? quando precisar reler a orientação.</div>
     `;
-    shadow.append(frame, card);
+    shadow.append(frame, marker, card);
     const onTargetClick = event => {
       if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
       const current = guideState.steps[guideState.index];
@@ -1108,11 +1126,17 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
-    card.querySelector(".guide-prev").addEventListener("click", () => showGuideStep(Math.max(0, guideState.index - 1)));
-    card.querySelector(".guide-next").addEventListener("click", () => {
-      if (guideState.index >= guideState.steps.length - 1) continueNavigationGuide();
-      else showGuideStep(guideState.index + 1);
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    marker.addEventListener("click", () => {
+      if (!guideState) return;
+      const rect = guideState.card.getBoundingClientRect();
+      guideState.card.hidden = false;
+      const cardRect = guideState.card.getBoundingClientRect();
+      const markerRect = marker.getBoundingClientRect();
+      const left = Math.max(8, Math.min(window.innerWidth - cardRect.width - 8, markerRect.left - cardRect.width + markerRect.width));
+      const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
+      guideState.card.style.left = left + "px";
+      guideState.card.style.top = top + "px";
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
@@ -1608,7 +1632,7 @@
           answer += event.delta;
           render();
         }
-        if (event.type === "finish" || event.type === "finish-step" || event.type === "message-finish") completed = true;
+        if (event.type === "finish" || event.type === "message-finish") completed = true;
       } catch (error) {
         console.warn("Evento SSE ignorado por formato inválido.", error);
       }
@@ -1620,7 +1644,11 @@
       if (final && buffer.trim()) consumeChunk(buffer);
     }
     while (true) {
-      const { value, done } = await reader.read();
+      const readResult = await Promise.race([
+        reader.read(),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000))
+      ]);
+      const { value, done } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
       consumeBuffer();
