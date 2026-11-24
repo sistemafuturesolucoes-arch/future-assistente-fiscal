@@ -118,8 +118,18 @@ test("orientação de salvar verifica campos obrigatórios antes de destacar o b
   assert.match(source, /validationField: true/);
 });
 
-test("leitura rápida compara apenas o mapa de navegação após clique", () => {
+test("leitura de navegação aguarda transições lentas e observa menus em qualquer região", () => {
   assert.match(source, /function navigationSnapshot\(\)/);
   assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
-  assert.match(source, /window\.setTimeout\(finish, 160\)/);
+  assert.match(source, /timeoutMs = 6000/);
+  assert.match(source, /window\.setInterval\(check, 250\)/);
+  assert.match(source, /characterData: true/);
+  assert.match(source, /aria-controls/);
+});
+
+test("continuidade salva a última etapa confirmada para não reiniciar o roteiro", () => {
+  assert.match(source, /lastCompletedStep: navigationLastCompletedStep/);
+  assert.match(source, /navigationLastCompletedStep = current\.title/);
+  assert.match(source, /Última ação confirmada pelo usuário/);
+  assert.match(source, /navigationLastCompletedStep = saved\.lastCompletedStep/);
 });
