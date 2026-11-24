@@ -237,7 +237,7 @@
       }
       if (cursor < line.length) parent.appendChild(document.createTextNode(line.slice(cursor)));
     };
-    const lines = String(value || "").split(/\\r?\\n/);
+    const lines = String(value || "").split(/\r?\n/);
     lines.forEach((line, index) => {
       if (index) target.appendChild(document.createElement("br"));
       appendInline(target, line);
