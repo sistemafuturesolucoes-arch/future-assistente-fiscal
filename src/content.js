@@ -17,7 +17,7 @@
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:12px 14px;display:flex;flex-direction:column;align-items:stretch;gap:10px;flex:0 0 auto;box-sizing:border-box}
     .head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.brand-wrap{min-width:0;flex:1}.brand{font-weight:750;font-size:15px;line-height:1.25;overflow-wrap:anywhere}.sub{font-size:11px;opacity:.8;margin-top:3px}.head-tools{display:flex;align-items:center;justify-content:flex-start;gap:6px;flex-wrap:wrap;width:100%;min-width:0}.manual-link,.sound-toggle,.review-button,.voice-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:7px 9px;font:600 11px/1.2 system-ui;cursor:pointer;min-height:32px;box-sizing:border-box;white-space:nowrap}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"],.voice-toggle[aria-pressed="false"]{opacity:.55}.close{flex:0 0 34px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #ffffff66;border-radius:9px;background:#ffffff18;color:#fff;font-size:24px;line-height:1;cursor:pointer;position:relative;z-index:2}.close:hover{background:#ffffff32}.close:focus-visible,.head-tools button:focus-visible{outline:2px solid #fff;outline-offset:2px}
     .messages{flex:1 1 auto;min-height:0;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.msg a{color:#6530a0;text-decoration:underline;font-weight:650;cursor:pointer}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
-    .status{flex:0 0 auto;min-width:0;overflow-wrap:anywhere;font-size:11px;color:#786c83;padding:5px 13px}.composer{flex:0 0 auto;display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
+    .status{flex:0 0 auto;min-width:0;overflow-wrap:anywhere;font-size:11px;color:#786c83;padding:5px 13px}.composer{flex:0 0 auto;display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.stop{width:42px;height:48px;border:1px solid #e4c7d0;border-radius:11px;background:#fff5f6;color:#b4234c;font-size:17px;font-weight:800;cursor:pointer}.stop:disabled{opacity:.35;cursor:default}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{flex:0 0 auto;font-size:10px;color:#81768b;padding:0 12px 9px}
     .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
     .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
@@ -28,7 +28,7 @@
     .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
     .guide-card button{border:1px solid #9d73c8;border-radius:8px;background:#48216e;color:#fff;padding:7px 9px;font:600 11px system-ui;cursor:pointer}
     .guide-card .guide-end{background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
-    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-dismiss{position:fixed;z-index:2147483647;width:19px;height:19px;border:1px solid #fff;border-radius:50%;background:#b4234c;color:#fff;font:800 13px/1 system-ui;box-shadow:0 2px 8px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
     .guide-card[hidden],.guide-question[hidden]{display:none!important}
     .proposal-card{margin-top:9px;padding:10px;border:1px solid #d8c5ef;border-radius:11px;background:#fbf8ff;color:#30213e;font-size:12px}.proposal-title{font-weight:750;margin-bottom:5px}.proposal-field{font-weight:700;margin-top:7px}.proposal-value{padding:7px;margin:4px 0 8px;background:#fff;border:1px solid #e7deef;border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere}.proposal-actions{display:flex;gap:7px}.proposal-actions button{border:0;border-radius:8px;padding:7px 10px;font:650 11px system-ui;cursor:pointer}.proposal-confirm{background:#54218a;color:#fff}.proposal-cancel{background:#eee8f4;color:#4d3b5c}.proposal-note{font-size:10px;color:#756782;margin-top:7px}
     @media(max-width:520px){.panel{right:8px;left:8px;top:8px;bottom:8px;width:auto;height:auto;max-height:none;min-height:0;border-radius:14px}.head{padding:10px 11px;gap:8px}.head-tools{gap:5px}.head-tools button{font-size:10px;padding:6px 7px;min-height:30px}.close{width:34px;height:34px;flex-basis:34px}.launcher{right:14px;bottom:14px}.messages{min-height:0}.notice{padding-bottom:7px}}
@@ -46,7 +46,7 @@
     <header class="head"><div class="head-top"><div class="brand-wrap"><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><button class="close" type="button" aria-label="Fechar" title="Fechar assistente">×</button></div><nav class="head-tools" aria-label="Ferramentas do assistente"><button class="review-button" type="button">Revisar documento</button><button class="voice-toggle" type="button" aria-label="Ativar conversa por voz" aria-pressed="false" title="Ativar conversa por voz">🎙️ Voz</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔 Som</button><button class="manual-link" type="button">Manual</button></nav></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
-    <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
+    <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="stop" type="button" title="Parar a conversa atual" aria-label="Parar a conversa atual" disabled>■</button><button class="send" type="submit">Enviar</button></form>
     <div class="notice">Evite enviar CPF/CNPJ, dados de notas, senhas ou PINs. Orientações fiscais devem ser confirmadas com a contabilidade.</div>
   `;
   shadow.append(launcher, panel);
@@ -55,6 +55,7 @@
   const form = panel.querySelector("form");
   const input = panel.querySelector("textarea");
   const send = panel.querySelector(".send");
+  const stopButton = panel.querySelector(".stop");
   const fileInput = panel.querySelector(".hidden-file");
   const attachButton = panel.querySelector(".attach");
   const recordButton = panel.querySelector(".record");
@@ -149,6 +150,13 @@
     const files = [...(fileInput.files || [])];
     for (const file of files) await addAttachment(file);
     fileInput.value = "";
+  });
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      if (!send.disabled) form.requestSubmit();
+    }
   });
 
   input.addEventListener("paste", async event => {
@@ -816,10 +824,9 @@
       .filter(isVisible).slice(0, 60).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
     const navigationRoots = [...document.querySelectorAll("nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]")].filter(isVisible);
     const navigationSelector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
-    const navigationItems = [...new Set([
-      ...document.querySelectorAll(navigationSelector),
-      ...navigationRoots.flatMap(root => [...root.querySelectorAll(navigationSelector)])
-    ])].filter(isVisible).slice(0, 220).map(el => {
+    const rootItems = navigationRoots.flatMap(root => [...root.querySelectorAll(navigationSelector)]);
+    const navigationCandidates = rootItems.length ? rootItems : [...document.querySelectorAll(navigationSelector)];
+    const navigationItems = [...new Set(navigationCandidates)].filter(isVisible).slice(0, 220).map(el => {
       const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim();
       const disabled = el.disabled || el.getAttribute("aria-disabled") === "true" || el.classList.contains("disabled") ? " [DESABILITADO]" : "";
       const expanded = el.getAttribute("aria-expanded");
@@ -995,8 +1002,10 @@
     window.removeEventListener("resize", guideState.reposition);
     guideState.frame.remove();
     guideState.marker?.remove();
+    guideState.dismiss?.remove();
     guideState.card.remove();
     guideState = null;
+    if (!requestInProgress && !voiceIsSpeaking) stopButton.disabled = true;
     clearGuideProgress();
   }
 
@@ -1008,6 +1017,7 @@
     window.removeEventListener("resize", guideState.reposition);
     guideState.frame.remove();
     guideState.marker?.remove();
+    guideState.dismiss?.remove();
     guideState.card.remove();
     guideState = null;
   }
@@ -1040,6 +1050,8 @@
     const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
     guideState.marker.style.left = markerLeft + "px";
     guideState.marker.style.top = markerTop + "px";
+    guideState.dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
+    guideState.dismiss.style.top = Math.max(4, markerTop - 7) + "px";
     const cardWidth = Math.min(330, window.innerWidth - 28);
     const cardHeight = guideState.card.getBoundingClientRect().height || 170;
     const roomRight = window.innerWidth - rect.right;
@@ -1069,7 +1081,19 @@
     navigationGuideActive = false;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
-  async function waitForNavigationUpdate(beforeContext) {
+  function navigationSnapshot() {
+    const rootSelector = "nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]";
+    const roots = [...document.querySelectorAll(rootSelector)];
+    const selector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
+    const items = roots.length ? roots.flatMap(root => [...root.querySelectorAll(selector)]) : [...document.querySelectorAll("nav a,nav button,aside a,aside button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded]")];
+    return [...new Set(items)].filter(el => {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }).slice(0, 220).map(el => [normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title), el.getAttribute("aria-expanded") || "", el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")].join(":")).join("|");
+  }
+
+  async function waitForNavigationUpdate(beforeSnapshot) {
     return new Promise(resolve => {
       let settled = false;
       let quietTimer = null;
@@ -1079,14 +1103,14 @@
         settled = true;
         observer.disconnect();
         clearTimeout(quietTimer);
-        resolve(safeScreenContext() !== beforeContext);
+        resolve(navigationSnapshot() !== beforeSnapshot);
       };
       const observer = new MutationObserver(() => {
         clearTimeout(quietTimer);
-        quietTimer = window.setTimeout(finish, 320);
+        quietTimer = window.setTimeout(finish, 160);
       });
-      if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style", "aria-expanded", "aria-hidden", "role"] });
-      window.setTimeout(() => { if (Date.now() - startedAt >= 1500) finish(); }, 1550);
+      if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-expanded", "aria-hidden", "hidden"] });
+      window.setTimeout(() => { if (Date.now() - startedAt >= 850) finish(); }, 900);
     });
   }
 
@@ -1116,6 +1140,12 @@
     marker.textContent = "?";
     marker.title = "Ver orientação deste item";
     marker.setAttribute("aria-label", "Ver orientação deste item");
+    const dismiss = document.createElement("button");
+    dismiss.className = "guide-dismiss";
+    dismiss.type = "button";
+    dismiss.textContent = "×";
+    dismiss.title = "Fechar este indicador";
+    dismiss.setAttribute("aria-label", "Fechar este indicador");
     const card = document.createElement("div");
     card.className = "guide-card";
     card.hidden = true;
@@ -1123,15 +1153,16 @@
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
       <div class="guide-controls"><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Abra ? quando precisar reler a orientação.</div>
     `;
-    shadow.append(frame, marker, card);
+    shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
       if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element) return;
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
-      const beforeContext = safeScreenContext();
-      const navigationUpdate = waitForNavigationUpdate(beforeContext);
+        if (current.validationField) return;
+      const beforeSnapshot = navigationSnapshot();
+      const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
       guideState.waitingForNavigation = true;
@@ -1155,7 +1186,13 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    stopButton.disabled = false;
+    dismiss.addEventListener("click", () => {
+      clearNavigationTask();
+      closeGuide();
+      status.textContent = "Indicador fechado. Você pode continuar usando o Emissor normalmente.";
+    });
     marker.addEventListener("click", () => {
       if (!guideState) return;
       const rect = guideState.card.getBoundingClientRect();
@@ -1435,6 +1472,22 @@
     }
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
     if (!instructionIntent) return false;
+    const asksToSave = /\b(salvar|salve|gravar|grave|confirmar cadastro|finalizar cadastro)\b/i.test(answer);
+    if (asksToSave) {
+      const missing = [...document.querySelectorAll("input,select,textarea,[role=checkbox],[role=radio]")].filter(el => {
+        if (!isGuideNodeVisible(el) || !(el.required || el.getAttribute("aria-required") === "true")) return false;
+        if (el.matches("[type=checkbox],[type=radio],[role=checkbox],[role=radio]")) return !(el.checked || el.getAttribute("aria-checked") === "true");
+        return !String(el.value ?? "").trim();
+      });
+      if (missing.length) {
+        const first = missing[0];
+        const fieldName = getElementName(first) || "Campo obrigatório";
+        const names = missing.slice(0, 6).map(el => getElementName(el) || "Campo obrigatório");
+        addMessage("Antes de salvar, faltam campos obrigatórios: " + names.join(", ") + ". Ainda não clique em Salvar. Vou indicar o primeiro campo que precisa ser preenchido.", "bot");
+        startVisualGuide([{ element: first, title: fieldName, description: "Este campo é obrigatório. Preencha ou selecione uma opção; depois você poderá tentar salvar novamente.", validationField: true }]);
+        return true;
+      }
+    }
     const steps = findGuideSteps(answer);
     if (!steps.length) return false;
     startVisualGuide(steps.slice(0, 1));
@@ -1632,7 +1685,7 @@
     target.appendChild(card);
   }
 
-  async function readStream(response, target, initialAnswer = "") {
+  async function readStream(response, target, initialAnswer = "", signal = undefined) {
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       throw new Error("A IA retornou HTTP " + response.status + (detail ? ": " + detail.slice(0, 300) : ""));
@@ -1681,6 +1734,7 @@
           reader.read().then(value => { clearTimeout(timeout); resolve(value); }, error => { clearTimeout(timeout); reject(error); });
         });
       } catch (error) {
+        if (signal?.aborted) throw new DOMException("Conversa interrompida pelo usuário.", "AbortError");
         stalled = true;
         console.warn("Fluxo da IA ficou sem novos dados; será tentada a recuperação automática.", error);
         break;
@@ -1696,13 +1750,56 @@
   }
 
   let lastRequestKind = "chat";
+  let activeRequestController = null;
+  function stopCurrentConversation() {
+    const wasActive = requestInProgress || autoDiagnosisInProgress || Boolean(guideState) || voiceIsSpeaking;
+    activeRequestController?.abort();
+    activeRequestController = null;
+    pendingErrorDiagnostic = null;
+    navigationTask = "";
+    clearNavigationTask();
+    closeGuide();
+    stopVoicePlayback();
+    voiceModeActive = false;
+    clearTimeout(voiceRestartTimer);
+    voiceRecognition?.stop?.();
+    voiceButton.setAttribute("aria-pressed", "false");
+    voiceButton.textContent = "🎙️ Voz";
+    if (wasActive) status.textContent = "Conversa interrompida. Você pode editar os campos ou fazer outra pergunta.";
+    stopButton.disabled = true;
+  }
+  stopButton.addEventListener("click", stopCurrentConversation);
+
+  document.addEventListener("input", event => {
+    const target = event.target;
+    if (!(target instanceof Element) || host.contains(target)) return;
+    if (target.matches("input,select,textarea,[contenteditable=true]") && guideState?.steps?.[guideState.index]?.validationField) {
+      closeGuide();
+      clearNavigationTask();
+      status.textContent = "Edição liberada. Confira os campos e tente novamente quando estiver pronto.";
+    }
+  }, true);
+  document.addEventListener("change", event => {
+    const target = event.target;
+    if (!(target instanceof Element) || host.contains(target)) return;
+    if (target.matches("input,select,textarea") && guideState?.steps?.[guideState.index]?.validationField) {
+      closeGuide();
+      clearNavigationTask();
+      status.textContent = "Edição liberada. Confira os campos e tente novamente quando estiver pronto.";
+    }
+  }, true);
+
   async function ask(question, files = []) {
     if (requestInProgress) return;
     const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
     if (question && !isNavigationContinuation) { navigationTask = question; persistNavigationTask(); }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
+    const controller = new AbortController();
+    activeRequestController = controller;
+    const signal = controller.signal;
     send.disabled = true;
+    stopButton.disabled = false;
     const context = safeScreenContext();
     let knowledge = "";
     try {
@@ -1710,6 +1807,13 @@
       knowledge = await window.FutureManualKnowledge.load({ route: location.pathname, question });
     } catch (error) {
       console.warn("Não foi possível carregar o Manual Academy", error);
+    }
+    if (signal.aborted) {
+      requestInProgress = false;
+      if (activeRequestController === controller) activeRequestController = null;
+      send.disabled = false;
+      stopButton.disabled = true;
+      return null;
     }
     const attachmentContext = files.some(file => file.mediaType.startsWith("audio/"))
       ? "\n\nO usuário anexou um áudio. Transcreva o que foi dito em português, identifique a dúvida e responda com base no Manual e na tela atual. Se algo estiver inaudível, informe isso sem adivinhar."
@@ -1734,16 +1838,17 @@
         const response = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
-          body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge })
+          body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge }),
+          signal
         });
-        return readStream(response, target, initialAnswer);
+        return readStream(response, target, initialAnswer, signal);
       };
       let streamResult = await requestAssistantStream();
       let answer = streamResult.answer;
       let recoveryAttempts = 0;
-      while (!streamResult.completed && answer.trim() && recoveryAttempts < 3) {
+      while (!signal.aborted && !streamResult.completed && answer.trim() && recoveryAttempts < 3) {
         recoveryAttempts += 1;
-        status.textContent = "A resposta foi interrompida. Recuperando automaticamente (" + recoveryAttempts + "/3)...";
+        status.textContent = "A resposta foi interrompida. Estou recuperando a continuação automaticamente (" + recoveryAttempts + "/3)...";
         const partialAnswerMessage = { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] };
         const continuationRequestMessage = {
           id: crypto.randomUUID(),
@@ -1765,7 +1870,9 @@
           break;
         }
       }
-      if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      if (signal.aborted) {
+        target.textContent = "Conversa interrompida por você.";
+      } else if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
@@ -1779,11 +1886,18 @@
         ? "Manual conectado: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + "."
         : knowledge ? "Conectado ao assistente e ao Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
     } catch (error) {
-      target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
-      status.textContent = "Falha de conexão.";
+      if (signal.aborted || error?.name === "AbortError") {
+        target.textContent = "Conversa interrompida por você.";
+        status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
+      } else {
+        target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
+        status.textContent = "Falha de conexão.";
+      }
     } finally {
       requestInProgress = false;
+      if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
+      stopButton.disabled = true;
       if (voiceModeActive) scheduleVoiceRecognition();
       input.focus();
       if (pendingErrorDiagnostic && !autoDiagnosisInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);

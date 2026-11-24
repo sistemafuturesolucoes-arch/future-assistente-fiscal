@@ -93,3 +93,33 @@ test("respostas interrompidas recebem até três tentativas automáticas de cont
   assert.match(source, /Recuperando automaticamente \(/);
   assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA /);
 });
+
+
+test("indicador visual pode ser fechado sem reativar a navegação", () => {
+  assert.match(source, /className = "guide-dismiss"/);
+  assert.match(source, /clearNavigationTask\(\);\s*closeGuide\(\)/);
+});
+
+test("chat envia com Enter e preserva quebra de linha com Shift+Enter", () => {
+  assert.match(source, /event\.key === "Enter" && !event\.shiftKey/);
+  assert.match(source, /form\.requestSubmit\(\)/);
+});
+
+test("botão parar aborta a requisição e impede continuações automáticas", () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /activeRequestController\?\.abort\(\)/);
+  assert.match(source, /while \(!signal\.aborted && !streamResult\.completed/);
+});
+
+test("orientação de salvar verifica campos obrigatórios antes de destacar o botão", () => {
+  assert.match(source, /const asksToSave/);
+  assert.match(source, /el\.required \|\| el\.getAttribute\("aria-required"\)/);
+  assert.match(source, /Antes de salvar, faltam campos obrigatórios/);
+  assert.match(source, /validationField: true/);
+});
+
+test("leitura rápida compara apenas o mapa de navegação após clique", () => {
+  assert.match(source, /function navigationSnapshot\(\)/);
+  assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
+  assert.match(source, /window\.setTimeout\(finish, 160\)/);
+});
