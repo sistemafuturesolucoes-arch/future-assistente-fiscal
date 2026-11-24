@@ -25,7 +25,7 @@ test("respostas da IA renderizam links Markdown sem inserir HTML arbitrário", (
 });
 
 test("respostas de recurso não habilitado não reiniciam o guia no menu pai", () => {
-  assert.match(source, /não está habilitado\|nao esta habilitado/);
+  assert.match(source, /não está habilitado|nao esta habilitado/);
   assert.match(source, /clearNavigationTask\(\)/);
 });
 
