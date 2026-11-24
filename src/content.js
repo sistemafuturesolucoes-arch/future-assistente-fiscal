@@ -52,6 +52,7 @@
   const input = panel.querySelector("textarea");
   const send = panel.querySelector(".send");
   const status = panel.querySelector(".status");
+  const conversationMessages = [];
   const addMessage = (text, role) => {
     const el = document.createElement("div");
     el.className = "msg " + role;
@@ -106,7 +107,7 @@
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true }).replace(/\\r\\n/g, "\\n");
       const chunks = buffer.split("\n\n");
       buffer = chunks.pop() || "";
       for (const chunk of chunks) {
@@ -141,17 +142,18 @@
       role: "user",
       parts: [{ type: "text", text: question + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }]
     };
-    const target = addMessage("", "bot");
+    conversationMessages.push(userMessage);\n    const target = addMessage("", "bot");
     send.disabled = true;
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
-        body: JSON.stringify({ messages: [userMessage], tela: location.pathname.slice(0, 80), knowledge })
+        body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge })
       });
       const answer = await readStream(response, target);
       if (!answer) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      else conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
       status.textContent = knowledge ? "Conectado ao assistente e ao conhecimento publicado do Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
     } catch (error) {
       target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
