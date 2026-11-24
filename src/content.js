@@ -224,13 +224,13 @@
 
   function cleanSpeechText(value) {
     return String(value || "")
-      .replace(/\\[[^\\]]*\\]\\([^)]*\\)/g, "$1")
-      .replace(/\\[FUTURE_FIELD_PROPOSAL\\][\\s\\S]*?\\[\\/FUTURE_FIELD_PROPOSAL\\]/g, "")
-      .replace(/\\[VISUAL:[^\\]]+\\]/g, "")
-      .replace(/\\[ERROR_MEDIA_(?:IMAGE|VIDEO):[^\\]]+\\]/g, "")
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\[FUTURE_FIELD_PROPOSAL\][\s\S]*?\[\/FUTURE_FIELD_PROPOSAL\]/g, "")
+      .replace(/\[VISUAL:[^\]]+\]/g, "")
+      .replace(/\[ERROR_MEDIA_(?:IMAGE|VIDEO):[^\]]+\]/g, "")
       .replace(/[*_#`]/g, "")
-      .replace(/https?:\\/\\/\\S+/g, "")
-      .replace(/\\s+/g, " ").trim().slice(0, 1800);
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\s+/g, " ").trim().slice(0, 1800);
   }
 
   function stopVoicePlayback() {
