@@ -58,7 +58,7 @@ test("fluxo da IA identifica finalização e não aceita conexão encerrada como
   assert.match(source, /let completed = false/);
   assert.match(source, /event\.type === "finish"/);
   assert.match(source, /payload === "\[DONE\]"/);
-  assert.match(source, /return \{ answer, completed \}/);
+  assert.match(source, /return \{ answer, completed: completed && !stalled \}/);
 });
 
 test("resposta interrompida tenta continuar automaticamente sem pedir nova pergunta", () => {
