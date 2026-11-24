@@ -80,7 +80,11 @@
       .slice(0, 35).map(el => (el.innerText || "").trim()).filter(Boolean);
     const errors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
       .slice(0, 10).map(el => (el.innerText || "").trim()).filter(Boolean);
-    const redact = value => value\n      .replace(/\\b\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}\\b/g, "[CPF ocultado]")\n      .replace(/\\b\\d{2}\\.?\\d{3}\\.?\\d{3}\\/ ?\\d{4}-?\\d{2}\\b/g, "[CNPJ ocultado]")\n      .replace(/\\b[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}\\b/g, "[e-mail ocultado]");\n    const text = redact([...headings, ...labels, ...errors].join(" | "));
+    const redact = value => value
+      .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[CPF ocultado]")
+      .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "[CNPJ ocultado]")
+      .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[e-mail ocultado]");
+    const text = redact([...headings, ...labels, ...errors].join(" | "));
     return [
       "Aplicação: Emissor Fiscal Online",
       "Rota: " + route,
