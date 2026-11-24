@@ -354,6 +354,13 @@
     ].join("\n");
   }
 
+  function redactSensitiveText(value) {
+    return String(value || "")
+      .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[CPF ocultado]")
+      .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "[CNPJ ocultado]")
+      .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[e-mail ocultado]");
+  }
+
   function normalize(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
@@ -654,8 +661,9 @@
       return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
     });
     for (const el of candidates) {
-      const message = (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ");
-      if (message.length < 4 || message.length > 500) continue;
+      const rawMessage = (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ");
+      if (rawMessage.length < 4 || rawMessage.length > 500) continue;
+      const message = redactSensitiveText(rawMessage);
       const fingerprint = normalize(message);
       if (fingerprint === lastErrorFingerprint && Date.now() - lastErrorAt < 8000) continue;
       lastErrorFingerprint = fingerprint;
