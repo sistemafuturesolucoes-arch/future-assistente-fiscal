@@ -526,7 +526,7 @@
   const panelHeader = panel.querySelector(".head");
   let panelDrag = null;
   panelHeader.style.cursor = "move";
-  panelHeader.style.touchAction = "pan-y";
+  panelHeader.style.touchAction = "none";
   panelHeader.addEventListener("pointerdown", event => {
     if (event.button !== undefined && event.button !== 0) return;
     if (event.target.closest("button, a, input, textarea, select")) return;
@@ -1672,11 +1672,19 @@
       for (const chunk of chunks) if (chunk.trim()) consumeChunk(chunk);
       if (final && buffer.trim()) consumeChunk(buffer);
     }
+    let stalled = false;
     while (true) {
-      const readResult = await Promise.race([
-        reader.read(),
-        new Promise((_, reject) => window.setTimeout(() => reject(new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000))
-      ]);
+      let readResult;
+      try {
+        readResult = await new Promise((resolve, reject) => {
+          const timeout = window.setTimeout(() => reject(new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000);
+          reader.read().then(value => { clearTimeout(timeout); resolve(value); }, error => { clearTimeout(timeout); reject(error); });
+        });
+      } catch (error) {
+        stalled = true;
+        console.warn("Fluxo da IA ficou sem novos dados; será tentada a recuperação automática.", error);
+        break;
+      }
       const { value, done } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
@@ -1684,7 +1692,7 @@
     }
     buffer += decoder.decode().replace(/\r\n/g, "\n");
     consumeBuffer(true);
-    return { answer, completed };
+    return { answer, completed: completed && !stalled };
   }
 
   let lastRequestKind = "chat";
