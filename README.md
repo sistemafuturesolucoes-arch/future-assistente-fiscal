@@ -6,10 +6,13 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 - Robô flutuante e painel de conversa em Shadow DOM.
 - Injeção restrita a `https://sistema.emissorfiscalonline.com.br/*`.
 - Atalhos: **Revisar minha nota**, **Conversar com a IA**, **Identificar erro** e **Abrir manual**.
-- Leitura de rota, títulos, rótulos e mensagens de alerta; não coleta valores digitados nos campos.
+- Leitura de rota, títulos, rótulos, botões, mensagens de alerta e metadados dos campos visíveis (tipo, obrigatório/desabilitado); não coleta valores digitados nos campos.
 - Recuperação das aulas e prints publicados no Supabase Academy usando a mesma chave publishable e as mesmas tabelas públicas do Manual.
 - Montagem do contexto no mesmo formato usado pelo Manual, limitado a 60.000 caracteres e armazenado localmente por 30 minutos.
 - Conversa com a Edge Function compartilhada `ai-assistant`; nenhuma IA ou banco paralelo foi criado.
+
+## Verificações automáticas
+O GitHub Actions executa a validação do JSON do Manifest e a checagem de sintaxe dos dois scripts JavaScript em cada push ou pull request para `main`.
 
 ## Instalação de desenvolvimento
 1. Baixe o repositório como ZIP ou clone-o.
@@ -27,6 +30,7 @@ A função compartilhada registra interações e conhecimento conforme a impleme
 
 ## Limites desta versão
 - Ainda não captura imagens da tela nem executa cliques ou preenchimento.
+- A conferência guiada usa somente a estrutura e os rótulos visíveis; não lê valores preenchidos e não substitui uma auditoria fiscal da nota.
 - O botão **Revisar minha nota** inicia uma orientação conversacional; não faz auditoria dos valores preenchidos.
 - Não emite, transmite, salva ou altera documentos fiscais.
 - A integração usa a Edge Function já existente, que está configurada atualmente com `verify_jwt=false`. Antes de distribuir amplamente, é necessário revisar autenticação, rate limit por usuário e controles contra abuso.
