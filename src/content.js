@@ -35,7 +35,8 @@
   panel.innerHTML = `
     <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Ajuda dentro do Emissor</div></div><button class="close" aria-label="Fechar">×</button></header>
     <nav class="actions">
-      <button class="chip" data-prompt="Quero revisar minha nota antes de emitir. Oriente a conferência sem alterar nem emitir o documento.">Revisar minha nota</button>\n      <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos.">Conversar com a IA</button>
+      <button class="chip" data-prompt="Quero revisar minha nota antes de emitir. Oriente a conferência sem alterar nem emitir o documento.">Revisar minha nota</button>
+      <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos.">Conversar com a IA</button>
       <button class="chip" data-prompt="Quero identificar e resolver um erro nesta tela.">Identificar erro</button>
       <button class="chip" data-prompt="Abra o manual relacionado a esta etapa.">Abrir manual</button>
     </nav>
@@ -128,6 +129,13 @@
 
   async function ask(question) {
     const context = safeScreenContext();
+    let knowledge = "";
+    try {
+      status.textContent = "Carregando o conteúdo publicado do Manual Future...";
+      knowledge = await window.FutureManualKnowledge.load();
+    } catch (error) {
+      console.warn("Não foi possível carregar o Manual Academy", error);
+    }
     const userMessage = {
       id: crypto.randomUUID(),
       role: "user",
