@@ -38,6 +38,7 @@ A extensão não cria uma segunda IA nem um segundo banco de conhecimento. Ela c
 ## Limites e segurança
 - O guia visual depende de o texto da resposta citar um rótulo reconhecível no DOM. Se o sistema não expuser nome, rótulo ou metadado acessível, ou se houver correspondências ambíguas, o elemento poderá não ser localizado.
 - Não captura imagens da tela automaticamente nem executa cliques ou preenchimento. Prints e áudios só são enviados quando o usuário os anexa ou grava explicitamente.
+- Quando a IA tiver base suficiente para sugerir um valor, pode apresentar uma proposta estruturada para um campo identificado pelo rótulo exato. O usuário precisa clicar em **Confirmar e preencher** antes de qualquer alteração. Campos sensíveis (CPF, CNPJ, e-mail, telefone, senha, PIN, token e certificado), campos ambíguos e componentes não suportados ficam bloqueados. A extensão não executa ações fiscais irreversíveis.
 - Não emite, transmite, salva ou altera documentos fiscais.
 - A Edge Function existente está configurada com `verify_jwt=false`; autenticação, rate limit por identidade e proteção contra abuso precisam ser revisados antes de ampla distribuição.
 - A tabela `assistant_knowledge` tem padrão `approved` no banco atual. O aprendizado automático não deve ser considerado validado; respostas fiscais precisam de revisão humana antes de serem tratadas como soluções oficiais.
