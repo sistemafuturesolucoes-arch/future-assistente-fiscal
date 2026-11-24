@@ -4,7 +4,9 @@
   "description": "Assistente inteligente do Emissor Fiscal Online, integrado ao Manual Future.",
   "version": "0.1.0",
   "minimum_chrome_version": "111",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://sistema.emissorfiscalonline.com.br/*",
     "https://itbppoailqkuxajesgys.supabase.co/*",
@@ -12,13 +14,16 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://sistema.emissorfiscalonline.com.br/*"],
-      "js": ["src/content.js"],
+      "matches": [
+        "https://sistema.emissorfiscalonline.com.br/*"
+      ],
+      "js": [
+        "src/knowledge.js",
+        "src/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "icons": {
-  },
   "action": {
     "default_title": "Future Assistente Fiscal"
   }
