@@ -90,7 +90,7 @@ test("stream não considera finish-step como resposta completa e possui limite c
 
 test("respostas interrompidas recebem até três tentativas automáticas de continuação", () => {
   assert.match(source, /while \(!signal\.aborted && !streamResult\.completed && answer\.trim\(\) && recoveryAttempts < 3\)/);
-  assert.match(source, /Recuperando automaticamente \(/);
+  assert.match(source, /recuperando a continuação automaticamente \(/i);
   assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA /);
 });
 
