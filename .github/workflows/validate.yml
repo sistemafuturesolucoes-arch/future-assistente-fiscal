@@ -1,0 +1,32 @@
+name: Validar extensão
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validar Manifest e JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar JSON do Manifest
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('manifest.json válido')"
+
+      - name: Verificar sintaxe do content script
+        run: node --check src/content.js
+
+      - name: Verificar sintaxe do carregador do Manual
+        run: node --check src/knowledge.js
