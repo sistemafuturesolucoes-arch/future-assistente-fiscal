@@ -1,27 +1,30 @@
 # Arquitetura e etapas
 
-## Etapa 1 — protótipo implementado
-- Manifest V3 e content script limitado ao domínio do Emissor.
+## Implementado
+- Manifest V3 e content script limitado ao domínio do Emissor Fiscal Online.
 - Robô flutuante em Shadow DOM.
-- Contexto textual da tela obtido quando o usuário envia uma mensagem.
-- Leitura das aulas publicadas e montagem de conhecimento equivalente a `buildKnowledge()` do Manual Academy.
-- Cache local de conhecimento por 30 minutos.
-- Chamada à Edge Function existente `ai-assistant` no projeto Supabase Academy.
+- Contexto textual da tela obtido quando o usuário envia uma mensagem, sem ler valores dos campos.
+- Recuperação das 26 aulas publicadas do Supabase Academy compartilhado com o Manual.
+- Ordenação contextual por rota e pergunta. A rota de emissão de serviço prioriza a aula de NFSe.
+- Textos-base das aulas são mantidos no contexto; hotspots e descrições visuais detalhados são incluídos prioritariamente para as aulas relevantes, sem desperdiçar o limite com URLs de imagens.
+- Cache por rota com validade de cinco minutos.
+- Guia visual no DOM: identifica campos/botões citados na resposta, destaca o elemento com contorno luminoso e apresenta descrição e navegação Anterior/Próximo/Encerrar.
 
-## Etapa 2 — contexto da tela
-A primeira versão envia rota, título, cabeçalhos, rótulos e alertas. Não lê valores dos campos nem captura a tela. O mascaramento de CPF, CNPJ e e-mail é uma proteção adicional, não uma garantia de anonimização.
+## Limites do guia visual
+A localização usa os rótulos, labels, placeholders, nomes acessíveis e textos dos controles presentes no DOM. Se o Emissor renderizar um controle sem rótulo acessível, será necessário mapear esse componente especificamente. O guia pode rolar a página para centralizar o elemento, mas não clica nem altera seu conteúdo.
 
-## Etapa 3 — aprendizado coletivo com validação
-A função compartilhada registra interações em `assistant_interactions` e grava conhecimento em `assistant_knowledge`, além de registrar ocorrências de erro. Foi verificado no schema que `assistant_knowledge.status` tem default `approved`; a função insere respostas sem definir status. Assim, o comportamento atual pode promover respostas geradas automaticamente para o conjunto consultável. Antes de distribuição, alterar o fluxo para `pending`/revisão administrativa e somente aprovar soluções verificadas. Essa alteração afeta também o assistente do Manual e exige cuidado.
+## Privacidade e segurança
+A primeira versão envia apenas rota, títulos, rótulos, alertas e metadados de campos. Não lê valores preenchidos nem captura a tela. O mascaramento de CPF, CNPJ e e-mail é uma proteção adicional, não uma garantia de anonimização.
 
-## Etapa 4 — visão assistida
-Adicionar captura de aba somente após ação explícita do usuário e permissão do Chrome. Redigir informações pessoais antes de qualquer envio. Sem captura contínua.
+A função compartilhada `ai-assistant` registra interações e conhecimento no projeto Academy. O schema atual tem `assistant_knowledge.status` com default `approved`, e a função pode inserir respostas sem outro status. Portanto, o conhecimento automático não deve ser tratado como solução fiscal validada. A revisão/moderação precisa ser corrigida com cuidado porque a função é compartilhada com o Manual.
 
-## Etapa 5 — ações assistidas
-Permitir preenchimento ou clique somente após autorização clara por ação. Nunca clicar em Emitir/Transmitir/Autorizar nem concluir a emissão automaticamente. Exibir revisão e pedir confirmação humana.
+A Edge Function está atualmente com `verify_jwt=false`. Antes de distribuir amplamente, revisar autenticação, limites por identidade e controles contra abuso sem expor service_role ou segredos do provedor.
 
-## Segurança antes da distribuição
-A Edge Function `ai-assistant` existente está atualmente com `verify_jwt=false`. Antes de distribuir a extensão para clientes, implementar autenticação apropriada, limites por identidade e proteção contra abuso, sem expor service_role ou segredos do provedor.
+## Próximas etapas
+1. Testar no Chrome as rotas de NFSe, cadastro de serviço e outras telas.
+2. Mapear controles que não tenham labels acessíveis para melhorar a localização visual.
+3. Implementar captura de tela somente mediante ação explícita e permissão do Chrome, com redação de informações pessoais.
+4. Evoluir para ações assistidas somente após autorização por ação. Nunca clicar em Emitir/Transmitir/Autorizar nem concluir a emissão automaticamente.
 
 ## Dados proibidos
 Não coletar nem armazenar credenciais, PINs, chaves privadas, CPF/CNPJ completos, conteúdo integral de notas ou dados pessoais desnecessários.
