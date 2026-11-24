@@ -946,6 +946,14 @@
     const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - 346));
     guideState.card.style.top = top + "px";
     guideState.card.style.left = left + "px";
+    if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
+    const waitingAtStep = index;
+    guideState.waitTimer = window.setTimeout(() => {
+      if (!guideState || guideState.index !== waitingAtStep) return;
+      const reminder = "Estou aguardando você. Se precisar, posso explicar de outro jeito ou ajudar com outra coisa.";
+      addMessage(reminder, "bot");
+      if (voiceModeActive) speakAssistantReply(reminder);
+    }, 20000);
   }
 
   let navigationTask = "";
