@@ -1120,7 +1120,7 @@
     return [location.pathname, location.hash, fingerprint].join("::");
   }
 
-  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 6000) {
+  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 3000) {
     return new Promise(resolve => {
       let settled = false;
       let checkTimer = null;
@@ -1140,13 +1140,13 @@
       };
       const observer = new MutationObserver(() => {
         clearTimeout(checkTimer);
-        checkTimer = window.setTimeout(check, 180);
+        checkTimer = window.setTimeout(check, 80);
       });
       if (document.documentElement) observer.observe(document.documentElement, {
         childList: true, subtree: true, characterData: true, attributes: true,
         attributeFilter: ["class", "aria-expanded", "aria-hidden", "aria-controls", "data-state", "hidden", "disabled"]
       });
-      pollTimer = window.setInterval(check, 250);
+      pollTimer = window.setInterval(check, 120);
       checkTimer = window.setTimeout(check, timeoutMs);
     });
   }
