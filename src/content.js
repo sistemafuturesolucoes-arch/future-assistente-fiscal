@@ -385,7 +385,7 @@
       const message = getVisibleErrorMessage(control) || control.getAttribute("aria-errormessage") || "O campo está marcado como inválido ou obrigatório.";
       add(control, message, "campo inválido");
     }
-    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"]')].filter(isVisibleOnPage);
+    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[data-testid*="error" i],[data-testid*="alert" i]')].filter(isVisibleOnPage);
     for (const node of errorNodes) {
       const message = getVisibleErrorMessage(node);
       if (!isLikelyFiscalError(node, message)) continue;
