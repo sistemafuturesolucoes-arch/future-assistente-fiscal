@@ -37,6 +37,7 @@
     const parts = [
       `## Aula: ${lesson.title}`,
       lesson.path ? `Caminho no sistema: ${lesson.path}` : "",
+      lesson.id ? `Link direto da aula no Manual: https://crm.futuresolucoes.com.br/manual/aula/${encodeURIComponent(lesson.id)}` : "",
       lesson.summary || "",
       lesson.content || ""
     ];
