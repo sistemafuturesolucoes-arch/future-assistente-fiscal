@@ -17,7 +17,7 @@
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
     .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
     .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
-    .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid #eee9f4}.composer textarea{resize:none;flex:1;min-width:0;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}
+    .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
     .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
     .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
@@ -42,7 +42,7 @@
     <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
-    <form class="composer"><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
+    <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
     <div class="notice">Evite enviar CPF/CNPJ, dados de notas, senhas ou PINs. Orientações fiscais devem ser confirmadas com a contabilidade.</div>
   `;
   shadow.append(launcher, panel);
@@ -51,6 +51,14 @@
   const form = panel.querySelector("form");
   const input = panel.querySelector("textarea");
   const send = panel.querySelector(".send");
+  const fileInput = panel.querySelector(".hidden-file");
+  const attachButton = panel.querySelector(".attach");
+  const recordButton = panel.querySelector(".record");
+  const pendingFilesEl = panel.querySelector(".pending-files");
+  const pendingAttachments = [];
+  let mediaRecorder = null;
+  let recordingStream = null;
+  let recordingTimer = null;
   const status = panel.querySelector(".status");
   const conversationMessages = [];
   let guideState = null;
@@ -59,6 +67,129 @@
   let audioContext = null;
   let lastErrorFingerprint = "";
   let lastErrorAt = 0;
+
+  function renderPendingAttachments() {
+    pendingFilesEl.replaceChildren();
+    pendingAttachments.forEach((file, index) => {
+      const chip = document.createElement("div");
+      chip.className = "pending-file";
+      const name = document.createElement("span");
+      name.textContent = (file.mediaType.startsWith("image/") ? "🖼 " : "🎧 ") + file.name;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "×";
+      remove.title = "Remover anexo";
+      remove.addEventListener("click", () => {
+        pendingAttachments.splice(index, 1);
+        renderPendingAttachments();
+      });
+      chip.append(name, remove);
+      pendingFilesEl.appendChild(chip);
+    });
+  }
+
+  function fileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addAttachment(file) {
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    const isAudio = file.type.startsWith("audio/");
+    if (!isImage && !isAudio) {
+      status.textContent = "Anexe apenas imagens ou arquivos de áudio.";
+      return;
+    }
+    if (isImage && file.size > 6 * 1024 * 1024) {
+      status.textContent = "Cada imagem deve ter até 6 MB.";
+      return;
+    }
+    if (isAudio && file.size > 8 * 1024 * 1024) {
+      status.textContent = "O áudio deve ter até 8 MB.";
+      return;
+    }
+    if (isImage && pendingAttachments.filter(item => item.mediaType.startsWith("image/")).length >= 3) {
+      status.textContent = "Envie no máximo três imagens por mensagem.";
+      return;
+    }
+    if (isAudio && pendingAttachments.some(item => item.mediaType.startsWith("audio/"))) {
+      status.textContent = "Envie apenas um áudio por mensagem.";
+      return;
+    }
+    try {
+      const url = await fileAsDataUrl(file);
+      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: file.type, url });
+      renderPendingAttachments();
+      status.textContent = "Anexo pronto. Escreva sua pergunta ou envie diretamente.";
+    } catch (error) {
+      status.textContent = error.message || "Falha ao preparar o anexo.";
+    }
+  }
+
+  attachButton.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const files = [...(fileInput.files || [])];
+    for (const file of files) await addAttachment(file);
+    fileInput.value = "";
+  });
+
+  input.addEventListener("paste", async event => {
+    const images = [...(event.clipboardData?.items || [])]
+      .filter(item => item.type.startsWith("image/"))
+      .map(item => item.getAsFile()).filter(Boolean);
+    if (!images.length) return;
+    event.preventDefault();
+    for (const file of images) await addAttachment(file);
+  });
+
+  recordButton.addEventListener("click", async () => {
+    if (mediaRecorder?.state === "recording") {
+      mediaRecorder.stop();
+      recordButton.disabled = true;
+      recordButton.textContent = "…";
+      status.textContent = "Finalizando gravação...";
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      status.textContent = "Este navegador não disponibilizou gravação de áudio. Você pode anexar um áudio já gravado.";
+      return;
+    }
+    try {
+      recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+      mediaRecorder = new MediaRecorder(recordingStream, { mimeType });
+      const chunks = [];
+      mediaRecorder.ondataavailable = event => { if (event.data?.size) chunks.push(event.data); };
+      mediaRecorder.onstop = async () => {
+        clearTimeout(recordingTimer);
+        recordingStream?.getTracks().forEach(track => track.stop());
+        recordingStream = null;
+        const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+        if (blob.size) await addAttachment(new File([blob], "gravacao-future.webm", { type: blob.type }));
+        mediaRecorder = null;
+        recordButton.disabled = false;
+        recordButton.textContent = "🎙";
+        recordButton.classList.remove("recording");
+        recordButton.title = "Gravar áudio";
+      };
+      mediaRecorder.start();
+      recordButton.classList.add("recording");
+      recordButton.textContent = "⏹";
+      recordButton.title = "Parar gravação";
+      status.textContent = "Gravando. Clique novamente para finalizar (máximo de 60 segundos).";
+      recordingTimer = setTimeout(() => {
+        if (mediaRecorder?.state === "recording") mediaRecorder.stop();
+      }, 60000);
+    } catch (error) {
+      status.textContent = "Não foi possível acessar o microfone. Verifique a permissão do site no Chrome.";
+      recordButton.classList.remove("recording");
+    }
+  });
 
   const addMessage = (text, role) => {
     const el = document.createElement("div");
@@ -472,11 +603,16 @@
     } catch (error) {
       console.warn("Não foi possível carregar o Manual Academy", error);
     }
-    const userMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      parts: [{ type: "text", text: question + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }]
-    };
+    const files = pendingAttachments.splice(0, pendingAttachments.length);
+    renderPendingAttachments();
+    const attachmentContext = files.some(file => file.mediaType.startsWith("audio/"))
+      ? "\n\nO usuário anexou um áudio. Transcreva o que foi dito em português, identifique a dúvida e responda com base no Manual e na tela atual. Se algo estiver inaudível, informe isso sem adivinhar."
+      : files.some(file => file.mediaType.startsWith("image/"))
+        ? "\n\nO usuário anexou um print ou imagem. Analise o que está visível, leia mensagens de erro e oriente com cuidado. Não presuma dados que não aparecem na imagem."
+        : "";
+    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + attachmentContext + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
+    for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
+    const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
     const target = addMessage("", "bot");
     send.disabled = true;
@@ -509,9 +645,10 @@
   form.addEventListener("submit", event => {
     event.preventDefault();
     const question = input.value.trim();
-    if (!question || send.disabled) return;
+    if ((!question && pendingAttachments.length === 0) || send.disabled) return;
+    const visibleQuestion = question || (pendingAttachments.length ? "📎 Anexo enviado para análise." : "");
     input.value = "";
-    addMessage(question, "user");
+    addMessage(visibleQuestion, "user");
     ask(question);
   });
 })();
