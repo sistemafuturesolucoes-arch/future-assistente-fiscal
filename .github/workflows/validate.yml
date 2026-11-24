@@ -33,3 +33,16 @@ jobs:
 
       - name: Executar testes automatizados
         run: node --test tests/*.test.cjs
+
+      - name: Montar pacote instalável da extensão
+        run: |
+          mkdir -p dist
+          zip -r dist/Future-Assistente-Fiscal-Chrome.zip manifest.json src README.md docs
+
+      - name: Publicar pacote para teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: Future-Assistente-Fiscal-Chrome
+          path: dist/Future-Assistente-Fiscal-Chrome.zip
+          if-no-files-found: error
+          retention-days: 14
