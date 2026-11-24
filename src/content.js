@@ -1733,7 +1733,7 @@
       const requestAssistantStream = async (initialAnswer = "") => {
         const response = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRQ_Jja51yof" },
+          headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
           body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge })
         });
         return readStream(response, target, initialAnswer);
