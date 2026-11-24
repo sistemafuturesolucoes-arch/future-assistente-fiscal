@@ -15,7 +15,7 @@
     .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;left:auto;top:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
-    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle,.review-button{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039;white-space:nowrap}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
+    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle,.review-button,.voice-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039;white-space:nowrap}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"],.voice-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
     .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
@@ -41,7 +41,7 @@
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
-    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="review-button" type="button">Revisar documento</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
+    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="review-button" type="button">Revisar documento</button><button class="voice-toggle" type="button" aria-label="Ativar conversa por voz" aria-pressed="false" title="Ativar conversa por voz">🎙️</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
     <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
@@ -210,6 +210,170 @@
     messages.scrollTop = messages.scrollHeight;
     return el;
   };
+
+  // Modo de conversa por voz: frases livres seguem para a mesma IA, sem comandos decorados.
+  const voiceButton = panel.querySelector(".voice-toggle");
+  const VOICE_API_URL = "https://itbppoailqkuxajesgys.supabase.co/functions/v1/assistant-voice";
+  let voiceModeActive = false;
+  let voiceRecognition = null;
+  let voiceAudio = null;
+  let voiceObjectUrl = null;
+  let voiceRestartTimer = null;
+  let voiceIsSpeaking = false;
+  let voiceRequestPending = false;
+
+  function cleanSpeechText(value) {
+    return String(value || "")
+      .replace(/\\[[^\\]]*\\]\\([^)]*\\)/g, "$1")
+      .replace(/\\[FUTURE_FIELD_PROPOSAL\\][\\s\\S]*?\\[\\/FUTURE_FIELD_PROPOSAL\\]/g, "")
+      .replace(/\\[VISUAL:[^\\]]+\\]/g, "")
+      .replace(/\\[ERROR_MEDIA_(?:IMAGE|VIDEO):[^\\]]+\\]/g, "")
+      .replace(/[*_#`]/g, "")
+      .replace(/https?:\\/\\/\\S+/g, "")
+      .replace(/\\s+/g, " ").trim().slice(0, 1800);
+  }
+
+  function stopVoicePlayback() {
+    voiceIsSpeaking = false;
+    if (voiceAudio) { voiceAudio.pause(); voiceAudio.src = ""; voiceAudio = null; }
+    if (voiceObjectUrl) { URL.revokeObjectURL(voiceObjectUrl); voiceObjectUrl = null; }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function startVoiceRecognition() {
+    if (!voiceModeActive || voiceRequestPending || voiceIsSpeaking || !voiceRecognition) return;
+    try { voiceRecognition.start(); } catch {}
+  }
+
+  function scheduleVoiceRecognition() {
+    clearTimeout(voiceRestartTimer);
+    if (voiceModeActive && !voiceRequestPending && !voiceIsSpeaking) {
+      voiceRestartTimer = window.setTimeout(startVoiceRecognition, 450);
+    }
+  }
+
+  function speakWithBrowserVoice(text) {
+    if (!voiceModeActive || !("speechSynthesis" in window)) {
+      voiceIsSpeaking = false;
+      status.textContent = "O áudio não está disponível neste dispositivo. O chat continua funcionando.";
+      scheduleVoiceRecognition();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "pt-BR";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const portuguese = voices.find(voice => /^pt-BR$/i.test(voice.lang)) || voices.find(voice => /^pt/i.test(voice.lang));
+    if (portuguese) utterance.voice = portuguese;
+    utterance.onend = () => {
+      voiceIsSpeaking = false;
+      status.textContent = "Modo de voz ativo. Pode continuar falando naturalmente.";
+      scheduleVoiceRecognition();
+    };
+    utterance.onerror = () => {
+      voiceIsSpeaking = false;
+      status.textContent = "Não consegui reproduzir a voz. O chat continua disponível.";
+      scheduleVoiceRecognition();
+    };
+    window.speechSynthesis.speak(utterance);
+    status.textContent = "Usando a voz alternativa do dispositivo.";
+  }
+
+  async function speakAssistantReply(value) {
+    if (!voiceModeActive) return;
+    const text = cleanSpeechText(value);
+    if (!text) return;
+    voiceIsSpeaking = true;
+    status.textContent = "Preparando resposta falada...";
+    try {
+      const response = await fetch(VOICE_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
+        body: JSON.stringify({ text })
+      });
+      if (!response.ok) throw new Error("ElevenLabs indisponível: " + response.status);
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("Áudio vazio.");
+      voiceObjectUrl = URL.createObjectURL(blob);
+      voiceAudio = new Audio(voiceObjectUrl);
+      voiceAudio.onended = () => {
+        stopVoicePlayback();
+        status.textContent = "Modo de voz ativo. Pode continuar falando naturalmente.";
+        scheduleVoiceRecognition();
+      };
+      voiceAudio.onerror = () => {
+        stopVoicePlayback();
+        voiceIsSpeaking = true;
+        speakWithBrowserVoice(text);
+      };
+      await voiceAudio.play();
+      status.textContent = "Future está falando.";
+    } catch (error) {
+      console.warn("ElevenLabs indisponível; usando voz do navegador.", error);
+      voiceIsSpeaking = true;
+      speakWithBrowserVoice(text);
+    }
+  }
+
+  function submitVoiceText(transcript) {
+    const question = String(transcript || "").trim();
+    if (!question || requestInProgress || autoDiagnosisInProgress) return;
+    addMessage(question, "user");
+    voiceRequestPending = true;
+    ask(question, []).finally(() => {
+      voiceRequestPending = false;
+      scheduleVoiceRecognition();
+    });
+  }
+
+  function setVoiceMode(enabled) {
+    voiceModeActive = enabled;
+    voiceButton.setAttribute("aria-pressed", String(enabled));
+    voiceButton.textContent = enabled ? "🎧" : "🎙️";
+    voiceButton.title = enabled ? "Desativar conversa por voz" : "Ativar conversa por voz";
+    if (!enabled) {
+      clearTimeout(voiceRestartTimer);
+      try { voiceRecognition?.stop(); } catch {}
+      stopVoicePlayback();
+      status.textContent = "Modo de voz desativado. Você pode continuar pelo chat.";
+      return;
+    }
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      voiceModeActive = false;
+      voiceButton.setAttribute("aria-pressed", "false");
+      voiceButton.textContent = "🎙️";
+      status.textContent = "Este navegador não oferece reconhecimento de voz. Atualize o Chrome.";
+      return;
+    }
+    if (!voiceRecognition) {
+      voiceRecognition = new Recognition();
+      voiceRecognition.lang = "pt-BR";
+      voiceRecognition.continuous = false;
+      voiceRecognition.interimResults = false;
+      voiceRecognition.maxAlternatives = 1;
+      voiceRecognition.onresult = event => {
+        const transcript = event.results?.[event.results.length - 1]?.[0]?.transcript || "";
+        if (transcript.trim()) submitVoiceText(transcript);
+      };
+      voiceRecognition.onerror = event => {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setVoiceMode(false);
+          status.textContent = "Permita o acesso ao microfone para conversar por voz.";
+        } else if (event.error !== "no-speech" && event.error !== "aborted") {
+          status.textContent = "Não consegui ouvir com clareza. Pode falar novamente.";
+        }
+      };
+      voiceRecognition.onend = scheduleVoiceRecognition;
+    }
+    status.textContent = "Modo de voz ativado. Pode falar naturalmente; a Future está ouvindo.";
+    startVoiceRecognition();
+  }
+
+  voiceButton.addEventListener("click", () => setVoiceMode(!voiceModeActive));
+
   const UPDATE_NOTICE_KEY = "futureAssistentePendingUpdateNotice";
   if (globalThis.chrome?.storage?.local) {
     chrome.storage.local.get(UPDATE_NOTICE_KEY).then(result => {
@@ -1392,6 +1556,7 @@
         const safeAnswer = renderFieldProposals(answer, target);
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
         maybeStartAutomaticGuide(safeAnswer);
+        if (voiceModeActive) await speakAssistantReply(safeAnswer);
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
       status.textContent = diagnostic
@@ -1403,6 +1568,7 @@
     } finally {
       requestInProgress = false;
       send.disabled = false;
+      if (voiceModeActive) scheduleVoiceRecognition();
       input.focus();
       if (pendingErrorDiagnostic && !autoDiagnosisInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
     }
