@@ -331,6 +331,7 @@
     reviewWash = null;
     reviewFrames.forEach(item => item.frame.remove());
     reviewFrames = [];
+    shadow.querySelectorAll(".review-issue-cards").forEach(card => card.remove());
     if (reviewReposition) {
       document.removeEventListener("scroll", reviewReposition, true);
       window.removeEventListener("resize", reviewReposition);
@@ -1159,7 +1160,7 @@
   function renderReviewIssueCards(issues, target) {
     if (!issues.length) return;
     const card = document.createElement("section");
-    card.className = "proposal-card";
+    card.className = "proposal-card review-issue-cards";
     const heading = document.createElement("div");
     heading.className = "proposal-title";
     heading.textContent = "Pontos encontrados nesta revisão — confira um por um";
