@@ -833,6 +833,135 @@
     return true;
   }
 
+
+  const FIELD_PROPOSAL_OPEN = "[[FUTURE_FIELD_PROPOSAL]]";
+  const FIELD_PROPOSAL_CLOSE = "[[/FUTURE_FIELD_PROPOSAL]]";
+  const SENSITIVE_FIELD_NAME = /\b(cpf|cnpj|e-?mail|telefone|celular|senha|password|pin|token|certificado|chave privada)\b/i;
+
+  function extractFieldProposals(answer) {
+    const proposals = [];
+    const cleanAnswer = answer.replace(/\[\[FUTURE_FIELD_PROPOSAL\]\]([\s\S]*?)\[\[\/FUTURE_FIELD_PROPOSAL\]\]/g, (_, raw) => {
+      try {
+        const parsed = JSON.parse(raw.trim());
+        const entries = Array.isArray(parsed) ? parsed : [parsed];
+        for (const item of entries.slice(0, 8)) {
+          if (!item || typeof item.field !== "string" || typeof item.value !== "string") continue;
+          const field = item.field.trim().slice(0, 120);
+          const value = item.value.trim().slice(0, 1000);
+          if (!field || !value || SENSITIVE_FIELD_NAME.test(field)) continue;
+          proposals.push({ field, value });
+        }
+      } catch {}
+      return "";
+    }).trim();
+    return { cleanAnswer, proposals };
+  }
+
+  function resolveSafeField(fieldName) {
+    const matches = [...document.querySelectorAll("input,textarea,select,[role=textbox],[role=combobox]")]
+      .filter(el => isGuideNodeVisible(el) && getElementNames(el).some(name => normalize(name) === normalize(fieldName)));
+    if (matches.length !== 1) return { error: matches.length ? "Encontrei mais de um campo com esse nome. Não fiz nenhuma alteração." : "Não localizei esse campo na tela atual." };
+    const el = matches[0];
+    if (el.matches("input")) {
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      if (!["text", "number", "date"].includes(type)) return { error: "Esse tipo de campo não está liberado para preenchimento assistido." };
+    } else if (!el.matches("textarea,select")) {
+      return { error: "Esse componente não permite preenchimento assistido seguro." };
+    }
+    const label = getElementNames(el).join(" ");
+    if (SENSITIVE_FIELD_NAME.test(label) || el.disabled || el.readOnly || el.getAttribute("aria-disabled") === "true") {
+      return { error: "Esse campo está protegido e não será preenchido pela extensão." };
+    }
+    return { element: el };
+  }
+
+  function renderFieldProposals(answer, target) {
+    const { cleanAnswer, proposals } = extractFieldProposals(answer);
+    target.textContent = cleanAnswer;
+    if (!proposals.length) return cleanAnswer;
+    const card = document.createElement("section");
+    card.className = "proposal-card";
+    const heading = document.createElement("div");
+    heading.className = "proposal-title";
+    heading.textContent = "Sugestão de preenchimento — confirme antes de aplicar";
+    card.appendChild(heading);
+    proposals.forEach((proposal, index) => {
+      const item = document.createElement("div");
+      const field = document.createElement("div");
+      field.className = "proposal-field";
+      field.textContent = proposal.field;
+      const value = document.createElement("div");
+      value.className = "proposal-value";
+      value.textContent = proposal.value;
+      const actions = document.createElement("div");
+      actions.className = "proposal-actions";
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.className = "proposal-confirm";
+      confirm.textContent = "Confirmar e preencher";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "proposal-cancel";
+      cancel.textContent = "Cancelar";
+      confirm.addEventListener("click", () => {
+        const resolved = resolveSafeField(proposal.field);
+        if (resolved.error) {
+          value.textContent = resolved.error;
+          confirm.disabled = true;
+          return;
+        }
+        const el = resolved.element;
+        let nextValue = proposal.value;
+        if (el.matches("select")) {
+          const option = [...el.options].find(opt => opt.value === nextValue || normalize(opt.textContent) === normalize(nextValue));
+          if (!option) {
+            value.textContent = "A opção sugerida não corresponde exatamente a uma opção disponível. Nada foi alterado.";
+            confirm.disabled = true;
+            return;
+          }
+          nextValue = option.value;
+        } else if (el.matches("input") && el.type === "number") {
+          if (!/^-?(?:\d+|\d*\.\d+)$/.test(nextValue)) {
+            value.textContent = "O valor sugerido não é um número válido para este campo. Nada foi alterado.";
+            confirm.disabled = true;
+            return;
+          }
+        } else if (el.matches("input") && el.type === "date") {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(nextValue)) {
+            value.textContent = "A data sugerida não está no formato esperado. Nada foi alterado.";
+            confirm.disabled = true;
+            return;
+          }
+        }
+        const prototype = el.matches("textarea") ? HTMLTextAreaElement.prototype :
+          el.matches("select") ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+        if (setter) setter.call(el, nextValue);
+        else el.value = nextValue;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        el.focus();
+        value.textContent = "Preenchimento aplicado. Confira o conteúdo no campo antes de continuar.";
+        confirm.disabled = true;
+        cancel.disabled = true;
+        confirm.textContent = "Preenchido";
+      });
+      cancel.addEventListener("click", () => {
+        item.remove();
+        if (!card.querySelector(".proposal-field")) card.remove();
+      });
+      actions.append(confirm, cancel);
+      item.append(field, value, actions);
+      card.appendChild(item);
+    });
+    const note = document.createElement("div");
+    note.className = "proposal-note";
+    note.textContent = "A extensão só altera o campo após sua confirmação. Não executa emissão, transmissão, autorização ou encerramento.";
+    card.appendChild(note);
+    target.appendChild(card);
+    return cleanAnswer;
+  }
+
   async function readStream(response, target) {
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
@@ -883,7 +1012,8 @@
       : files.some(file => file.mediaType.startsWith("image/"))
         ? "\n\nO usuário anexou um print ou imagem. Analise o que está visível, leia mensagens de erro e oriente com cuidado. Não presuma dados que não aparecem na imagem."
         : "";
-    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + attachmentContext + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
+    const proposalProtocol = "\n\nRECURSO OPCIONAL DE SUGESTÃO DE PREENCHIMENTO: Se, e somente se, você tiver base suficiente no Manual e na conversa para sugerir valores concretos para campos visíveis da tela atual, acrescente ao final um bloco isolado exatamente neste formato: [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]]. Use JSON válido, no máximo 8 itens, strings simples. O campo deve ser identificado pelo rótulo visível exato; não invente campos. Não inclua CPF, CNPJ, e-mail, telefone, senha, PIN, token ou dados de certificado. Se não houver certeza, não inclua bloco. Antes do bloco, explique a origem e a incerteza de cada sugestão. A extensão só apresentará botão para confirmação explícita; jamais sugira clicar em emitir, transmitir, autorizar ou encerrar.";
+    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
@@ -898,8 +1028,9 @@
       const answer = await readStream(response, target);
       if (!answer) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
       else {
-        conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
-        maybeStartAutomaticGuide(answer);
+        const safeAnswer = renderFieldProposals(answer, target);
+        conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
+        maybeStartAutomaticGuide(safeAnswer);
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
       status.textContent = diagnostic
