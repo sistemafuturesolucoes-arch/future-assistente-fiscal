@@ -16,7 +16,7 @@
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
     .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle,.review-button,.voice-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039;white-space:nowrap}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"],.voice-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
-    .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
+    .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.msg a{color:#6530a0;text-decoration:underline;font-weight:650;cursor:pointer}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
     .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
@@ -205,7 +205,7 @@
   function renderSafeMarkdown(value, target) {
     target.replaceChildren();
     const appendInline = (parent, line) => {
-      const pattern = /\\[([^\\]]+)\\]\\(([^)]+)\\)|\\*\\*(.+?)\\*\\*/g;
+      const pattern = /\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*/g;
       let cursor = 0;
       let match;
       while ((match = pattern.exec(line))) {
@@ -785,12 +785,12 @@
       .filter(isVisible).slice(0, 60).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
     const navigationItems = [...document.querySelectorAll("nav a,nav button,nav [role=menuitem],nav [role=treeitem],[role=menu] a,[role=menu] button,[role=menu] [role=menuitem],[role=menubar] [role=menuitem],[role=tree] [role=treeitem],[role=menuitem],[role=treeitem],[data-menu-item]")]
       .filter(isVisible).slice(0, 100).map(el => {
-        const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim();
+        const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\s+/g, " ").trim();
         const disabled = el.disabled || el.getAttribute("aria-disabled") === "true" || el.classList.contains("disabled") ? " [DESABILITADO]" : "";
         return name ? name.slice(0, 100) + disabled : "";
       }).filter(Boolean);
     const visibleMenuText = [...document.querySelectorAll("nav,[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i]")]
-      .filter(isVisible).map(el => (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim()).filter(text => text.length > 0 && text.length < 1800).slice(0, 12);
+      .filter(isVisible).map(el => (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).filter(text => text.length > 0 && text.length < 1800).slice(0, 12);
     const semanticErrors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
       .filter(isVisible).slice(0, 15).map(el => (el.innerText || "").trim()).filter(Boolean);
     const fiscalReturns = collectVisibleFiscalReturnMessages();
@@ -870,7 +870,7 @@
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" &&
-      s.opacity !== "0" && !el.disabled && el.getAttribute("aria-hidden") !== "true";
+      s.opacity !== "0" && !el.disabled && el.getAttribute("aria-disabled") !== "true" && el.getAttribute("aria-hidden") !== "true";
   }
 
   function findElementByName(name) {
@@ -1369,6 +1369,10 @@
 
   function maybeStartAutomaticGuide(answer) {
     if (lastRequestKind === "document-review" || lastRequestKind === "error-diagnosis") return false;
+    if (/não está habilitado|nao esta habilitado|sem permissão|sem permissao|chame o suporte|chamar o suporte|não aparece no seu perfil|nao aparece no seu perfil/i.test(answer)) {
+      clearNavigationTask();
+      return false;
+    }
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
     if (!instructionIntent) return false;
     const steps = findGuideSteps(answer);
