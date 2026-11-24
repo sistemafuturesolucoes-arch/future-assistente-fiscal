@@ -63,7 +63,7 @@ test("fluxo da IA identifica finalização e não aceita conexão encerrada como
 
 test("resposta interrompida tenta continuar automaticamente sem pedir nova pergunta", () => {
   assert.match(source, /A resposta foi interrompida\. Estou recuperando a continuação automaticamente/);
-  assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA\]/);
+  assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA/);
   assert.match(source, /Continue exatamente do ponto em que parou/);
   assert.match(source, /Você não precisa repetir a pergunta/);
 });
@@ -89,7 +89,7 @@ test("stream não considera finish-step como resposta completa e possui limite c
 });
 
 test("respostas interrompidas recebem até três tentativas automáticas de continuação", () => {
-  assert.match(source, /while \(!streamResult\.completed && answer\.trim\(\) && recoveryAttempts < 3\)/);
+  assert.match(source, /while \(!signal\.aborted && !streamResult\.completed && answer\.trim\(\) && recoveryAttempts < 3\)/);
   assert.match(source, /Recuperando automaticamente \(/);
   assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA /);
 });
