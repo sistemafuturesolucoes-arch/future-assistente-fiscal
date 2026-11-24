@@ -210,6 +210,15 @@
     messages.scrollTop = messages.scrollHeight;
     return el;
   };
+  const UPDATE_NOTICE_KEY = "futureAssistentePendingUpdateNotice";
+  if (globalThis.chrome?.storage?.local) {
+    chrome.storage.local.get(UPDATE_NOTICE_KEY).then(result => {
+      const notice = result?.[UPDATE_NOTICE_KEY];
+      if (!notice || notice.version === chrome.runtime.getManifest().version) return;
+      addMessage("Future Assistente atualizado para a versão " + notice.version + ". As melhorias já estão disponíveis.", "bot");
+      chrome.storage.local.remove(UPDATE_NOTICE_KEY);
+    }).catch(() => {});
+  }
   const LAUNCHER_POSITION_KEY = "futureAssistenteLauncherPosition";
   let launcherPosition = null;
   let dragPointer = null;
@@ -775,6 +784,20 @@
     guideState.card.style.left = left + "px";
   }
 
+  let navigationTask = "";
+  let navigationGuideActive = false;
+  async function continueNavigationGuide() {
+    if (!navigationGuideActive || requestInProgress) return;
+    closeGuide();
+    status.textContent = "Você avançou. Estou identificando a próxima etapa nesta tela...";
+    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário concluiu a etapa anterior. Analise SOMENTE a tela atual e o Manual relacionado. Diga uma única próxima ação, com o nome exato de um botão, menu ou campo visível nesta tela. Não repita etapas concluídas. Não invente elementos. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
+    await ask(prompt, []);
+    if (!guideState && navigationGuideActive) {
+      navigationGuideActive = false;
+      status.textContent = "Não identifiquei com segurança o próximo elemento nesta tela. Você pode me perguntar como continuar.";
+    }
+  }
+
   function startVisualGuide(steps, initialIndex = 0) {
     closeGuide();
     if (!steps.length) return;
@@ -798,14 +821,15 @@
       persistGuideProgress(nextIndex);
       window.setTimeout(() => {
         if (!guideState) return;
-        if (nextIndex >= guideState.steps.length) closeGuide();
+        if (nextIndex >= guideState.steps.length) continueNavigationGuide();
         else showGuideStep(nextIndex);
-      }, 280);
+      }, 850);
     };
+    navigationGuideActive = true;
     guideState = { steps, index: 0, pendingIndex: null, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
     card.querySelector(".guide-prev").addEventListener("click", () => showGuideStep(Math.max(0, guideState.index - 1)));
     card.querySelector(".guide-next").addEventListener("click", () => {
-      if (guideState.index >= guideState.steps.length - 1) closeGuide();
+      if (guideState.index >= guideState.steps.length - 1) continueNavigationGuide();
       else showGuideStep(guideState.index + 1);
     });
     card.querySelector(".guide-end").addEventListener("click", closeGuide);
@@ -1059,8 +1083,8 @@
     if (!instructionIntent) return false;
     const steps = findGuideSteps(answer);
     if (!steps.length) return false;
-    startVisualGuide(steps);
-    status.textContent = "Orientação visual ativa. Siga o destaque; o assistente aguardará sua ação.";
+    startVisualGuide(steps.slice(0, 1));
+    status.textContent = "Navegação assistida ativa. Clique no destaque; vou ler a próxima tela e orientar o próximo passo.";
     return true;
   }
 
@@ -1300,7 +1324,9 @@
   let lastRequestKind = "chat";
   async function ask(question, files = []) {
     if (requestInProgress) return;
-    lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : "chat";
+    const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
+    if (question && !isNavigationContinuation) navigationTask = question;
+    lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     send.disabled = true;
     const context = safeScreenContext();
