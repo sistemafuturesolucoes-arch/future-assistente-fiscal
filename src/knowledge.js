@@ -27,7 +27,7 @@
     if (/notas\/servico|notas\/servico\/emitir/.test(r) && /nfse|servico/.test(haystack)) score += 80;
     if (q) {
       // No Manual, "regra fiscal" é documentada principalmente como grupo tributário e tributação.
-      if (/regras? fiscais?/.test(q) && /grupo tributario|tributacao/.test(haystack)) score += 110;
+      if (/regras? fiscais?/.test(q) && /grupos? tributarios?|tributacao/.test(haystack)) score += 110;
       const title = normalize(lesson.title);
       const summary = normalize(lesson.summary);
       const queryTerms = q.split(/[^a-z0-9]+/).filter(t => t.length > 2);
