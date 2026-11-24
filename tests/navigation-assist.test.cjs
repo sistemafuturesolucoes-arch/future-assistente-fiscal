@@ -5,6 +5,15 @@ const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "../src/content.js"), "utf8");
 
+test("botão Tour guiado inicia orientação interativa baseada no Manual", () => {
+  assert.match(source, /class="tour-button"/);
+  assert.match(source, /\\[TOUR GUIADO\\]/);
+  assert.match(source, /identifique a aula correspondente/);
+  assert.match(source, /aguarde o usuário clicar/);
+  assert.match(source, /até concluir o procedimento/);
+  assert.match(source, /não clique nem preencha pelo usuário/);
+});
+
 test("contexto seguro da tela inclui menus e submenus visíveis", () => {
   assert.match(source, /MAPA COMPLETO DA NAVEGAÇÃO VISÍVEL/);
   assert.match(source, /\[role=menuitem\]/);
