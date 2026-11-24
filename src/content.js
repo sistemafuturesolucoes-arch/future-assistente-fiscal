@@ -202,10 +202,53 @@
     }
   });
 
+  function renderSafeMarkdown(value, target) {
+    target.replaceChildren();
+    const appendInline = (parent, line) => {
+      const pattern = /\\[([^\\]]+)\\]\\(([^)]+)\\)|\\*\\*(.+?)\\*\\*/g;
+      let cursor = 0;
+      let match;
+      while ((match = pattern.exec(line))) {
+        if (match.index > cursor) parent.appendChild(document.createTextNode(line.slice(cursor, match.index)));
+        if (match[1] !== undefined) {
+          const label = match[1];
+          const rawHref = match[2].trim();
+          let href = null;
+          try {
+            const manualBase = new URL(MANUAL_URL);
+            const normalizedPath = rawHref.startsWith("/aula/") ? rawHref.slice(1) : rawHref;
+            const parsed = new URL(normalizedPath, manualBase);
+            if (parsed.protocol === "https:" && (parsed.origin === manualBase.origin || /^https:/.test(rawHref))) href = parsed.href;
+          } catch {}
+          if (href) {
+            const anchor = document.createElement("a");
+            anchor.href = href;
+            anchor.target = "_blank";
+            anchor.rel = "noopener noreferrer";
+            anchor.textContent = label;
+            parent.appendChild(anchor);
+          } else parent.appendChild(document.createTextNode(label));
+        } else {
+          const strong = document.createElement("strong");
+          strong.textContent = match[3];
+          parent.appendChild(strong);
+        }
+        cursor = pattern.lastIndex;
+      }
+      if (cursor < line.length) parent.appendChild(document.createTextNode(line.slice(cursor)));
+    };
+    const lines = String(value || "").split(/\\r?\\n/);
+    lines.forEach((line, index) => {
+      if (index) target.appendChild(document.createElement("br"));
+      appendInline(target, line);
+    });
+  }
+
   const addMessage = (text, role) => {
     const el = document.createElement("div");
     el.className = "msg " + role;
-    el.textContent = text;
+    if (role === "bot") renderSafeMarkdown(text, el);
+    else el.textContent = text;
     messages.appendChild(el);
     messages.scrollTop = messages.scrollHeight;
     return el;
@@ -228,6 +271,7 @@
       .replace(/\[FUTURE_FIELD_PROPOSAL\][\s\S]*?\[\/FUTURE_FIELD_PROPOSAL\]/g, "")
       .replace(/\[VISUAL:[^\]]+\]/g, "")
       .replace(/\[ERROR_MEDIA_(?:IMAGE|VIDEO):[^\]]+\]/g, "")
+      .replace(/\[\[\/FUTURE_FIELD_PROPOSAL\]\]/g, "")
       .replace(/[*_#`]/g, "")
       .replace(/https?:\/\/\S+/g, "")
       .replace(/\s+/g, " ").trim().slice(0, 1800);
@@ -235,7 +279,7 @@
 
   function stopVoicePlayback() {
     voiceIsSpeaking = false;
-    if (voiceAudio) { voiceAudio.pause(); voiceAudio.src = ""; voiceAudio = null; }
+    if (voiceAudio) { voiceAudio.onended = null; voiceAudio.onerror = null; voiceAudio.pause(); voiceAudio.removeAttribute("src"); voiceAudio.load?.(); voiceAudio = null; }
     if (voiceObjectUrl) { URL.revokeObjectURL(voiceObjectUrl); voiceObjectUrl = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
@@ -294,7 +338,9 @@
         body: JSON.stringify({ text })
       });
       if (!response.ok) throw new Error("ElevenLabs indisponível: " + response.status);
+      if (!voiceModeActive) return;
       const blob = await response.blob();
+      if (!voiceModeActive) return;
       if (!blob.size) throw new Error("Áudio vazio.");
       voiceObjectUrl = URL.createObjectURL(blob);
       voiceAudio = new Audio(voiceObjectUrl);
@@ -736,7 +782,15 @@
         return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags].filter(Boolean).join(" — ");
       });
     const buttons = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")]
-      .filter(isVisible).slice(0, 45).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
+      .filter(isVisible).slice(0, 60).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
+    const navigationItems = [...document.querySelectorAll("nav a,nav button,nav [role=menuitem],nav [role=treeitem],[role=menu] a,[role=menu] button,[role=menu] [role=menuitem],[role=menubar] [role=menuitem],[role=tree] [role=treeitem],[role=menuitem],[role=treeitem],[data-menu-item]")]
+      .filter(isVisible).slice(0, 100).map(el => {
+        const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim();
+        const disabled = el.disabled || el.getAttribute("aria-disabled") === "true" || el.classList.contains("disabled") ? " [DESABILITADO]" : "";
+        return name ? name.slice(0, 100) + disabled : "";
+      }).filter(Boolean);
+    const visibleMenuText = [...document.querySelectorAll("nav,[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i]")]
+      .filter(isVisible).map(el => (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim()).filter(text => text.length > 0 && text.length < 1800).slice(0, 12);
     const semanticErrors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
       .filter(isVisible).slice(0, 15).map(el => (el.innerText || "").trim()).filter(Boolean);
     const fiscalReturns = collectVisibleFiscalReturnMessages();
@@ -751,7 +805,8 @@
       "Título: " + title,
       "Títulos e rótulos visíveis (sem valores preenchidos): " + redact([...headings, ...labels, ...errors].join(" | ")).slice(0, 6500),
       "Metadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 5000),
-      "Botões visíveis: " + redact(buttons.join(" | ")).slice(0, 2500)
+      "Botões visíveis: " + redact(buttons.join(" | ")).slice(0, 3500),
+      "Itens de navegação, menus e submenus atualmente visíveis: " + redact([...new Set([...navigationItems, ...visibleMenuText])].join(" | ")).slice(0, 6500)
     ].join("\n");
   }
 
@@ -799,7 +854,7 @@
       const explicit = [...document.querySelectorAll("label[for]")].find(label => label.htmlFor === id);
       if (explicit) add(explicit.innerText || explicit.textContent);
     }
-    if (el.matches("button,[role=button],[role=tab],a")) add(el.innerText || el.textContent);
+    if (el.matches("button,[role=button],[role=tab],[role=menuitem],[role=treeitem],[data-menu-item],a")) add(el.innerText || el.textContent);
     add(el.getAttribute("name"));
     return names;
   }
@@ -808,7 +863,7 @@
     return getElementNames(el)[0] || el.getAttribute("name") || el.id || "";
   }
 
-  const GUIDE_NODE_SELECTOR = "input,select,textarea,button,a,[role=button],[role=combobox],[role=checkbox],[role=tab],[role=textbox],[role=radio],[role=switch]";
+  const GUIDE_NODE_SELECTOR = "input,select,textarea,button,a,[role=button],[role=combobox],[role=checkbox],[role=tab],[role=textbox],[role=radio],[role=switch],[role=menuitem],[role=treeitem],[data-menu-item],nav [tabindex],[role=menu] [tabindex]";
 
   function isGuideNodeVisible(el) {
     if (!el || host.contains(el)) return false;
@@ -967,11 +1022,32 @@
     navigationGuideActive = false;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
+  async function waitForNavigationUpdate(beforeContext) {
+    return new Promise(resolve => {
+      let settled = false;
+      let quietTimer = null;
+      const startedAt = Date.now();
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        observer.disconnect();
+        clearTimeout(quietTimer);
+        resolve(safeScreenContext() !== beforeContext);
+      };
+      const observer = new MutationObserver(() => {
+        clearTimeout(quietTimer);
+        quietTimer = window.setTimeout(finish, 320);
+      });
+      if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style", "aria-expanded", "aria-hidden", "role"] });
+      window.setTimeout(() => { if (Date.now() - startedAt >= 1500) finish(); }, 1550);
+    });
+  }
+
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
-    status.textContent = "Você avançou. Estou identificando a próxima etapa nesta tela...";
-    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário concluiu a etapa anterior. Analise SOMENTE a tela atual e o Manual relacionado. Diga uma única próxima ação, com o nome exato de um botão, menu ou campo visível nesta tela. Não repita etapas concluídas. Não invente elementos. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
+    status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
+    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário clicou na etapa anterior. Analise novamente a tela ATUAL, incluindo todos os itens de navegação, menus e SUBMENUS visíveis. A lista de itens visíveis no contexto da tela é evidência prioritária: escolha um item que realmente esteja visível e corresponda à tarefa. Nunca repita o menu pai que já foi aberto se agora houver opções filhas visíveis. Diga uma única próxima ação, com o nome exato do item visível. Se o submenu Cadastros estiver aberto e o módulo solicitado (por exemplo Produtos ou Serviços) não aparecer entre as opções visíveis, ou se aparecer marcado como desabilitado/sem permissão, NÃO peça para clicar novamente em Cadastros: informe que esse recurso não está habilitado no perfil e oriente a chamar o suporte Future para habilitar. Se não conseguir confirmar a ausência/permissão, diga que não conseguiu localizar o módulo e peça um print, sem repetir a etapa anterior. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
     const responseMessage = await ask(prompt, []);
     if (!guideState && navigationGuideActive) {
       const responseText = responseMessage?.textContent || "";
@@ -1000,14 +1076,28 @@
       if (!current?.element) return;
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
+      const beforeContext = safeScreenContext();
+      const navigationUpdate = waitForNavigationUpdate(beforeContext);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
+      guideState.waitingForNavigation = true;
+      guideState.card.querySelector(".guide-desc").textContent = "Aguarde: estou verificando o que apareceu depois do clique.";
+      status.textContent = "Lendo a nova tela ou submenu...";
       persistGuideProgress(nextIndex);
-      window.setTimeout(() => {
+      window.setTimeout(async () => {
         if (!navigationGuideActive) return;
-        if (!guideState || nextIndex >= guideState.steps.length) continueNavigationGuide();
-        else showGuideStep(nextIndex);
-      }, 850);
+        const changed = await navigationUpdate;
+        if (!navigationGuideActive) return;
+        if (!changed) {
+          if (guideState) {
+            guideState.waitingForNavigation = false;
+            guideState.card.querySelector(".guide-desc").textContent = "Não detectei mudança na tela. Verifique se o menu abriu ou envie um print para eu localizar a opção correta. Não vou repetir o mesmo clique automaticamente.";
+          }
+          status.textContent = "A tela não mudou; aguardando você conferir o menu.";
+          return;
+        }
+        continueNavigationGuide();
+      }, 0);
     };
     navigationGuideActive = true;
     persistNavigationTask();
@@ -1334,7 +1424,7 @@
   function renderFieldProposals(answer, target) {
     const { cleanAnswer, proposals } = extractFieldProposals(answer);
     const proposalRoute = location.pathname;
-    target.textContent = cleanAnswer;
+    renderSafeMarkdown(cleanAnswer, target);
     if (!proposals.length) return cleanAnswer;
     const card = document.createElement("section");
     card.className = "proposal-card";
