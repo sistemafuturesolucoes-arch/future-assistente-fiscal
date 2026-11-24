@@ -107,7 +107,7 @@
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true }).replace(/\\r\\n/g, "\\n");
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
       const chunks = buffer.split("\n\n");
       buffer = chunks.pop() || "";
       for (const chunk of chunks) {
@@ -142,7 +142,8 @@
       role: "user",
       parts: [{ type: "text", text: question + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }]
     };
-    conversationMessages.push(userMessage);\n    const target = addMessage("", "bot");
+    conversationMessages.push(userMessage);
+    const target = addMessage("", "bot");
     send.disabled = true;
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
