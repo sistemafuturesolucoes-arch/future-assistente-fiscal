@@ -1579,7 +1579,7 @@
     target.appendChild(card);
   }
 
-  async function readStream(response, target) {
+  async function readStream(response, target, initialAnswer = "") {
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       throw new Error("A IA retornou HTTP " + response.status + (detail ? ": " + detail.slice(0, 300) : ""));
@@ -1589,18 +1589,26 @@
     const decoder = new TextDecoder();
     let buffer = "";
     let answer = "";
+    let completed = false;
+    function render() {
+      target.textContent = initialAnswer + answer;
+      messages.scrollTop = messages.scrollHeight;
+    }
     function consumeChunk(chunk) {
       const dataLines = chunk.split("\n").filter(line => line.startsWith("data: "));
       if (!dataLines.length) return;
       const payload = dataLines.map(line => line.slice(6)).join("\n");
-      if (payload === "[DONE]") return;
+      if (payload === "[DONE]") {
+        completed = true;
+        return;
+      }
       try {
         const event = JSON.parse(payload);
         if (event.type === "text-delta" && typeof event.delta === "string") {
           answer += event.delta;
-          target.textContent = answer;
-          messages.scrollTop = messages.scrollHeight;
+          render();
         }
+        if (event.type === "finish" || event.type === "finish-step" || event.type === "message-finish") completed = true;
       } catch (error) {
         console.warn("Evento SSE ignorado por formato inválido.", error);
       }
@@ -1619,7 +1627,7 @@
     }
     buffer += decoder.decode().replace(/\r\n/g, "\n");
     consumeBuffer(true);
-    return answer;
+    return { answer, completed };
   }
 
   let lastRequestKind = "chat";
@@ -1657,14 +1665,37 @@
     const target = addMessage("", "bot");
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
-        body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge })
-      });
-      const answer = await readStream(response, target);
-      if (!answer) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
-      else {
+      const requestAssistantStream = async (initialAnswer = "") => {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRQ_Jja51yof" },
+          body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge })
+        });
+        return readStream(response, target, initialAnswer);
+      };
+      let streamResult = await requestAssistantStream();
+      let answer = streamResult.answer;
+      if (!streamResult.completed && answer.trim()) {
+        status.textContent = "A resposta foi interrompida. Estou recuperando a continuação automaticamente...";
+        conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
+        conversationMessages.push({
+          id: crypto.randomUUID(),
+          role: "user",
+          parts: [{ type: "text", text: " [CONTINUAÇÃO AUTOMÁTICA] Sua resposta anterior foi interrompida pela conexão. Continue exatamente do ponto em que parou, sem repetir o que já foi explicado. Termine a orientação com uma frase completa e o próximo passo claro. Consulte novamente o Manual já fornecido e não invente etapas." }]
+        });
+        try {
+          const continuation = await requestAssistantStream(answer);
+          answer += continuation.answer;
+          streamResult = { answer, completed: continuation.completed };
+        } catch (continuationError) {
+          console.warn("Falha ao recuperar continuação da resposta", continuationError);
+        }
+      }
+      if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      else if (!streamResult.completed) {
+        target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
+        conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
+      } else {
         const safeAnswer = renderFieldProposals(answer, target);
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
         maybeStartAutomaticGuide(safeAnswer);
