@@ -786,15 +786,27 @@
 
   let navigationTask = "";
   let navigationGuideActive = false;
+  const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
+  function persistNavigationTask() {
+    if (!navigationTask || !navigationGuideActive) return;
+    try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({ task: navigationTask, savedAt: Date.now() })); } catch {}
+  }
+  function clearNavigationTask() {
+    navigationGuideActive = false;
+    try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
+  }
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
     status.textContent = "Você avançou. Estou identificando a próxima etapa nesta tela...";
     const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário concluiu a etapa anterior. Analise SOMENTE a tela atual e o Manual relacionado. Diga uma única próxima ação, com o nome exato de um botão, menu ou campo visível nesta tela. Não repita etapas concluídas. Não invente elementos. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
-    await ask(prompt, []);
+    const responseMessage = await ask(prompt, []);
     if (!guideState && navigationGuideActive) {
-      navigationGuideActive = false;
-      status.textContent = "Não identifiquei com segurança o próximo elemento nesta tela. Você pode me perguntar como continuar.";
+      const responseText = responseMessage?.textContent || "";
+      clearNavigationTask();
+      status.textContent = /conclu[ií]d[oa]|finalizad[oa]|cadastro realizado|tarefa terminada/i.test(responseText)
+        ? "A orientação foi concluída."
+        : "Não identifiquei com segurança o próximo elemento nesta tela. Você pode me perguntar como continuar.";
     }
   }
 
@@ -826,13 +838,14 @@
       }, 850);
     };
     navigationGuideActive = true;
+    persistNavigationTask();
     guideState = { steps, index: 0, pendingIndex: null, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
     card.querySelector(".guide-prev").addEventListener("click", () => showGuideStep(Math.max(0, guideState.index - 1)));
     card.querySelector(".guide-next").addEventListener("click", () => {
       if (guideState.index >= guideState.steps.length - 1) continueNavigationGuide();
       else showGuideStep(guideState.index + 1);
     });
-    card.querySelector(".guide-end").addEventListener("click", () => { navigationGuideActive = false; closeGuide(); });
+    card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
     document.addEventListener("click", onTargetClick, true);
     window.addEventListener("resize", guideState.reposition);
@@ -879,7 +892,22 @@
     window.setTimeout(restoreVisualGuide, 650);
   }
 
+  function restoreNavigationAfterPageLoad() {
+    if (guideState || requestInProgress) return;
+    let saved;
+    try { saved = JSON.parse(sessionStorage.getItem(NAVIGATION_SESSION_KEY) || "null"); } catch {}
+    if (!saved?.task || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 20 * 60 * 1000) {
+      if (saved) clearNavigationTask();
+      return;
+    }
+    navigationTask = saved.task;
+    navigationGuideActive = true;
+    status.textContent = "Retomando a navegação assistida na nova tela...";
+    continueNavigationGuide();
+  }
+
   window.addEventListener("pageshow", scheduleGuideRestore);
+  window.setTimeout(restoreNavigationAfterPageLoad, 1100);
   window.addEventListener("popstate", () => {
     suspendGuideForNavigation();
     scheduleGuideRestore();
@@ -1325,7 +1353,7 @@
   async function ask(question, files = []) {
     if (requestInProgress) return;
     const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
-    if (question && !isNavigationContinuation) navigationTask = question;
+    if (question && !isNavigationContinuation) { navigationTask = question; persistNavigationTask(); }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     send.disabled = true;
