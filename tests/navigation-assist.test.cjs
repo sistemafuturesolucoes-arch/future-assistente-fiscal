@@ -130,8 +130,9 @@ test("orientação de salvar verifica campos obrigatórios antes de destacar o b
 test("leitura de navegação aguarda transições lentas e observa menus em qualquer região", () => {
   assert.match(source, /function navigationSnapshot\(\)/);
   assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
-  assert.match(source, /timeoutMs = 6000/);
-  assert.match(source, /window\.setInterval\(check, 250\)/);
+  assert.match(source, /timeoutMs = 3000/);
+  assert.match(source, /window\.setTimeout\(check, 80\)/);
+  assert.match(source, /window\.setInterval\(check, 120\)/);
   assert.match(source, /characterData: true/);
   assert.match(source, /aria-controls/);
 });
