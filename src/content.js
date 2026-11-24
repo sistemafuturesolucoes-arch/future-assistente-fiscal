@@ -405,11 +405,11 @@
     const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[data-testid*="error" i],[data-testid*="alert" i]')].filter(isVisibleOnPage);
     const fiscalReturnNodes = [...document.querySelectorAll("body *")].filter(el => {
       if (host.contains(el) || !isVisibleOnPage(el)) return false;
-      const text = String(el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim();
+      const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       if (text.length < 20 || text.length > 1200) return false;
-      if (!(/\\bE\\d{4,5}\\b/i.test(text) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(text))) return false;
+      if (!(/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text))) return false;
       return /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
-        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\\bE\\d{4,5}\\b/i.test(t) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
+        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
     });
     for (const node of fiscalReturnNodes) if (!errorNodes.includes(node)) errorNodes.push(node);
     for (const node of errorNodes) {
@@ -423,7 +423,8 @@
         const controls = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=checkbox]")].filter(isGuideNodeVisible);
         const targets = controls.filter(control => getElementNames(control).some(name => {
           const n = normalize(name);
-          return n.includes("aliq") && n.includes("iss") || n.includes("iss retido") || n === "retido";
+          const groupText = normalize(control.closest(".form-group,.form-field,.field,.form-item,[data-field-wrapper],fieldset")?.innerText || "");
+          return n.includes("aliq") && n.includes("iss") || n.includes("iss retido") || n === "retido" && groupText.includes("iss");
         }));
         for (const control of targets.slice(0, 3)) {
           const names = getElementNames(control);
@@ -450,7 +451,12 @@
   }
 
   async function reviewDocument() {
-    if (reviewActive || requestInProgress || autoDiagnosisInProgress) return;
+    if (reviewActive || requestInProgress) return;
+    if (autoDiagnosisInProgress) {
+      status.textContent = "A análise automática do erro está terminando. A revisão completa começará em seguida.";
+      window.setTimeout(() => { if (!reviewActive && !requestInProgress && !autoDiagnosisInProgress) reviewDocument(); }, 500);
+      return;
+    }
     reviewActive = true;
     reviewButton.disabled = true;
     reviewButton.textContent = "Revisando…";
