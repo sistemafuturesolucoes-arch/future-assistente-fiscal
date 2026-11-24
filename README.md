@@ -4,6 +4,7 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 
 ## O que está implementado
 - Robô flutuante e painel de conversa em Shadow DOM, restritos ao domínio do Emissor.
+- Robô flutuante arrastável por mouse ou toque, com posição salva no armazenamento local da extensão e ajuste automático ao redimensionar a janela.
 - Interface simplificada: conversa como ponto central e acesso discreto ao Manual, sem os quatro botões de ação que poluíam o painel.
 - Leitura de rota, títulos, rótulos, botões, mensagens de alerta e metadados dos campos visíveis. Não lê os valores digitados.
 - Recuperação das 26 aulas publicadas do mesmo Supabase usado pelo Manual.
