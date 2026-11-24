@@ -35,7 +35,7 @@
   panel.innerHTML = `
     <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Ajuda dentro do Emissor</div></div><button class="close" aria-label="Fechar">×</button></header>
     <nav class="actions">
-      <button class="chip" data-prompt="Quero revisar minha nota antes de emitir. Oriente a conferência sem alterar nem emitir o documento.">Revisar minha nota</button>
+      <button class="chip" data-prompt="Oriente uma conferência guiada desta tela antes da emissão. Use somente os campos e rótulos visíveis; não presuma valores preenchidos e não altere nem emita o documento.">Orientar conferência</button>
       <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos.">Conversar com a IA</button>
       <button class="chip" data-prompt="Quero identificar e resolver um erro nesta tela.">Identificar erro</button>
       <button class="chip" data-prompt="Abra o manual relacionado a esta etapa.">Abrir manual</button>
@@ -80,8 +80,24 @@
       .slice(0, 12).map(el => (el.innerText || "").trim()).filter(Boolean);
     const labels = [...document.querySelectorAll("label")]
       .slice(0, 35).map(el => (el.innerText || "").trim()).filter(Boolean);
+    const isVisible = el => {
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    };
+    const controls = [...document.querySelectorAll("input,select,textarea")]
+      .filter(isVisible).slice(0, 40).map(el => {
+        const label = el.labels ? [...el.labels].map(item => (item.innerText || "").trim()).filter(Boolean).join(" / ") : "";
+        const aria = el.getAttribute("aria-label") || "";
+        const placeholder = el.getAttribute("placeholder") || "";
+        const type = el.tagName.toLowerCase() === "input" ? (el.getAttribute("type") || "text") : el.tagName.toLowerCase();
+        const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : ""].filter(Boolean).join(", ");
+        return [label || aria || placeholder || "Campo sem rótulo", "tipo=" + type, flags].filter(Boolean).join(" — ");
+      });
+    const buttons = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")]
+      .filter(isVisible).slice(0, 25).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
     const errors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
-      .slice(0, 10).map(el => (el.innerText || "").trim()).filter(Boolean);
+      .filter(isVisible).slice(0, 10).map(el => (el.innerText || "").trim()).filter(Boolean);
     const redact = value => value
       .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[CPF ocultado]")
       .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "[CNPJ ocultado]")
@@ -91,7 +107,9 @@
       "Aplicação: Emissor Fiscal Online",
       "Rota: " + route,
       "Título: " + title,
-      "Títulos e rótulos visíveis (sem valores preenchidos): " + text.slice(0, 5000)
+      "Títulos e rótulos visíveis (sem valores preenchidos): " + text.slice(0, 5000),
+      "Metadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 3500),
+      "Botões visíveis: " + redact(buttons.join(" | ")).slice(0, 1500)
     ].join("\n");
   }
 
