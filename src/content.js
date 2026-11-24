@@ -453,16 +453,12 @@
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
     } finally {
       reviewButton.disabled = false;
-      reviewButton.textContent = "Finalizar revisão";
+      reviewButton.textContent = "Revisar novamente";
     }
   }
 
   reviewButton.addEventListener("click", () => {
-    if (reviewActive) {
-      clearDocumentReview();
-      status.textContent = "Revisão encerrada. A tela voltou ao normal.";
-      return;
-    }
+    if (reviewActive) clearDocumentReview();
     reviewDocument();
   });
 
