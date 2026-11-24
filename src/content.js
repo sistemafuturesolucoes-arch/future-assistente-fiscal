@@ -365,47 +365,89 @@
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
 
+  function getElementNames(el) {
+    const names = [];
+    const add = value => {
+      const clean = String(value || "").replace(/\\s+/g, " ").trim();
+      if (clean && clean.length <= 180 && !names.includes(clean)) names.push(clean);
+    };
+    try {
+      if (el.labels) [...el.labels].forEach(label => add(label.innerText || label.textContent));
+    } catch {}
+    const labelledBy = (el.getAttribute("aria-labelledby") || "").split(/\\s+/).filter(Boolean);
+    labelledBy.forEach(id => add(document.getElementById(id)?.innerText || document.getElementById(id)?.textContent));
+    add(el.getAttribute("aria-label"));
+    add(el.getAttribute("data-label"));
+    add(el.getAttribute("data-field"));
+    add(el.getAttribute("placeholder"));
+    add(el.getAttribute("title"));
+    const wrappingLabel = el.closest("label");
+    if (wrappingLabel) add(wrappingLabel.innerText || wrappingLabel.textContent);
+    const group = el.closest(".form-group,.form-field,.field,.form-item,[data-field-wrapper],fieldset");
+    if (group) {
+      group.querySelectorAll(":scope > label,:scope > legend,:scope > .form-label,:scope > .field-label,:scope > [data-label]").forEach(label => {
+        if (label !== el && !label.contains(el)) add(label.innerText || label.textContent);
+      });
+      if (group.tagName === "FIELDSET") add(group.querySelector("legend")?.innerText);
+    }
+    const id = el.getAttribute("id");
+    if (id) {
+      const explicit = [...document.querySelectorAll("label[for]")].find(label => label.htmlFor === id);
+      if (explicit) add(explicit.innerText || explicit.textContent);
+    }
+    if (el.matches("button,[role=button],[role=tab],a")) add(el.innerText || el.textContent);
+    add(el.getAttribute("name"));
+    return names;
+  }
+
   function getElementName(el) {
-    const labels = el.labels ? [...el.labels].map(x => x.innerText || "").join(" ") : "";
-    const wrappingLabel = el.closest("label")?.innerText || "";
-    return (labels || wrappingLabel || el.getAttribute("aria-label") || el.getAttribute("placeholder") ||
-      el.getAttribute("title") || el.innerText || el.getAttribute("name") || el.id || "").trim();
+    return getElementNames(el)[0] || el.getAttribute("name") || el.id || "";
+  }
+
+  const GUIDE_NODE_SELECTOR = "input,select,textarea,button,a,[role=button],[role=combobox],[role=checkbox],[role=tab],[role=textbox],[role=radio],[role=switch]";
+
+  function isGuideNodeVisible(el) {
+    if (!el || host.contains(el)) return false;
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" &&
+      s.opacity !== "0" && !el.disabled && el.getAttribute("aria-hidden") !== "true";
   }
 
   function findElementByName(name) {
     const wanted = normalize(name);
     if (!wanted) return null;
-    const nodes = [...document.querySelectorAll("input,select,textarea,button,[role=button],[role=combobox],[role=checkbox],[role=tab],a")];
-    return nodes.find(el => {
-      const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" &&
-        normalize(getElementName(el)) === wanted;
-    }) || null;
+    const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
+    const exact = nodes.filter(el => getElementNames(el).some(label => normalize(label) === wanted));
+    return exact.length === 1 ? exact[0] : null;
   }
 
   function findGuideSteps(answer) {
     const answerNorm = normalize(answer);
-    const nodes = [...document.querySelectorAll("input,select,textarea,button,[role=button],[role=combobox],[role=checkbox],[role=tab],a")]
-      .filter(el => {
-        const r = el.getBoundingClientRect();
-        const s = getComputedStyle(el);
-        return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
-      });
-    const lines = answer.split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
+    const lines = answer.split(/\\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
     const candidates = [];
     for (const el of nodes) {
-      const name = getElementName(el);
-      const key = normalize(name);
-      if (key.length < 4) continue;
-      const exactAt = answerNorm.indexOf(key);
-      let score = exactAt >= 0 ? 1 : 0;
-      if (!score) {
-        const tokens = key.split(" ").filter(t => t.length > 2);
-        const hits = tokens.filter(t => answerNorm.includes(t)).length;
-        score = tokens.length ? hits / tokens.length : 0;
+      const names = getElementNames(el).filter(name => normalize(name).length >= 4);
+      if (!names.length) continue;
+      let best = null;
+      for (const name of names) {
+        const key = normalize(name);
+        const exactAt = answerNorm.indexOf(key);
+        let score = exactAt >= 0 ? 1 : 0;
+        if (!score) {
+          const tokens = key.split(" ").filter(token => token.length > 2);
+          if (tokens.length >= 2) {
+            const hits = tokens.filter(token => answerNorm.includes(token)).length;
+            score = hits / tokens.length;
+          }
+        }
+        if (!best || score > best.score || (score === best.score && exactAt >= 0 && best.exactAt < 0)) {
+          best = { el, name, key, exactAt, score };
+        }
       }
-      if (score >= 0.78) candidates.push({ el, name, key, exactAt, score });
+      // Evita destacar controles por coincidência de uma palavra genérica.
+      if (best && (best.exactAt >= 0 || best.score >= 0.82)) candidates.push(best);
     }
     candidates.sort((a, b) => {
       if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
@@ -414,12 +456,15 @@
       return b.score - a.score;
     });
     const steps = [];
-    const seen = new Set();
+    const seenElements = new Set();
+    const seenNames = new Set();
     for (const candidate of candidates) {
-      if (seen.has(candidate.key)) continue;
-      seen.add(candidate.key);
+      if (seenElements.has(candidate.el) || seenNames.has(candidate.key)) continue;
+      seenElements.add(candidate.el);
+      seenNames.add(candidate.key);
       const line = lines.find(x => normalize(x).includes(candidate.key)) ||
-        lines.find(x => candidate.key.split(" ").filter(t => t.length > 2).some(t => normalize(x).includes(t))) || "";
+        lines.find(x => candidate.key.split(" ").filter(t => t.length > 2).length >= 2 &&
+          candidate.key.split(" ").filter(t => t.length > 2).every(t => normalize(x).includes(t))) || "";
       const description = line.length > candidate.name.length + 8 ? line :
         "Confira este elemento indicado pela orientação antes de fazer qualquer alteração.";
       steps.push({ element: candidate.el, title: candidate.name.slice(0, 90), description: description.slice(0, 420) });
