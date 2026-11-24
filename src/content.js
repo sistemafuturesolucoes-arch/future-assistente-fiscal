@@ -204,7 +204,7 @@
   }
 
   function maybeStartAutomaticGuide(answer) {
-    const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\\s*\\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
+    const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
     if (!instructionIntent) return false;
     const steps = findGuideSteps(answer);
     if (!steps.length) return false;
