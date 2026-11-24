@@ -838,6 +838,7 @@
   const FIELD_PROPOSAL_OPEN = "[[FUTURE_FIELD_PROPOSAL]]";
   const FIELD_PROPOSAL_CLOSE = "[[/FUTURE_FIELD_PROPOSAL]]";
   const SENSITIVE_FIELD_NAME = /\b(cpf|cnpj|e-?mail|telefone|celular|senha|password|pin|token|certificado|chave privada)\b/i;
+  const SENSITIVE_VALUE = /(?:\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|(?:\+?55\s*)?\(?\d{2}\)?\s*9?\d{4}[- ]?\d{4})/i;
 
   function extractFieldProposals(answer) {
     const proposals = [];
@@ -849,7 +850,7 @@
           if (!item || typeof item.field !== "string" || typeof item.value !== "string") continue;
           const field = item.field.trim().slice(0, 120);
           const value = item.value.trim().slice(0, 1000);
-          if (!field || !value || SENSITIVE_FIELD_NAME.test(field)) continue;
+          if (!field || !value || SENSITIVE_FIELD_NAME.test(field) || SENSITIVE_VALUE.test(value)) continue;
           proposals.push({ field, value });
         }
       } catch {}
@@ -922,11 +923,12 @@
           }
           nextValue = option.value;
         } else if (el.matches("input") && el.type === "number") {
-          if (!/^-?(?:\d+|\d*\.\d+)$/.test(nextValue)) {
+          if (!/^-?(?:\d+|\d*[.,]\d+)$/.test(nextValue)) {
             value.textContent = "O valor sugerido não é um número válido para este campo. Nada foi alterado.";
             confirm.disabled = true;
             return;
           }
+          nextValue = nextValue.replace(",", ".");
         } else if (el.matches("input") && el.type === "date") {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(nextValue)) {
             value.textContent = "A data sugerida não está no formato esperado. Nada foi alterado.";
