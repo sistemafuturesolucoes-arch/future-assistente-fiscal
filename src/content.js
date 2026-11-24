@@ -15,12 +15,10 @@
     .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;width:60px;height:60px;border:0;border-radius:50%;cursor:pointer;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
-    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
-    .actions{padding:10px;display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid #eee9f4}
-    .chip{border:1px solid #ded4eb;background:#faf8fd;color:#45236b;border-radius:20px;padding:7px 10px;font-size:11px;cursor:pointer}
+    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:8px}.manual-link{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
     .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;gap:8px;padding:10px;border-top:1px solid #eee9f4}.composer textarea{resize:none;flex:1;min-width:0;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}
-    .notice{font-size:10px;color:#81768b;padding:0 12px 9px}.guide-action{display:block;margin-top:10px;border:0;border-radius:10px;background:#54218a;color:#fff;padding:9px 12px;font-weight:700;cursor:pointer}
+    .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
     .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
     .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
@@ -41,13 +39,7 @@
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
-    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Ajuda dentro do Emissor</div></div><button class="close" aria-label="Fechar">×</button></header>
-    <nav class="actions">
-      <button class="chip" data-prompt="Oriente uma conferência guiada desta tela antes da emissão. Use somente os campos e rótulos visíveis; não presuma valores preenchidos e não altere nem emita o documento. Ao explicar cada campo, cite o nome exato do rótulo para que eu possa destacá-lo visualmente na tela.">Orientar conferência</button>
-      <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos. Cite os nomes exatos dos campos e botões para que eu possa destacá-los visualmente.">Conversar com a IA</button>
-      <button class="chip" data-prompt="Quero identificar e resolver um erro nesta tela. Cite o nome exato do campo relacionado à solução para que eu possa destacá-lo visualmente.">Identificar erro</button>
-      <button class="chip" data-prompt="Abra o manual relacionado a esta etapa.">Abrir manual</button>
-    </nav>
+    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
     <form class="composer"><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
@@ -73,14 +65,7 @@
   };
   launcher.addEventListener("click", () => panel.classList.toggle("open"));
   panel.querySelector(".close").addEventListener("click", () => panel.classList.remove("open"));
-  panel.querySelectorAll("[data-prompt]").forEach(button => button.addEventListener("click", () => {
-    if (button.dataset.prompt === "Abra o manual relacionado a esta etapa.") {
-      window.open(MANUAL_URL, "_blank", "noopener");
-      return;
-    }
-    input.value = button.dataset.prompt;
-    form.requestSubmit();
-  }));
+  panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
 
   function safeScreenContext() {
     const title = (document.title || "").slice(0, 120);
@@ -218,15 +203,14 @@
     showGuideStep(0);
   }
 
-  function attachGuideButton(messageElement, answer) {
+  function maybeStartAutomaticGuide(answer) {
+    const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\\s*\\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
+    if (!instructionIntent) return false;
     const steps = findGuideSteps(answer);
-    if (!steps.length) return;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "guide-action";
-    button.textContent = "✨ Mostrar " + steps.length + " ponto(s) na tela";
-    button.addEventListener("click", () => startVisualGuide(steps));
-    messageElement.appendChild(button);
+    if (!steps.length) return false;
+    startVisualGuide(steps);
+    status.textContent = "Orientação visual ativa. Siga o destaque; o assistente aguardará sua ação.";
+    return true;
   }
 
   async function readStream(response, target) {
@@ -290,7 +274,7 @@
       if (!answer) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
       else {
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] });
-        attachGuideButton(target, answer);
+        maybeStartAutomaticGuide(answer);
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
       status.textContent = diagnostic
