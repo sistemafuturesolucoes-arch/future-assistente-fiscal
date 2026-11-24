@@ -368,14 +368,17 @@
   function getElementNames(el) {
     const names = [];
     const add = value => {
-      const clean = String(value || "").replace(/\\s+/g, " ").trim();
+      const clean = String(value || "").replace(/\s+/g, " ").trim();
       if (clean && clean.length <= 180 && !names.includes(clean)) names.push(clean);
     };
     try {
       if (el.labels) [...el.labels].forEach(label => add(label.innerText || label.textContent));
     } catch {}
-    const labelledBy = (el.getAttribute("aria-labelledby") || "").split(/\\s+/).filter(Boolean);
-    labelledBy.forEach(id => add(document.getElementById(id)?.innerText || document.getElementById(id)?.textContent));
+    const labelledBy = (el.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean);
+    labelledBy.forEach(id => {
+      const label = document.getElementById(id);
+      add(label?.innerText || label?.textContent);
+    });
     add(el.getAttribute("aria-label"));
     add(el.getAttribute("data-label"));
     add(el.getAttribute("data-field"));
@@ -697,20 +700,75 @@
     if (clickedField) dismissErrorSpotlight();
   }, true);
 
+  const ERROR_TEXT_PATTERN = /\b(erro|error|falha|failed|inv[aá]lid[oa]|invalid|obrigat[oó]ri[oa]|required|n[aã]o foi poss[ií]vel|n[aã]o permitido|rejeitad[oa]|rejei[cç][aã]o|inconsist[eê]ncia|n[aã]o encontrado|n[aã]o localizado|preencha|informe|selecione|corrija|aten[cç][aã]o)\b/i;
+  const NON_ERROR_TEXT_PATTERN = /\b(sucesso|conclu[ií]d[oa]|salvo com sucesso|opera[cç][aã]o realizada|processado com sucesso)\b/i;
+  const recentErrorFingerprints = new Map();
+  let requestInProgress = false;
+  let pendingErrorDiagnostic = null;
+
+  function isLikelyFiscalError(el, message) {
+    if (!message || message.length < 4 || message.length > 500) return false;
+    if (NON_ERROR_TEXT_PATTERN.test(message) && !/\b(erro|falha|inv[aá]lid[oa]|rejeitad[oa])\b/i.test(message)) return false;
+    const classText = String(el.className?.baseVal || el.className || "");
+    const hasStrongSemantic = el.getAttribute("role") === "alert" ||
+      el.getAttribute("aria-live") === "assertive" ||
+      el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
+    const hasErrorClass = /\b(invalid|error|danger|toast-error)\b/i.test(classText);
+    const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
+    // .text-danger sozinho é usado também para decoração; exige texto de erro.
+    if (el.matches(".text-danger") && !hasErrorLanguage) return false;
+    return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
+  }
+
+  function queueErrorDiagnosis(message, fingerprint) {
+    if (fingerprint === lastAutoDiagnosisFingerprint && Date.now() - lastAutoDiagnosisAt <= 60000) return;
+    pendingErrorDiagnostic = { message, fingerprint };
+    if (!requestInProgress && !autoDiagnosisInProgress) runPendingErrorDiagnosis();
+  }
+
+  function runPendingErrorDiagnosis() {
+    if (!pendingErrorDiagnostic || requestInProgress || autoDiagnosisInProgress) return;
+    const pending = pendingErrorDiagnostic;
+    pendingErrorDiagnostic = null;
+    lastAutoDiagnosisFingerprint = pending.fingerprint;
+    lastAutoDiagnosisAt = Date.now();
+    autoDiagnosisInProgress = true;
+    addMessage("Estou analisando esse erro com o Manual e a tela atual. Aguarde...", "bot");
+    const diagnosticQuestion = [
+      "A extensão detectou automaticamente esta mensagem de possível erro no Emissor Fiscal:",
+      pending.message,
+      "",
+      "Explique o que a mensagem provavelmente significa, indique a causa somente se houver base no Manual ou no contexto disponível e oriente passo a passo onde o usuário deve conferir.",
+      "Se faltarem informações, diga exatamente o que precisa ser verificado e peça ao usuário. Não invente regra fiscal, código, alíquota ou enquadramento.",
+      "Não preencha campos, não clique em botões e não execute emissão, transmissão, autorização ou encerramento.",
+      "Considere apenas a mensagem acima, a rota e os metadados seguros da tela; não solicite nem exponha senhas, PINs, certificados ou dados pessoais."
+    ].join("\n");
+    ask(diagnosticQuestion, []).finally(() => {
+      autoDiagnosisInProgress = false;
+      if (pendingErrorDiagnostic && !requestInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
+    });
+  }
+
   function detectVisibleErrors() {
-    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error';
+    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error,[aria-invalid="true"]';
     const candidates = [...document.querySelectorAll(selectors)].filter(el => {
       if (host.contains(el)) return false;
       const r = el.getBoundingClientRect();
       const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden";
+      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" && s.opacity !== "0";
     });
     for (const el of candidates) {
       const rawMessage = (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ");
-      if (rawMessage.length < 4 || rawMessage.length > 500) continue;
+      if (!isLikelyFiscalError(el, rawMessage)) continue;
       const message = redactSensitiveText(rawMessage);
       const fingerprint = normalize(message);
-      if (fingerprint === lastErrorFingerprint && Date.now() - lastErrorAt < 8000) continue;
+      const previousAt = recentErrorFingerprints.get(fingerprint) || 0;
+      if (Date.now() - previousAt < 12000) continue;
+      recentErrorFingerprints.set(fingerprint, Date.now());
+      if (recentErrorFingerprints.size > 40) {
+        const oldest = [...recentErrorFingerprints.entries()].sort((a, b) => a[1] - b[1])[0];
+        if (oldest) recentErrorFingerprints.delete(oldest[0]);
+      }
       lastErrorFingerprint = fingerprint;
       lastErrorAt = Date.now();
       playErrorBeeps();
@@ -730,31 +788,8 @@
       shadow.appendChild(frame);
       activeErrorSpotlight = frame;
       activeErrorSpotlightTimer = window.setTimeout(dismissErrorSpotlight, 6500);
-
-      // A análise automática usa somente o texto visível do alerta e o contexto
-      // seguro da tela (sem valores digitados nos campos).
-      const canAnalyze = !send.disabled && !autoDiagnosisInProgress &&
-        (fingerprint !== lastAutoDiagnosisFingerprint || Date.now() - lastAutoDiagnosisAt > 60000);
-      if (canAnalyze) {
-        lastAutoDiagnosisFingerprint = fingerprint;
-        lastAutoDiagnosisAt = Date.now();
-        autoDiagnosisInProgress = true;
-        addMessage("Estou analisando esse erro com o Manual e a tela atual. Aguarde...", "bot");
-        const diagnosticQuestion = [
-          "A extensão detectou automaticamente esta mensagem de possível erro no Emissor Fiscal:",
-          message,
-          "",
-          "Explique o que a mensagem provavelmente significa, indique a causa somente se houver base no Manual ou no contexto disponível e oriente passo a passo onde o usuário deve conferir.",
-          "Se faltarem informações, diga exatamente o que precisa ser verificado e peça ao usuário. Não invente regra fiscal, código, alíquota ou enquadramento.",
-          "Não preencha campos, não clique em botões e não execute emissão, transmissão, autorização ou encerramento.",
-          "Considere apenas a mensagem acima, a rota e os metadados seguros da tela; não solicite nem exponha senhas, PINs, certificados ou dados pessoais."
-        ].join("\\n");
-        ask(diagnosticQuestion, []).finally(() => {
-          autoDiagnosisInProgress = false;
-        });
-      } else if (send.disabled) {
-        status.textContent = "Erro detectado. Termine a mensagem atual para liberar a análise automática.";
-      }
+      // A análise usa apenas o texto visível e os metadados seguros da tela.
+      queueErrorDiagnosis(message, fingerprint);
       break;
     }
   }
@@ -764,7 +799,7 @@
     clearTimeout(errorScanTimer);
     errorScanTimer = window.setTimeout(detectVisibleErrors, 180);
   });
-  errorObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "role", "aria-live", "data-state"] });
+  errorObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "role", "aria-live", "data-state", "aria-invalid"] });
   window.setTimeout(detectVisibleErrors, 1200);
 
   function maybeStartAutomaticGuide(answer) {
@@ -811,6 +846,9 @@
   }
 
   async function ask(question, files = []) {
+    if (requestInProgress) return;
+    requestInProgress = true;
+    send.disabled = true;
     const context = safeScreenContext();
     let knowledge = "";
     try {
@@ -829,7 +867,6 @@
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
     const target = addMessage("", "bot");
-    send.disabled = true;
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
       const response = await fetch(API_URL, {
@@ -851,15 +888,17 @@
       target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
       status.textContent = "Falha de conexão.";
     } finally {
+      requestInProgress = false;
       send.disabled = false;
       input.focus();
+      if (pendingErrorDiagnostic && !autoDiagnosisInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
     }
   }
 
   form.addEventListener("submit", event => {
     event.preventDefault();
     const question = input.value.trim();
-    if ((!question && pendingAttachments.length === 0) || send.disabled) return;
+    if ((!question && pendingAttachments.length === 0) || requestInProgress || autoDiagnosisInProgress) return;
     const visibleQuestion = question || (pendingAttachments.length ? "📎 Anexo enviado para análise." : "");
     const files = pendingAttachments.splice(0, pendingAttachments.length);
     renderPendingAttachments();
