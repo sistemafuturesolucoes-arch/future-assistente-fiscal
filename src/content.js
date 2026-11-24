@@ -15,7 +15,7 @@
     .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;left:auto;top:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:min(420px,calc(100vw - 16px));height:min(620px,calc(100vh - 32px));max-height:calc(100dvh - 16px);min-height:280px;display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif;box-sizing:border-box}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:12px 14px;display:flex;flex-direction:column;align-items:stretch;gap:10px;flex:0 0 auto;box-sizing:border-box}
-    .head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.brand-wrap{min-width:0;flex:1}.brand{font-weight:750;font-size:15px;line-height:1.25;overflow-wrap:anywhere}.sub{font-size:11px;opacity:.8;margin-top:3px}.head-tools{display:flex;align-items:center;justify-content:flex-start;gap:6px;flex-wrap:wrap;width:100%;min-width:0}.manual-link,.sound-toggle,.review-button,.voice-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:7px 9px;font:600 11px/1.2 system-ui;cursor:pointer;min-height:32px;box-sizing:border-box;white-space:nowrap}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"],.voice-toggle[aria-pressed="false"]{opacity:.55}.close{flex:0 0 34px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #ffffff66;border-radius:9px;background:#ffffff18;color:#fff;font-size:24px;line-height:1;cursor:pointer;position:relative;z-index:2}.close:hover{background:#ffffff32}.close:focus-visible,.head-tools button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+    .head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}.brand-wrap{min-width:0;flex:1}.brand{font-weight:750;font-size:15px;line-height:1.25;overflow-wrap:anywhere}.sub{font-size:11px;opacity:.8;margin-top:3px}.head-tools{display:flex;align-items:center;justify-content:flex-start;gap:6px;flex-wrap:wrap;width:100%;min-width:0}.manual-link,.sound-toggle,.review-button,.voice-toggle,.tour-button{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:7px 9px;font:600 11px/1.2 system-ui;cursor:pointer;min-height:32px;box-sizing:border-box;white-space:nowrap}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"],.voice-toggle[aria-pressed="false"]{opacity:.55}.close{flex:0 0 34px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #ffffff66;border-radius:9px;background:#ffffff18;color:#fff;font-size:24px;line-height:1;cursor:pointer;position:relative;z-index:2}.close:hover{background:#ffffff32}.close:focus-visible,.head-tools button:focus-visible{outline:2px solid #fff;outline-offset:2px}
     .messages{flex:1 1 auto;min-height:0;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.msg a{color:#6530a0;text-decoration:underline;font-weight:650;cursor:pointer}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{flex:0 0 auto;min-width:0;overflow-wrap:anywhere;font-size:11px;color:#786c83;padding:5px 13px}.composer{flex:0 0 auto;display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.stop{width:42px;height:48px;border:1px solid #e4c7d0;border-radius:11px;background:#fff5f6;color:#b4234c;font-size:17px;font-weight:800;cursor:pointer}.stop:disabled{opacity:.35;cursor:default}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{flex:0 0 auto;font-size:10px;color:#81768b;padding:0 12px 9px}
@@ -43,7 +43,7 @@
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
-    <header class="head"><div class="head-top"><div class="brand-wrap"><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><button class="close" type="button" aria-label="Fechar" title="Fechar assistente">×</button></div><nav class="head-tools" aria-label="Ferramentas do assistente"><button class="review-button" type="button">Revisar documento</button><button class="voice-toggle" type="button" aria-label="Ativar conversa por voz" aria-pressed="false" title="Ativar conversa por voz">🎙️ Voz</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔 Som</button><button class="manual-link" type="button">Manual</button></nav></header>
+    <header class="head"><div class="head-top"><div class="brand-wrap"><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><button class="close" type="button" aria-label="Fechar" title="Fechar assistente">×</button></div><nav class="head-tools" aria-label="Ferramentas do assistente"><button class="tour-button" type="button" title="Aprenda uma função do Emissor passo a passo">🧭 Tour guiado</button><button class="review-button" type="button">Revisar documento</button><button class="voice-toggle" type="button" aria-label="Ativar conversa por voz" aria-pressed="false" title="Ativar conversa por voz">🎙️ Voz</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔 Som</button><button class="manual-link" type="button">Manual</button></nav></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
     <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="stop" type="button" title="Parar a conversa atual" aria-label="Parar a conversa atual" disabled>■</button><button class="send" type="submit">Enviar</button></form>
@@ -577,6 +577,14 @@
   panel.querySelector(".close").addEventListener("click", () => { if (reviewActive) clearDocumentReview(); panel.classList.remove("open"); });
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
 
+  const tourButton = panel.querySelector(".tour-button");
+  tourButton.addEventListener("click", () => {
+    if (requestInProgress) return;
+    const question = "[TOUR GUIADO] Faça um tour interativo da função disponível nesta tela. Consulte primeiro o Manual Future e identifique a aula correspondente. Explique em português simples, uma etapa por vez. Comece por uma única ação que exista e esteja visível agora, usando o rótulo exato do controle. Destaque esse elemento na tela e aguarde o usuário clicar; depois detecte a mudança de tela e continue do ponto correto até concluir o procedimento. Não liste várias etapas de uma vez, não repita ações já confirmadas, não clique nem preencha pelo usuário e nunca execute emissão, transmissão ou autorização. Se não houver uma aula correspondente ou não localizar o controle com segurança, explique isso e peça um print.";
+    addMessage("Vamos começar o tour guiado desta tela.", "user");
+    ask(question, []);
+  });
+
   const reviewButton = panel.querySelector(".review-button");
   let reviewActive = false;
   let reviewWash = null;
@@ -820,8 +828,8 @@
         const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : ""].filter(Boolean).join(", ");
         return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags].filter(Boolean).join(" — ");
       });
-    const buttons = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")]
-      .filter(isVisible).slice(0, 60).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
+    const buttons = [...document.querySelectorAll("button,a,[role=button],[role=menuitem],[role=tab],[data-menu-item],summary,input[type=button],input[type=submit]")]
+      .filter(isVisible).slice(0, 120).map(el => (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
     const navigationRoots = [...document.querySelectorAll("nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]")].filter(isVisible);
     const navigationSelector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
     const rootItems = navigationRoots.flatMap(root => [...root.querySelectorAll(navigationSelector)]);
@@ -883,6 +891,11 @@
     add(el.getAttribute("aria-label"));
     add(el.getAttribute("data-label"));
     add(el.getAttribute("data-field"));
+    add(el.getAttribute("data-testid"));
+    add(el.getAttribute("data-cy"));
+    add(el.getAttribute("data-tooltip"));
+    add(el.getAttribute("data-tooltip-content"));
+    add(el.getAttribute("aria-description"));
     add(el.getAttribute("placeholder"));
     add(el.getAttribute("title"));
     const wrappingLabel = el.closest("label");
@@ -1072,45 +1085,69 @@
 
   let navigationTask = "";
   let navigationGuideActive = false;
+  let navigationLastCompletedStep = "";
+  let navigationLastCompletedRoute = "";
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
   function persistNavigationTask() {
     if (!navigationTask || !navigationGuideActive) return;
-    try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({ task: navigationTask, savedAt: Date.now() })); } catch {}
+    try {
+      sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({
+        task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
+        lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
+        savedAt: Date.now()
+      }));
+    } catch {}
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
   function navigationSnapshot() {
-    const rootSelector = "nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]";
-    const roots = [...document.querySelectorAll(rootSelector)];
-    const selector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
-    const items = roots.length ? roots.flatMap(root => [...root.querySelectorAll(selector)]) : [...document.querySelectorAll("nav a,nav button,aside a,aside button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded]")];
-    return [...new Set(items)].filter(el => {
+    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary,[aria-controls]";
+    const items = [...document.querySelectorAll(selector)].filter(el => {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
       const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    }).slice(0, 220).map(el => [normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title), el.getAttribute("aria-expanded") || "", el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")].join(":")).join("|");
+      const style = getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    });
+    const fingerprint = items.slice(0, 320).map(el => [
+      normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
+      el.getAttribute("aria-expanded") || "",
+      el.getAttribute("aria-controls") || "",
+      el.getAttribute("data-state") || "",
+      el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
+    ].join(":")).join("|");
+    return [location.pathname, location.hash, fingerprint].join("::");
   }
 
-  async function waitForNavigationUpdate(beforeSnapshot) {
+  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 3000) {
     return new Promise(resolve => {
       let settled = false;
-      let quietTimer = null;
+      let checkTimer = null;
+      let pollTimer = null;
       const startedAt = Date.now();
-      const finish = () => {
+      const finish = changed => {
         if (settled) return;
         settled = true;
         observer.disconnect();
-        clearTimeout(quietTimer);
-        resolve(navigationSnapshot() !== beforeSnapshot);
+        clearTimeout(checkTimer);
+        clearInterval(pollTimer);
+        resolve(Boolean(changed));
+      };
+      const check = () => {
+        if (navigationSnapshot() !== beforeSnapshot) finish(true);
+        else if (Date.now() - startedAt >= timeoutMs) finish(false);
       };
       const observer = new MutationObserver(() => {
-        clearTimeout(quietTimer);
-        quietTimer = window.setTimeout(finish, 160);
+        clearTimeout(checkTimer);
+        checkTimer = window.setTimeout(check, 80);
       });
-      if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-expanded", "aria-hidden", "hidden"] });
-      window.setTimeout(() => { if (Date.now() - startedAt >= 850) finish(); }, 900);
+      if (document.documentElement) observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["class", "aria-expanded", "aria-hidden", "aria-controls", "data-state", "hidden", "disabled"]
+      });
+      pollTimer = window.setInterval(check, 120);
+      checkTimer = window.setTimeout(check, timeoutMs);
     });
   }
 
@@ -1118,7 +1155,11 @@
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
     status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
-    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário clicou na etapa anterior. Analise novamente a tela ATUAL, incluindo todos os itens de navegação, menus e SUBMENUS visíveis. A lista de itens visíveis no contexto da tela é evidência prioritária: escolha um item que realmente esteja visível e corresponda à tarefa. Nunca repita o menu pai que já foi aberto se agora houver opções filhas visíveis. Diga uma única próxima ação, com o nome exato do item visível. Se o submenu Cadastros estiver aberto e o módulo solicitado (por exemplo Produtos ou Serviços) não aparecer entre as opções visíveis, ou se aparecer marcado como desabilitado/sem permissão, NÃO peça para clicar novamente em Cadastros: informe que esse recurso não está habilitado no perfil e oriente a chamar o suporte Future para habilitar. Se não conseguir confirmar a ausência/permissão, diga que não conseguiu localizar o módulo e peça um print, sem repetir a etapa anterior. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
+    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
+      ". Última ação confirmada pelo usuário: " + (navigationLastCompletedStep || "ainda não confirmada") +
+      ". Rota em que essa ação ocorreu: " + (navigationLastCompletedRoute || "não registrada") +
+      ". Rota atual: " + location.pathname +
+      ". Continue exatamente do ponto em que parou, sem reiniciar o roteiro. Consulte o Manual Future e siga a sequência da aula correspondente, usando o caminho e os nomes dos controles cadastrados como referência principal. Analise a tela ATUAL e todos os itens clicáveis visíveis em qualquer região do documento, inclusive submenus renderizados fora de nav/aside. Escolha UMA próxima ação e use o rótulo exato que realmente aparece na tela. Antes de orientar, confirme que o elemento existe e está visível. Não repita a última ação confirmada. Se a etapa seguinte for um campo, localize pelo label, aria-label, placeholder ou nome acessível e explique o que o usuário deve preencher sem ler valores existentes. Se a etapa for Salvar, primeiro verifique apenas indicadores de obrigatoriedade, sem transmitir ou concluir automaticamente. Se não localizar o alvo com segurança, não invente nem repita: peça um print. Se o recurso estiver comprovadamente desabilitado no perfil, explique isso. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
     const responseMessage = await ask(prompt, []);
     if (!guideState && navigationGuideActive) {
       const responseText = responseMessage?.textContent || "";
@@ -1161,6 +1202,9 @@
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
         if (current.validationField) return;
+      navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
+      navigationLastCompletedRoute = location.pathname;
+      persistNavigationTask();
       const beforeSnapshot = navigationSnapshot();
       const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
       const nextIndex = guideState.index + 1;
@@ -1260,6 +1304,8 @@
       return;
     }
     navigationTask = saved.task;
+    navigationLastCompletedStep = saved.lastCompletedStep || "";
+    navigationLastCompletedRoute = saved.lastCompletedRoute || "";
     navigationGuideActive = true;
     status.textContent = "Retomando a navegação assistida na nova tela...";
     continueNavigationGuide();
@@ -1792,7 +1838,12 @@
   async function ask(question, files = []) {
     if (requestInProgress) return;
     const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
-    if (question && !isNavigationContinuation) { navigationTask = question; persistNavigationTask(); }
+    if (question && !isNavigationContinuation) {
+      navigationTask = question;
+      navigationLastCompletedStep = "";
+      navigationLastCompletedRoute = "";
+      persistNavigationTask();
+    }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     const controller = new AbortController();
