@@ -53,3 +53,17 @@ test("cada consulta prioriza o Manual e bloqueia instruções de procedimento se
   assert.match(source, /REGRA OBRIGATÓRIA DE CONSULTA AO MANUAL FUTURE/);
   assert.match(source, /MANUAL FUTURE INDISPONÍVEL NESTA CONSULTA/);
 });
+
+test("fluxo da IA identifica finalização e não aceita conexão encerrada como resposta completa", () => {
+  assert.match(source, /let completed = false/);
+  assert.match(source, /event\.type === "finish"/);
+  assert.match(source, /payload === "\[DONE\]"/);
+  assert.match(source, /return \{ answer, completed \}/);
+});
+
+test("resposta interrompida tenta continuar automaticamente sem pedir nova pergunta", () => {
+  assert.match(source, /A resposta foi interrompida\. Estou recuperando a continuação automaticamente/);
+  assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA\]/);
+  assert.match(source, /Continue exatamente do ponto em que parou/);
+  assert.match(source, /Você não precisa repetir a pergunta/);
+});
