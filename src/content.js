@@ -15,10 +15,11 @@
     .launcher{position:fixed;z-index:2147483646;right:22px;bottom:22px;left:auto;top:auto;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:60px;height:60px;border:0;border-radius:50%;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:linear-gradient(145deg,#7838c8,#35105f);box-shadow:0 8px 28px #1d123b55;font:700 24px system-ui;transition:box-shadow .15s,transform .15s}.launcher:active{cursor:grabbing;transform:scale(.96)}.launcher.dragging{box-shadow:0 12px 34px #1d123b88,0 0 0 4px #b98aff55}
     .panel{position:fixed;z-index:2147483647;right:22px;bottom:94px;width:370px;height:min(590px,calc(100vh - 125px));display:none;flex-direction:column;background:#fff;color:#211b2b;border:1px solid #e6dff0;border-radius:18px;box-shadow:0 18px 60px #17102040;overflow:hidden;font:14px/1.45 system-ui,-apple-system,sans-serif}
     .panel.open{display:flex}.head{background:#35105f;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
-    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
+    .brand{font-weight:750;font-size:15px}.sub{font-size:11px;opacity:.8}.head-tools{display:flex;align-items:center;gap:7px}.manual-link,.sound-toggle,.review-button{border:1px solid #ffffff55;background:#ffffff16;color:#fff;border-radius:8px;padding:6px 9px;font:600 11px system-ui;cursor:pointer}.review-button{background:#a875e8;border-color:#d6b7ff;color:#241039;white-space:nowrap}.review-button:disabled{opacity:.7;cursor:wait}.sound-toggle{min-width:34px;padding:6px}.sound-toggle[aria-pressed="false"]{opacity:.55}.close{border:0;background:transparent;color:#fff;font-size:23px;cursor:pointer}
     .messages{flex:1;overflow:auto;padding:13px;background:#faf9fc}.msg{max-width:90%;padding:10px 12px;margin:0 0 10px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere}.bot{background:#fff;border:1px solid #ece7f2}.user{background:#eee4fa;margin-left:auto;color:#32104f}
     .status{font-size:11px;color:#786c83;padding:5px 13px}.composer{display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{resize:none;flex:1;min-width:90px;height:48px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px system-ui;outline-color:#7840bd}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{font-size:10px;color:#81768b;padding:0 12px 9px}
+    .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
     .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
     .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
@@ -40,7 +41,7 @@
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
-    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
+    <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><div class="head-tools"><button class="review-button" type="button">Revisar documento</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔</button><button class="manual-link" type="button">Manual</button><button class="close" aria-label="Fechar">×</button></div></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
     <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="send" type="submit">Enviar</button></form>
@@ -317,6 +318,153 @@
   }
   panel.querySelector(".close").addEventListener("click", () => panel.classList.remove("open"));
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
+
+  const reviewButton = panel.querySelector(".review-button");
+  let reviewActive = false;
+  let reviewWash = null;
+  let reviewFrames = [];
+  let reviewReposition = null;
+
+  function clearDocumentReview() {
+    reviewActive = false;
+    reviewWash?.remove();
+    reviewWash = null;
+    reviewFrames.forEach(item => item.frame.remove());
+    reviewFrames = [];
+    if (reviewReposition) {
+      document.removeEventListener("scroll", reviewReposition, true);
+      window.removeEventListener("resize", reviewReposition);
+    }
+    reviewReposition = null;
+    reviewButton.disabled = false;
+    reviewButton.textContent = "Revisar documento";
+  }
+
+  function isVisibleOnPage(el) {
+    if (!el || host.contains(el) || !el.isConnected) return false;
+    const rect = el.getBoundingClientRect();
+    const css = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && css.display !== "none" && css.visibility !== "hidden" && css.opacity !== "0";
+  }
+
+  function fieldForErrorNode(errorNode) {
+    if (!errorNode) return null;
+    const id = errorNode.id;
+    if (id) {
+      const described = [...document.querySelectorAll("[aria-describedby]")].filter(control =>
+        (control.getAttribute("aria-describedby") || "").split(/\s+/).includes(id) &&
+        control.matches("input,select,textarea,[role=combobox],[role=textbox]") && isVisibleOnPage(control)
+      );
+      if (described.length === 1) return described[0];
+    }
+    const wrapper = errorNode.closest(".form-group,.form-field,.field,.form-item,[data-field-wrapper],fieldset,[class*=field]");
+    if (wrapper) {
+      const controls = [...wrapper.querySelectorAll("input,select,textarea,[role=combobox],[role=textbox]")].filter(isVisibleOnPage);
+      if (controls.length === 1) return controls[0];
+    }
+    const previous = errorNode.previousElementSibling;
+    if (previous?.matches?.("input,select,textarea,[role=combobox],[role=textbox]") && isVisibleOnPage(previous)) return previous;
+    return null;
+  }
+
+  function collectDocumentIssues() {
+    const issues = [];
+    const seen = new Set();
+    const add = (element, message, source) => {
+      if (!element || !isVisibleOnPage(element)) return;
+      const names = getElementNames(element).filter(Boolean);
+      const title = names[0] || (element.matches?.("input,select,textarea") ? "Campo sem rótulo acessível" : "Mensagem de validação");
+      const key = title + "|" + normalize(message || source);
+      if (seen.has(key)) return;
+      seen.add(key);
+      issues.push({ element, title: title.slice(0, 100), message: redactSensitiveText(String(message || source || "Validação pendente").slice(0, 350)), source });
+    };
+    const invalidControls = [...document.querySelectorAll('input:invalid,select:invalid,textarea:invalid,[aria-invalid="true"]')].filter(isVisibleOnPage);
+    for (const control of invalidControls) {
+      const message = getVisibleErrorMessage(control) || control.getAttribute("aria-errormessage") || "O campo está marcado como inválido ou obrigatório.";
+      add(control, message, "campo inválido");
+    }
+    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"]')].filter(isVisibleOnPage);
+    for (const node of errorNodes) {
+      const message = getVisibleErrorMessage(node);
+      if (!isLikelyFiscalError(node, message)) continue;
+      const target = fieldForErrorNode(node);
+      add(target || node, message, target ? "erro associado ao campo" : "mensagem geral do emissor");
+    }
+    return issues.slice(0, 12);
+  }
+
+  function positionReviewFrames() {
+    reviewFrames.forEach(({ frame, element }) => {
+      if (!element.isConnected) { frame.remove(); return; }
+      const rect = element.getBoundingClientRect();
+      Object.assign(frame.style, {
+        left: Math.max(2, rect.left - 4) + "px", top: Math.max(2, rect.top - 4) + "px",
+        width: Math.max(14, rect.width + 8) + "px", height: Math.max(14, rect.height + 8) + "px"
+      });
+    });
+  }
+
+  async function reviewDocument() {
+    if (reviewActive || requestInProgress || autoDiagnosisInProgress) return;
+    reviewActive = true;
+    reviewButton.disabled = true;
+    reviewButton.textContent = "Revisando…";
+    panel.classList.add("open");
+    dismissErrorSpotlight();
+    reviewWash = document.createElement("div");
+    reviewWash.className = "review-wash";
+    shadow.appendChild(reviewWash);
+    const issues = collectDocumentIssues();
+    reviewFrames = issues.map(issue => {
+      const frame = document.createElement("div");
+      frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
+      const label = document.createElement("span");
+      label.className = "review-label";
+      label.textContent = issue.title;
+      frame.appendChild(label);
+      shadow.appendChild(frame);
+      return { frame, element: issue.element };
+    });
+    if (issues[0]) issues[0].element.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+    reviewReposition = positionReviewFrames;
+    document.addEventListener("scroll", reviewReposition, true);
+    window.addEventListener("resize", reviewReposition);
+    positionReviewFrames();
+    addMessage("🟣 Revisão iniciada. A tela está destacada em roxo enquanto verifico os campos e mensagens de validação visíveis.", "bot");
+    status.textContent = "IA revisando o documento…";
+    const issueSummary = issues.length
+      ? issues.map((issue, index) => (index + 1) + ". " + issue.title + ": " + issue.message + " (" + issue.source + ")").join("\n")
+      : "Nenhum campo inválido ou alerta de erro visível foi identificado pelo navegador nesta tela.";
+    const question = [
+      "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
+      "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
+      "",
+      "Use o Manual Future e os metadados da tela para explicar o que precisa ser conferido. Separe erros confirmados pelo navegador de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores.",
+      "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
+      "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
+    ].join("\n");
+    try {
+      await ask(question, []);
+      status.textContent = "Revisão concluída. Confira as orientações no chat; os destaques serão removidos ao finalizar.";
+      addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
+    } catch (error) {
+      status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
+    } finally {
+      reviewButton.disabled = false;
+      reviewButton.textContent = "Finalizar revisão";
+    }
+  }
+
+  reviewButton.addEventListener("click", () => {
+    if (reviewActive) {
+      clearDocumentReview();
+      status.textContent = "Revisão encerrada. A tela voltou ao normal.";
+      return;
+    }
+    reviewDocument();
+  });
+
   const soundToggle = panel.querySelector(".sound-toggle");
   function renderSoundToggle() {
     soundToggle.textContent = soundEnabled ? "🔔" : "🔕";
@@ -825,7 +973,9 @@
       panel.classList.add("open");
       addMessage("⚠️ Detectei uma mensagem de possível erro na tela:\n" + message + "\n\nVou ajudar a interpretar. Confira o campo destacado e, se necessário, envie sua dúvida no chat.", "bot");
       status.textContent = "Erro detectado. Preparando análise automática com o Manual...";
-      const rect = el.getBoundingClientRect();
+      const fieldTarget = fieldForErrorNode(el) || el;
+      fieldTarget.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+      const rect = fieldTarget.getBoundingClientRect();
       dismissErrorSpotlight();
       const frame = document.createElement("div");
       frame.className = "spotlight";
