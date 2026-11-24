@@ -62,6 +62,7 @@
   const status = panel.querySelector(".status");
   const conversationMessages = [];
   let guideState = null;
+  const GUIDE_SESSION_KEY = "futureAssistenteGuideSession";
   const SOUND_KEY = "futureAssistenteErrorSound";
   let soundEnabled = true;
   let audioContext = null;
@@ -417,8 +418,38 @@
     return steps;
   }
 
-  function closeGuide() {
+  function persistGuideProgress(index = guideState?.index || 0) {
     if (!guideState) return;
+    try {
+      sessionStorage.setItem(GUIDE_SESSION_KEY, JSON.stringify({
+        titles: guideState.steps.map(step => step.title).slice(0, 12),
+        index: Math.max(0, Math.min(index, guideState.steps.length - 1)),
+        savedAt: Date.now()
+      }));
+    } catch {}
+  }
+
+  function clearGuideProgress() {
+    try { sessionStorage.removeItem(GUIDE_SESSION_KEY); } catch {}
+  }
+
+  function closeGuide() {
+    if (!guideState) {
+      clearGuideProgress();
+      return;
+    }
+    document.removeEventListener("scroll", guideState.reposition, true);
+    document.removeEventListener("click", guideState.onTargetClick, true);
+    window.removeEventListener("resize", guideState.reposition);
+    guideState.frame.remove();
+    guideState.card.remove();
+    guideState = null;
+    clearGuideProgress();
+  }
+
+  function suspendGuideForNavigation() {
+    if (!guideState) return;
+    persistGuideProgress();
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
@@ -435,6 +466,7 @@
       return;
     }
     guideState.index = index;
+    persistGuideProgress(index);
     step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     const rect = step.element.getBoundingClientRect();
     const pad = 5;
@@ -456,7 +488,7 @@
     guideState.card.style.left = left + "px";
   }
 
-  function startVisualGuide(steps) {
+  function startVisualGuide(steps, initialIndex = 0) {
     closeGuide();
     if (!steps.length) return;
     const frame = document.createElement("div");
@@ -474,10 +506,12 @@
       if (!current?.element) return;
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
+      const nextIndex = guideState.index + 1;
+      persistGuideProgress(nextIndex);
       window.setTimeout(() => {
         if (!guideState) return;
-        if (guideState.index >= guideState.steps.length - 1) closeGuide();
-        else showGuideStep(guideState.index + 1);
+        if (nextIndex >= guideState.steps.length) closeGuide();
+        else showGuideStep(nextIndex);
       }, 280);
     };
     guideState = { steps, index: 0, frame, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
@@ -490,8 +524,73 @@
     document.addEventListener("scroll", guideState.reposition, true);
     document.addEventListener("click", onTargetClick, true);
     window.addEventListener("resize", guideState.reposition);
-    showGuideStep(0);
+    showGuideStep(Math.max(0, Math.min(initialIndex, steps.length - 1)));
   }
+
+  let guideRestoreAttempts = 0;
+  let guideRestoreTimer = null;
+  function restoreVisualGuide() {
+    if (guideState) return;
+    let saved;
+    try { saved = JSON.parse(sessionStorage.getItem(GUIDE_SESSION_KEY) || "null"); } catch {}
+    if (!saved || !Array.isArray(saved.titles) || !saved.titles.length) return;
+    if (!Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 20 * 60 * 1000) {
+      clearGuideProgress();
+      return;
+    }
+    const matches = saved.titles.map((title, originalIndex) => ({
+      originalIndex,
+      element: findElementByName(title),
+      title,
+      description: "A orientação foi retomada nesta tela. Confira este elemento antes de prosseguir."
+    })).filter(step => step.element);
+    if (!matches.length) {
+      if (guideRestoreAttempts++ < 24) {
+        clearTimeout(guideRestoreTimer);
+        guideRestoreTimer = window.setTimeout(restoreVisualGuide, 500);
+      } else {
+        clearGuideProgress();
+        guideRestoreAttempts = 0;
+      }
+      return;
+    }
+    const wantedIndex = Number.isInteger(saved.index) ? saved.index : 0;
+    let visibleIndex = matches.findIndex(step => step.originalIndex >= wantedIndex);
+    if (visibleIndex < 0) visibleIndex = 0;
+    const steps = matches.map(({ element, title, description }) => ({ element, title, description }));
+    guideRestoreAttempts = 0;
+    startVisualGuide(steps, visibleIndex);
+    status.textContent = "Orientação visual retomada. Confira o destaque e continue no seu ritmo.";
+  }
+
+  function scheduleGuideRestore() {
+    window.setTimeout(restoreVisualGuide, 650);
+  }
+
+  window.addEventListener("pageshow", scheduleGuideRestore);
+  window.addEventListener("popstate", () => {
+    suspendGuideForNavigation();
+    scheduleGuideRestore();
+  });
+  window.addEventListener("hashchange", () => {
+    suspendGuideForNavigation();
+    scheduleGuideRestore();
+  });
+
+  for (const method of ["pushState", "replaceState"]) {
+    const original = history[method];
+    history[method] = function (...args) {
+      const previousPath = location.pathname;
+      const result = original.apply(this, args);
+      if (location.pathname !== previousPath) {
+        suspendGuideForNavigation();
+        scheduleGuideRestore();
+      }
+      return result;
+    };
+  }
+
+  scheduleGuideRestore();
 
   function playErrorBeeps() {
     if (!soundEnabled) return;
