@@ -68,6 +68,9 @@
   let audioContext = null;
   let lastErrorFingerprint = "";
   let lastErrorAt = 0;
+  let lastAutoDiagnosisFingerprint = "";
+  let lastAutoDiagnosisAt = 0;
+  let autoDiagnosisInProgress = false;
 
   function renderPendingAttachments() {
     pendingFilesEl.replaceChildren();
@@ -660,7 +663,7 @@
       playErrorBeeps();
       panel.classList.add("open");
       addMessage("⚠️ Detectei uma mensagem de possível erro na tela:\n" + message + "\n\nVou ajudar a interpretar. Confira o campo destacado e, se necessário, envie sua dúvida no chat.", "bot");
-      status.textContent = "Possível erro detectado. Confira a mensagem e a orientação.";
+      status.textContent = "Erro detectado. Preparando análise automática com o Manual...";
       const rect = el.getBoundingClientRect();
       dismissErrorSpotlight();
       const frame = document.createElement("div");
@@ -674,6 +677,31 @@
       shadow.appendChild(frame);
       activeErrorSpotlight = frame;
       activeErrorSpotlightTimer = window.setTimeout(dismissErrorSpotlight, 6500);
+
+      // A análise automática usa somente o texto visível do alerta e o contexto
+      // seguro da tela (sem valores digitados nos campos).
+      const canAnalyze = !send.disabled && !autoDiagnosisInProgress &&
+        (fingerprint !== lastAutoDiagnosisFingerprint || Date.now() - lastAutoDiagnosisAt > 60000);
+      if (canAnalyze) {
+        lastAutoDiagnosisFingerprint = fingerprint;
+        lastAutoDiagnosisAt = Date.now();
+        autoDiagnosisInProgress = true;
+        addMessage("Estou analisando esse erro com o Manual e a tela atual. Aguarde...", "bot");
+        const diagnosticQuestion = [
+          "A extensão detectou automaticamente esta mensagem de possível erro no Emissor Fiscal:",
+          message,
+          "",
+          "Explique o que a mensagem provavelmente significa, indique a causa somente se houver base no Manual ou no contexto disponível e oriente passo a passo onde o usuário deve conferir.",
+          "Se faltarem informações, diga exatamente o que precisa ser verificado e peça ao usuário. Não invente regra fiscal, código, alíquota ou enquadramento.",
+          "Não preencha campos, não clique em botões e não execute emissão, transmissão, autorização ou encerramento.",
+          "Considere apenas a mensagem acima, a rota e os metadados seguros da tela; não solicite nem exponha senhas, PINs, certificados ou dados pessoais."
+        ].join("\\n");
+        ask(diagnosticQuestion, []).finally(() => {
+          autoDiagnosisInProgress = false;
+        });
+      } else if (send.disabled) {
+        status.textContent = "Erro detectado. Termine a mensagem atual para liberar a análise automática.";
+      }
       break;
     }
   }
