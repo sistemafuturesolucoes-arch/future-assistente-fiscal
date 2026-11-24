@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Future Assistente Fiscal",
   "description": "Assistente inteligente do Emissor Fiscal Online, integrado ao Manual Future.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minimum_chrome_version": "111",
   "permissions": [
     "storage"
@@ -26,5 +26,8 @@
   ],
   "action": {
     "default_title": "Future Assistente Fiscal"
+  },
+  "background": {
+    "service_worker": "src/background.js"
   }
 }
