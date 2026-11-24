@@ -29,13 +29,13 @@
   launcher.className = "launcher";
   launcher.type = "button";
   launcher.title = "Abrir Assistente Future";
-  launcher.textContent = "F";
+  launcher.textContent = "🤖";
   const panel = document.createElement("section");
   panel.className = "panel";
   panel.innerHTML = `
     <header class="head"><div><div class="brand">Future Assistente Fiscal</div><div class="sub">Ajuda dentro do Emissor</div></div><button class="close" aria-label="Fechar">×</button></header>
     <nav class="actions">
-      <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos.">Entender esta tela</button>
+      <button class="chip" data-prompt="Quero revisar minha nota antes de emitir. Oriente a conferência sem alterar nem emitir o documento.">Revisar minha nota</button>\n      <button class="chip" data-prompt="Me ajude a entender esta tela e os próximos passos.">Conversar com a IA</button>
       <button class="chip" data-prompt="Quero identificar e resolver um erro nesta tela.">Identificar erro</button>
       <button class="chip" data-prompt="Abra o manual relacionado a esta etapa.">Abrir manual</button>
     </nav>
@@ -139,7 +139,7 @@
     try {
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
         body: JSON.stringify({ messages: [userMessage], tela: location.pathname.slice(0, 80), knowledge })
       });
       const answer = await readStream(response, target);
