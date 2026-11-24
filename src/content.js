@@ -552,7 +552,11 @@
     }
   }
 
-  const errorObserver = new MutationObserver(() => detectVisibleErrors());
+  let errorScanTimer = null;
+  const errorObserver = new MutationObserver(() => {
+    clearTimeout(errorScanTimer);
+    errorScanTimer = window.setTimeout(detectVisibleErrors, 180);
+  });
   errorObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "role", "aria-live", "data-state"] });
   window.setTimeout(detectVisibleErrors, 1200);
 
@@ -599,7 +603,7 @@
     return answer;
   }
 
-  async function ask(question) {
+  async function ask(question, files = []) {
     const context = safeScreenContext();
     let knowledge = "";
     try {
@@ -608,8 +612,6 @@
     } catch (error) {
       console.warn("Não foi possível carregar o Manual Academy", error);
     }
-    const files = pendingAttachments.splice(0, pendingAttachments.length);
-    renderPendingAttachments();
     const attachmentContext = files.some(file => file.mediaType.startsWith("audio/"))
       ? "\n\nO usuário anexou um áudio. Transcreva o que foi dito em português, identifique a dúvida e responda com base no Manual e na tela atual. Se algo estiver inaudível, informe isso sem adivinhar."
       : files.some(file => file.mediaType.startsWith("image/"))
@@ -652,8 +654,10 @@
     const question = input.value.trim();
     if ((!question && pendingAttachments.length === 0) || send.disabled) return;
     const visibleQuestion = question || (pendingAttachments.length ? "📎 Anexo enviado para análise." : "");
+    const files = pendingAttachments.splice(0, pendingAttachments.length);
+    renderPendingAttachments();
     input.value = "";
     addMessage(visibleQuestion, "user");
-    ask(question);
+    ask(question, files);
   });
 })();
