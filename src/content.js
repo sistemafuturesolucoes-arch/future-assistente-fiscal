@@ -619,6 +619,29 @@
     } catch {}
   }
 
+  let activeErrorSpotlight = null;
+  let activeErrorSpotlightTimer = null;
+
+  function dismissErrorSpotlight() {
+    if (activeErrorSpotlightTimer) clearTimeout(activeErrorSpotlightTimer);
+    activeErrorSpotlightTimer = null;
+    activeErrorSpotlight?.remove();
+    activeErrorSpotlight = null;
+  }
+
+  // A orientação visual é temporária: ao começar a editar qualquer campo,
+  // removemos somente o destaque criado pela extensão, nunca o campo do Emissor.
+  document.addEventListener("click", event => {
+    if (!activeErrorSpotlight || host.contains(event.target)) return;
+    const path = event.composedPath?.() || [];
+    const clickedField = path.some(node =>
+      node instanceof Element &&
+      (node.matches("input,select,textarea,[role=combobox],[contenteditable=true]") ||
+       node.closest?.("input,select,textarea,[role=combobox],[contenteditable=true]"))
+    );
+    if (clickedField) dismissErrorSpotlight();
+  }, true);
+
   function detectVisibleErrors() {
     const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error';
     const candidates = [...document.querySelectorAll(selectors)].filter(el => {
@@ -639,6 +662,7 @@
       addMessage("⚠️ Detectei uma mensagem de possível erro na tela:\n" + message + "\n\nVou ajudar a interpretar. Confira o campo destacado e, se necessário, envie sua dúvida no chat.", "bot");
       status.textContent = "Possível erro detectado. Confira a mensagem e a orientação.";
       const rect = el.getBoundingClientRect();
+      dismissErrorSpotlight();
       const frame = document.createElement("div");
       frame.className = "spotlight";
       Object.assign(frame.style, {
@@ -648,7 +672,8 @@
         height: Math.max(12, rect.height + 10) + "px"
       });
       shadow.appendChild(frame);
-      window.setTimeout(() => frame.remove(), 6500);
+      activeErrorSpotlight = frame;
+      activeErrorSpotlightTimer = window.setTimeout(dismissErrorSpotlight, 6500);
       break;
     }
   }
