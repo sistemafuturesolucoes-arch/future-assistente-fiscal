@@ -820,8 +820,8 @@
       guideState.pendingIndex = nextIndex;
       persistGuideProgress(nextIndex);
       window.setTimeout(() => {
-        if (!guideState) return;
-        if (nextIndex >= guideState.steps.length) continueNavigationGuide();
+        if (!navigationGuideActive) return;
+        if (!guideState || nextIndex >= guideState.steps.length) continueNavigationGuide();
         else showGuideStep(nextIndex);
       }, 850);
     };
@@ -832,7 +832,7 @@
       if (guideState.index >= guideState.steps.length - 1) continueNavigationGuide();
       else showGuideStep(guideState.index + 1);
     });
-    card.querySelector(".guide-end").addEventListener("click", closeGuide);
+    card.querySelector(".guide-end").addEventListener("click", () => { navigationGuideActive = false; closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
     document.addEventListener("click", onTargetClick, true);
     window.addEventListener("resize", guideState.reposition);
