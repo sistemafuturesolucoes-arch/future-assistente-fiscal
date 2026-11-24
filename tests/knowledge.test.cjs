@@ -95,3 +95,34 @@ test("prioriza a aula cujo título corresponde à intenção de navegação do u
   });
   assert.ok(text.indexOf("Cadastrar cliente") < text.indexOf("Cadastrar produto"));
 });
+
+test("pergunta sobre regra fiscal prioriza as aulas de grupo tributário e tributação", async () => {
+  const storageData = {};
+  const storage = {
+    async get(key) { return { [key]: storageData[key] }; },
+    async set(value) { Object.assign(storageData, value); }
+  };
+  const modules = [{ id: "cad", title: "Cadastros", position: 1 }];
+  const lessons = [
+    { id: "clientes", module_id: "cad", title: "Cadastrar cliente", summary: "Dados cadastrais", path: "Cadastros > Clientes", content: "Cadastro de cliente", position: 1 },
+    { id: "grupos", module_id: "cad", title: "Gerenciamento e Edição de Grupos Tributários", summary: "Configurar grupos tributários", path: "Cadastros > Grupo Tributário", content: "Gerenciar regras e grupos tributários", position: 2 },
+    { id: "tributacao", module_id: "cad", title: "Cadastrar produto: Tributação", summary: "Configurar tributação", path: "Cadastros > Produtos > Tributação", content: "Definir tributação fiscal do produto", position: 3 }
+  ];
+  const context = {
+    window: { chrome: { storage: { local: storage } } },
+    chrome: { storage: { local: storage } },
+    location: { pathname: "/app/dashboard" },
+    Date, Map, Set, Promise, String, Array, Object, Math,
+    fetch: async url => ({
+      ok: true,
+      async json() { return String(url).includes("course_modules") ? modules : lessons; }
+    }),
+    console
+  };
+  vm.runInNewContext(source, context, { filename: "knowledge.js" });
+  const text = await context.window.FutureManualKnowledge.load({
+    route: "/app/dashboard", question: "como criar uma regra fiscal"
+  });
+  assert.ok(text.indexOf("Gerenciamento e Edição de Grupos Tributários") < text.indexOf("Cadastrar cliente"));
+  assert.ok(text.indexOf("Cadastrar produto: Tributação") < text.indexOf("Cadastrar cliente"));
+});
