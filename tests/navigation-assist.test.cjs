@@ -67,3 +67,23 @@ test("resposta interrompida tenta continuar automaticamente sem pedir nova pergu
   assert.match(source, /Continue exatamente do ponto em que parou/);
   assert.match(source, /Você não precisa repetir a pergunta/);
 });
+
+test("orientação visual usa marcador de pergunta e não sobrepõe o elemento com balão aberto", () => {
+  assert.match(source, /className = "guide-question"/);
+  assert.match(source, /guideState\.card\.hidden = true/);
+  assert.match(source, /guideState\.marker\.style\.left/);
+  assert.doesNotMatch(source, /guide-prev|guide-next|Anterior|Concluir/);
+  assert.match(source, /guide-end/);
+});
+
+test("painel do assistente pode ser arrastado pelo cabeçalho sem capturar botões", () => {
+  assert.match(source, /const panelHeader = panel\.querySelector\("\.head"\)/);
+  assert.match(source, /panelHeader\.addEventListener\("pointerdown"/);
+  assert.match(source, /event\.target\.closest\("button, a, input, textarea, select"\)/);
+  assert.match(source, /panelHeader\.addEventListener\("pointermove"/);
+});
+
+test("stream não considera finish-step como resposta completa e possui limite contra travamento", () => {
+  assert.doesNotMatch(source, /event\.type === "finish" \|\| event\.type === "finish-step"/);
+  assert.match(source, /45000/);
+});
