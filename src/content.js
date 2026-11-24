@@ -820,8 +820,8 @@
         const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : ""].filter(Boolean).join(", ");
         return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags].filter(Boolean).join(" — ");
       });
-    const buttons = [...document.querySelectorAll("button,[role=button],input[type=button],input[type=submit]")]
-      .filter(isVisible).slice(0, 60).map(el => (el.innerText || el.getAttribute("aria-label") || el.getAttribute("title") || "").trim()).filter(Boolean);
+    const buttons = [...document.querySelectorAll("button,a,[role=button],[role=menuitem],[role=tab],[data-menu-item],summary,input[type=button],input[type=submit]")]
+      .filter(isVisible).slice(0, 120).map(el => (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
     const navigationRoots = [...document.querySelectorAll("nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]")].filter(isVisible);
     const navigationSelector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
     const rootItems = navigationRoots.flatMap(root => [...root.querySelectorAll(navigationSelector)]);
@@ -883,6 +883,11 @@
     add(el.getAttribute("aria-label"));
     add(el.getAttribute("data-label"));
     add(el.getAttribute("data-field"));
+    add(el.getAttribute("data-testid"));
+    add(el.getAttribute("data-cy"));
+    add(el.getAttribute("data-tooltip"));
+    add(el.getAttribute("data-tooltip-content"));
+    add(el.getAttribute("aria-description"));
     add(el.getAttribute("placeholder"));
     add(el.getAttribute("title"));
     const wrappingLabel = el.closest("label");
@@ -1072,45 +1077,69 @@
 
   let navigationTask = "";
   let navigationGuideActive = false;
+  let navigationLastCompletedStep = "";
+  let navigationLastCompletedRoute = "";
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
   function persistNavigationTask() {
     if (!navigationTask || !navigationGuideActive) return;
-    try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({ task: navigationTask, savedAt: Date.now() })); } catch {}
+    try {
+      sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({
+        task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
+        lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
+        savedAt: Date.now()
+      }));
+    } catch {}
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
   function navigationSnapshot() {
-    const rootSelector = "nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]";
-    const roots = [...document.querySelectorAll(rootSelector)];
-    const selector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
-    const items = roots.length ? roots.flatMap(root => [...root.querySelectorAll(selector)]) : [...document.querySelectorAll("nav a,nav button,aside a,aside button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded]")];
-    return [...new Set(items)].filter(el => {
+    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary,[aria-controls]";
+    const items = [...document.querySelectorAll(selector)].filter(el => {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
       const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    }).slice(0, 220).map(el => [normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title), el.getAttribute("aria-expanded") || "", el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")].join(":")).join("|");
+      const style = getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    });
+    const fingerprint = items.slice(0, 320).map(el => [
+      normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
+      el.getAttribute("aria-expanded") || "",
+      el.getAttribute("aria-controls") || "",
+      el.getAttribute("data-state") || "",
+      el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
+    ].join(":")).join("|");
+    return [location.pathname, location.hash, fingerprint].join("::");
   }
 
-  async function waitForNavigationUpdate(beforeSnapshot) {
+  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 6000) {
     return new Promise(resolve => {
       let settled = false;
-      let quietTimer = null;
+      let checkTimer = null;
+      let pollTimer = null;
       const startedAt = Date.now();
-      const finish = () => {
+      const finish = changed => {
         if (settled) return;
         settled = true;
         observer.disconnect();
-        clearTimeout(quietTimer);
-        resolve(navigationSnapshot() !== beforeSnapshot);
+        clearTimeout(checkTimer);
+        clearInterval(pollTimer);
+        resolve(Boolean(changed));
+      };
+      const check = () => {
+        if (navigationSnapshot() !== beforeSnapshot) finish(true);
+        else if (Date.now() - startedAt >= timeoutMs) finish(false);
       };
       const observer = new MutationObserver(() => {
-        clearTimeout(quietTimer);
-        quietTimer = window.setTimeout(finish, 160);
+        clearTimeout(checkTimer);
+        checkTimer = window.setTimeout(check, 180);
       });
-      if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-expanded", "aria-hidden", "hidden"] });
-      window.setTimeout(() => { if (Date.now() - startedAt >= 850) finish(); }, 900);
+      if (document.documentElement) observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["class", "aria-expanded", "aria-hidden", "aria-controls", "data-state", "hidden", "disabled"]
+      });
+      pollTimer = window.setInterval(check, 250);
+      checkTimer = window.setTimeout(check, timeoutMs);
     });
   }
 
@@ -1118,7 +1147,11 @@
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
     status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
-    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Continue a tarefa do usuário: " + navigationTask + ". O usuário clicou na etapa anterior. Analise novamente a tela ATUAL, incluindo todos os itens de navegação, menus e SUBMENUS visíveis. A lista de itens visíveis no contexto da tela é evidência prioritária: escolha um item que realmente esteja visível e corresponda à tarefa. Nunca repita o menu pai que já foi aberto se agora houver opções filhas visíveis. Diga uma única próxima ação, com o nome exato do item visível. Se o submenu Cadastros estiver aberto e o módulo solicitado (por exemplo Produtos ou Serviços) não aparecer entre as opções visíveis, ou se aparecer marcado como desabilitado/sem permissão, NÃO peça para clicar novamente em Cadastros: informe que esse recurso não está habilitado no perfil e oriente a chamar o suporte Future para habilitar. Se não conseguir confirmar a ausência/permissão, diga que não conseguiu localizar o módulo e peça um print, sem repetir a etapa anterior. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
+    const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
+      ". Última ação confirmada pelo usuário: " + (navigationLastCompletedStep || "ainda não confirmada") +
+      ". Rota em que essa ação ocorreu: " + (navigationLastCompletedRoute || "não registrada") +
+      ". Rota atual: " + location.pathname +
+      ". Continue exatamente do ponto em que parou, sem reiniciar o roteiro. Consulte o Manual Future e siga a sequência da aula correspondente, usando o caminho e os nomes dos controles cadastrados como referência principal. Analise a tela ATUAL e todos os itens clicáveis visíveis em qualquer região do documento, inclusive submenus renderizados fora de nav/aside. Escolha UMA próxima ação e use o rótulo exato que realmente aparece na tela. Antes de orientar, confirme que o elemento existe e está visível. Não repita a última ação confirmada. Se a etapa seguinte for um campo, localize pelo label, aria-label, placeholder ou nome acessível e explique o que o usuário deve preencher sem ler valores existentes. Se a etapa for Salvar, primeiro verifique apenas indicadores de obrigatoriedade, sem transmitir ou concluir automaticamente. Se não localizar o alvo com segurança, não invente nem repita: peça um print. Se o recurso estiver comprovadamente desabilitado no perfil, explique isso. Se a tarefa estiver concluída, diga claramente que terminou. Não execute cliques nem alterações.";
     const responseMessage = await ask(prompt, []);
     if (!guideState && navigationGuideActive) {
       const responseText = responseMessage?.textContent || "";
@@ -1161,6 +1194,9 @@
       const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
       if (!clicked) return;
         if (current.validationField) return;
+      navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
+      navigationLastCompletedRoute = location.pathname;
+      persistNavigationTask();
       const beforeSnapshot = navigationSnapshot();
       const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
       const nextIndex = guideState.index + 1;
@@ -1260,6 +1296,8 @@
       return;
     }
     navigationTask = saved.task;
+    navigationLastCompletedStep = saved.lastCompletedStep || "";
+    navigationLastCompletedRoute = saved.lastCompletedRoute || "";
     navigationGuideActive = true;
     status.textContent = "Retomando a navegação assistida na nova tela...";
     continueNavigationGuide();
@@ -1792,7 +1830,12 @@
   async function ask(question, files = []) {
     if (requestInProgress) return;
     const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
-    if (question && !isNavigationContinuation) { navigationTask = question; persistNavigationTask(); }
+    if (question && !isNavigationContinuation) {
+      navigationTask = question;
+      navigationLastCompletedStep = "";
+      navigationLastCompletedRoute = "";
+      persistNavigationTask();
+    }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     const controller = new AbortController();
