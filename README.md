@@ -23,7 +23,7 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 - Supabase Academy: `itbppoailqkuxajesgys`
 - Edge Function: `ai-assistant`
 
-A função compartilhada registra interações e conhecimento conforme a implementação existente no Academy. O assistente aproveita o conhecimento aprovado e as aulas fornecidas pelo Manual; novos aprendizados não devem ser tratados automaticamente como orientação fiscal oficial.
+A função compartilhada registra interações e conhecimento conforme a implementação existente no Academy. Atenção: no estado atual, a coluna `assistant_knowledge.status` tem padrão `approved`, e a função insere respostas sem definir outro status. Portanto, novas respostas podem entrar automaticamente no conjunto reutilizado. Isso precisa ser alterado para uma fila de revisão antes da distribuição a clientes.
 
 ## Limites desta versão
 - Ainda não captura imagens da tela nem executa cliques ou preenchimento.
