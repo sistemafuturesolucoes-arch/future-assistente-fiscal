@@ -21,7 +21,7 @@ test("respostas da IA renderizam links Markdown sem inserir HTML arbitrário", (
   assert.match(source, /function renderSafeMarkdown/);
   assert.match(source, /document\.createElement\("a"\)/);
   assert.match(source, /anchor\.rel = "noopener noreferrer"/);
-  assert.match(source, /target\.appendChild\(document\.createTextNode/);
+  assert.match(source, /parent\.appendChild\(document\.createTextNode/);
 });
 
 test("respostas de recurso não habilitado não reiniciam o guia no menu pai", () => {
