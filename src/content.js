@@ -700,7 +700,7 @@
     if (clickedField) dismissErrorSpotlight();
   }, true);
 
-  const ERROR_TEXT_PATTERN = /\b(erro|error|falha|failed|inv[aá]lid[oa]|invalid|obrigat[oó]ri[oa]|required|n[aã]o foi poss[ií]vel|n[aã]o permitido|rejeitad[oa]|rejei[cç][aã]o|inconsist[eê]ncia|n[aã]o encontrado|n[aã]o localizado|preencha|informe|selecione|corrija|aten[cç][aã]o)\b/i;
+  const ERROR_TEXT_PATTERN = /\b(erro|error|falha|failed|inv[aá]lid[oa]|invalid|obrigat[oó]ri[oa]|required|n[aã]o foi poss[ií]vel|n[aã]o permitido|n[aã]o pode|n[aã]o corresponde|n[aã]o autorizado|n[aã]o informado|rejeitad[oa]|rejei[cç][aã]o|inconsist[eê]ncia|incompat[ií]vel|duplicad[oa]|j[aá] cadastrad[oa]|fora do padr[aã]o|excede|limite|ausente|n[aã]o encontrado|n[aã]o localizado|preencha|informe|selecione|corrija|aten[cç][aã]o)\b/i;
   const NON_ERROR_TEXT_PATTERN = /\b(sucesso|conclu[ií]d[oa]|salvo com sucesso|opera[cç][aã]o realizada|processado com sucesso)\b/i;
   const recentErrorFingerprints = new Map();
   let requestInProgress = false;
@@ -749,6 +749,27 @@
     });
   }
 
+  function getVisibleErrorMessage(el) {
+    const pieces = [el.innerText || el.textContent || ""];
+    const describedBy = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+    for (const id of describedBy) {
+      const description = document.getElementById(id);
+      if (!description) continue;
+      const style = getComputedStyle(description);
+      const rect = description.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden") {
+        pieces.push(description.innerText || description.textContent || "");
+      }
+    }
+    const group = el.closest(".form-group,.form-field,.field,.form-item");
+    if (group) {
+      group.querySelectorAll(".invalid-feedback,[role=alert],[data-state=error]").forEach(messageEl => {
+        if (messageEl !== el) pieces.push(messageEl.innerText || messageEl.textContent || "");
+      });
+    }
+    return [...new Set(pieces.map(value => String(value || "").trim()).filter(Boolean))].join(" ").replace(/\s+/g, " ").slice(0, 500);
+  }
+
   function detectVisibleErrors() {
     const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error,[aria-invalid="true"]';
     const candidates = [...document.querySelectorAll(selectors)].filter(el => {
@@ -758,7 +779,7 @@
       return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" && s.opacity !== "0";
     });
     for (const el of candidates) {
-      const rawMessage = (el.innerText || el.textContent || "").trim().replace(/\s+/g, " ");
+      const rawMessage = getVisibleErrorMessage(el);
       if (!isLikelyFiscalError(el, rawMessage)) continue;
       const message = redactSensitiveText(rawMessage);
       const fingerprint = normalize(message);
