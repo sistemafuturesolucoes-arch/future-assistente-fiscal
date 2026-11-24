@@ -26,9 +26,15 @@
     if (/nfse|nota.?de.?servico|servico/.test(r) && /nfse|nota.?fiscal.?de.?servico/.test(haystack)) score += 100;
     if (/notas\/servico|notas\/servico\/emitir/.test(r) && /nfse|servico/.test(haystack)) score += 80;
     if (q) {
-      for (const term of q.split(/[^a-z0-9]+/).filter(t => t.length > 3)) {
-        if (haystack.includes(term)) score += 2;
-      }
+      const title = normalize(lesson.title);
+      const summary = normalize(lesson.summary);
+      const queryTerms = q.split(/[^a-z0-9]+/).filter(t => t.length > 2);
+      if (title && q.includes(title)) score += 120;
+      if (title && title.includes(q)) score += 90;
+      if (queryTerms.length >= 2 && queryTerms.every(term => title.includes(term))) score += 55;
+      if (queryTerms.length >= 2 && queryTerms.every(term => haystack.includes(term))) score += 25;
+      if (summary && queryTerms.length >= 2 && queryTerms.every(term => summary.includes(term))) score += 12;
+      for (const term of queryTerms) if (haystack.includes(term)) score += term.length > 3 ? 3 : 1;
     }
     return score;
   }
