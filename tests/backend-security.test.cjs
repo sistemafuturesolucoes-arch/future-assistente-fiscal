@@ -17,8 +17,8 @@ test("IA e voz usam somente o IP de origem do Cloudflare para rate limit", () =>
 
 test("IA falha de forma segura sem IP e limita o tamanho do corpo", () => {
   assert.match(ai, /if \(!clientIp\) return json\(503/);
-  assert.match(ai, /const maxBodyBytes = 15 \* 1024 \* 1024/);
-  assert.match(ai, /return json\(413/);
+  assert.match(ai, /const maxBodyBytes = 18 \* 1024 \* 1024/);
+  assert.match(ai, /return json\(413/);\n  assert.match(voice, /const maxBodyBytes = 64 \* 1024/);
   assert.match(ai, /Não consegui verificar a proteção de uso da IA/);
 });
 
