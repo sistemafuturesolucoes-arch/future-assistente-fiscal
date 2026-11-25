@@ -21,7 +21,7 @@
     .status{flex:0 0 auto;min-width:0;overflow-wrap:anywhere;font-size:11px;color:#786c83;padding:5px 13px}.composer{flex:0 0 auto;display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{display:block;position:relative;z-index:1;pointer-events:auto;user-select:text;-webkit-user-select:text;touch-action:manipulation;box-sizing:border-box;resize:vertical;flex:1 1 150px;min-width:110px;min-height:48px;height:48px;max-height:120px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px/1.35 system-ui;outline-color:#7840bd;background:#fff;color:#211b2b;opacity:1}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.stop{width:42px;height:48px;border:1px solid #e4c7d0;border-radius:11px;background:#fff5f6;color:#b4234c;font-size:17px;font-weight:800;cursor:pointer}.stop:disabled{opacity:.35;cursor:default}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{flex:0 0 auto;font-size:10px;color:#81768b;padding:0 12px 9px}
     .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
-    .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
+    .spotlight{position:fixed;z-index:2147483645;border:2px solid #ffbf36;border-radius:7px;background:rgba(255,191,54,.035);box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 9px rgba(255,140,0,.45);pointer-events:none;transition:none;contain:layout paint}
     .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
     .guide-card .guide-title{font-size:15px;font-weight:800;margin:4px 0 6px}
@@ -1165,6 +1165,15 @@
     if (!guideState.card.hidden) positionGuideCard();
   }
 
+  let guidePositionFrame = 0;
+  function scheduleGuidePosition() {
+    if (guidePositionFrame) return;
+    guidePositionFrame = requestAnimationFrame(() => {
+      guidePositionFrame = 0;
+      positionGuideStep();
+    });
+  }
+
   function positionGuideCard() {
     if (!guideState || guideState.card.hidden) return;
     const rect = guideState.steps[guideState.index]?.element?.getBoundingClientRect();
@@ -1283,12 +1292,15 @@
   }
 
   function hasVisibleErrorIndicators() {
+    // Inclui erros de validação de campos, mesmo quando o site não usa role=alert.
+    const invalidControls = [...document.querySelectorAll('input:invalid,select:invalid,textarea:invalid,[aria-invalid="true"],[data-invalid="true"],.is-invalid,.has-error')];
+    if (invalidControls.some(isVisibleOnPage)) return true;
     if (collectVisibleFiscalReturnMessages().length) return true;
-    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"]';
+    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.field-error,.form-error,.error-message,.text-danger,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"]';
     return [...document.querySelectorAll(selectors)].some(el => {
       if (!isVisibleOnPage(el)) return false;
       const message = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-      return message.length >= 4 && message.length <= 1200 && ERROR_TEXT_PATTERN.test(message);
+      return message.length >= 3 && message.length <= 1200 && ERROR_TEXT_PATTERN.test(message);
     });
   }
 
@@ -1380,7 +1392,7 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: positionGuideStep };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: scheduleGuidePosition };
     stopButton.disabled = false;
     dismiss.addEventListener("click", event => {
       event.preventDefault();
@@ -1457,15 +1469,17 @@
     }
     if (hasVisibleErrorIndicators()) {
       clearNavigationTask();
-      status.textContent = "Há um aviso de erro nesta tela. A navegação automática foi pausada para manter o chat livre.";
+      clearGuideProgress();
+      status.textContent = "Há um erro ou campo inválido nesta tela. A orientação foi pausada e o chat está livre.";
       return;
     }
+    // Nunca dispara uma nova chamada da IA automaticamente ao carregar uma página.
+    // A continuação só ocorre depois de uma ação explícita do usuário no tour.
     navigationTask = saved.task;
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
-    navigationGuideActive = true;
-    status.textContent = "Retomando a navegação assistida na nova tela...";
-    continueNavigationGuide();
+    navigationGuideActive = false;
+    status.textContent = "Orientação pausada nesta tela. O chat está disponível; peça “continuar orientação” quando quiser retomar.";
   }
 
   window.addEventListener("pageshow", scheduleGuideRestore);
