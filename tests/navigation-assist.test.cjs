@@ -193,3 +193,22 @@ test("falha ao ler metadados da tela não deixa o chat bloqueado", () => {
   assert.match(source, /requestInProgress = false/);
   assert.match(source, /send\.disabled = false/);
 });
+
+
+test("compositor recupera foco e permanece editável ao abrir o painel", () => {
+  assert.match(source, /const focusComposer = \(\) => \{[\\s\\S]*?input\.disabled = false;[\\s\\S]*?input\.readOnly = false;[\\s\\S]*?input\.focus\(/);
+  assert.match(source, /requestAnimationFrame\(\(\) => focusComposer\(\)\)/);
+  assert.match(source, /input\.addEventListener\("input"/);
+});
+
+test("chat oferece conteúdo do Manual quando a IA ou o provedor falha", () => {
+  assert.match(source, /quotaOrProviderFailure/);
+  assert.match(source, /modo de apoio pelo Manual ativo/);
+  assert.match(source, /Encontrei este conteúdo do Manual para ajudar agora/);
+});
+
+test("revisão visual termina localmente mesmo sem resposta da IA", () => {
+  assert.match(source, /Revisão visual local concluída/);
+  assert.match(source, /renderReviewIssueCards\(issues, reviewMessage\)/);
+  assert.match(source, /Não foram encontrados campos inválidos ou alertas de erro visíveis/);
+});
