@@ -1407,6 +1407,10 @@
   let guideRestoreTimer = null;
   function restoreVisualGuide() {
     if (guideState) return;
+    if (hasVisibleErrorIndicators()) {
+      clearGuideProgress();
+      return;
+    }
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(GUIDE_SESSION_KEY) || "null"); } catch {}
     if (!saved || !Array.isArray(saved.titles) || !saved.titles.length) return;
