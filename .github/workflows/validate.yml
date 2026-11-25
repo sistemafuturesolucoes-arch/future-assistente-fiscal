@@ -41,10 +41,13 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Instalar dependências npm usadas pelas funções Supabase
+        run: deno install --config=deno.json --node-modules-dir=auto
+
       - name: Verificar funções Supabase
         run: |
-          deno check supabase/functions/ai-assistant/index.ts
-          deno check supabase/functions/assistant-voice/index.ts
+          deno check --config=deno.json --node-modules-dir=auto supabase/functions/ai-assistant/index.ts
+          deno check --config=deno.json --node-modules-dir=auto supabase/functions/assistant-voice/index.ts
 
       - name: Preparar navegador para testes reais da extensão
         run: |
