@@ -155,27 +155,28 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     const firstGuideTitle = await call(guideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
     assert.equal(firstGuideTitle.result.value, "Cadastros");
     await page.locator("#cadastros").click();
-    let secondGuideCard = null;
+    let secondGuideTitle = "";
     for (let i = 0; i < 50; i++) {
-      const result = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
-      if (result.nodeId) {
-        const title = await call(result.nodeId, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
-        if (title.result.value === "Clientes") { secondGuideCard = result.nodeId; break; }
-      }
+      secondGuideTitle = await page.evaluate(() => {
+        const host = document.getElementById("future-assistente-host");
+        return host?.shadowRoot?.querySelector(".guide-card .guide-title")?.textContent || "";
+      });
+      if (secondGuideTitle === "Clientes") break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    assert.ok(secondGuideCard, "o JavaScript local deve avançar para o próximo item do roteiro");
-    const secondGuideTitle = await call(secondGuideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
-    assert.equal(secondGuideTitle.result.value, "Clientes");
+    assert.equal(secondGuideTitle, "Clientes", "o JavaScript local deve avançar para o próximo item do roteiro");
     assert.equal(aiRequests, 3, "o avanço normal após o clique não deve chamar a IA novamente");
     await page.locator("#clientes").click();
+    let guideDisconnected = false;
     for (let i = 0; i < 40; i++) {
-      const connected = await call(secondGuideCard, "function(){ return this.isConnected; }");
-      if (!connected.result.value) break;
+      guideDisconnected = await page.evaluate(() => {
+        const host = document.getElementById("future-assistente-host");
+        return !host?.shadowRoot?.querySelector(".guide-card");
+      });
+      if (guideDisconnected) break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    const guideDisconnected = await call(secondGuideCard, "function(){ return this.isConnected; }");
-    assert.equal(guideDisconnected.result.value, false, "o guia deve encerrar ao chegar ao destino do Manual");
+    assert.equal(guideDisconnected, true, "o guia deve encerrar ao chegar ao destino do Manual");
     assert.equal(aiRequests, 3, "a conclusão do caminho documentado também não deve gerar uma nova chamada à IA");
   } finally {
     if (context) await context.close();
