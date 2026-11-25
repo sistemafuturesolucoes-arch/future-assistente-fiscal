@@ -30,7 +30,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     });
     const page = context.pages()[0] || await context.newPage();
     await page.route("https://sistema.emissorfiscalonline.com.br/**", route =>
-      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button id='cadastros'>Cadastros</button><div id='menu'></div><button>Salvar rascunho</button><script>document.getElementById('cadastros').addEventListener('click',()=>{document.getElementById('menu').innerHTML='<button id=\\\"clientes\\\">Clientes</button>';document.getElementById('clientes').addEventListener('click',()=>{location.hash='#/cadastros/clientes'});});</script></body></html>" })
+      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button id='cadastros'>Cadastros</button><div id='menu'></div><button>Salvar rascunho</button><script>document.getElementById('cadastros').addEventListener('click',()=>{document.getElementById('menu').innerHTML='<button id='clientes'>Clientes</button>';document.getElementById('clientes').addEventListener('click',()=>{location.hash='#/cadastros/clientes'});});</script></body></html>" })
     );
     const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type, x-client-info", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS" };
     await page.route("https://itbppoailqkuxajesgys.supabase.co/functions/v1/ai-assistant", async route => {
@@ -39,7 +39,8 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
       lastPayload = route.request().postDataJSON();
       const serializedMessages = JSON.stringify(lastPayload?.messages || []);
       const answer = serializedMessages.includes("FUTURE_NAVIGATION_PLAN_REQUEST")
-        ? "Vamos seguir o caminho documentado no Manual. Primeiro, abra Cadastros.\\n[[FUTURE_NAVIGATION_PLAN]][{\\\"label\\\":\\\"Cadastros\\\",\\\"description\\\":\\\"Abra o menu Cadastros.\\\",\\\"path\\\":\\\"Cadastros > Clientes\\\"},{\\\"label\\\":\\\"Clientes\\\",\\\"description\\\":\\\"Acesse Clientes para abrir a tela de cadastro.\\\",\\\"path\\\":\\\"Cadastros > Clientes\\\"}][[/FUTURE_NAVIGATION_PLAN]]"
+        ? `Vamos seguir o caminho documentado no Manual. Primeiro, abra Cadastros.
+[[FUTURE_NAVIGATION_PLAN]][{"label":"Cadastros","description":"Abra o menu Cadastros.","path":"Cadastros > Clientes"},{"label":"Clientes","description":"Acesse Clientes para abrir a tela de cadastro.","path":"Cadastros > Clientes"}][[/FUTURE_NAVIGATION_PLAN]]`
         : "Resposta de teste do assistente.";
       const events = [
         { type: "start", messageId: "m-test" },
@@ -139,6 +140,11 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     assert.match(serialized, /data:image\/png;base64/);
     assert.match(serialized, /application\/xml/);
     assert.match(serialized, /documento\.xml/);
+    for (let i = 0; i < 40; i++) {
+      const stopped = await call(stopButton, "function(){ return this.disabled; }");
+      if (stopped.result.value) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     await call(textarea, "function(){ this.value = 'Quero cadastrar um cliente'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
@@ -159,10 +165,12 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     assert.equal(aiRequests, 3, "o avanço normal após o clique não deve chamar a IA novamente");
     await page.locator("#clientes").click();
     for (let i = 0; i < 40; i++) {
-      const title = await call(guideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
-      if (!title.result.value) break;
+      const connected = await call(guideCard, "function(){ return this.isConnected; }");
+      if (!connected.result.value) break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+    const guideDisconnected = await call(guideCard, "function(){ return this.isConnected; }");
+    assert.equal(guideDisconnected.result.value, false, "o guia deve encerrar ao chegar ao destino do Manual");
     assert.equal(aiRequests, 3, "a conclusão do caminho documentado também não deve gerar uma nova chamada à IA");
   } finally {
     if (context) await context.close();
