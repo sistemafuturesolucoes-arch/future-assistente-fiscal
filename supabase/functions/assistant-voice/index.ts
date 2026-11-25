@@ -69,7 +69,13 @@ Deno.serve(async (request: Request) => {
       });
     }
 
-    const body = await request.json() as { text?: unknown; voice_id?: unknown };
+    const maxBodyBytes = 64 * 1024;
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (declaredLength > maxBodyBytes) return json(413, "Texto muito longo para uma única narração.");
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > maxBodyBytes) return json(413, "Texto muito longo para uma única narração.");
+    let body: { text?: unknown; voice_id?: unknown };
+    try { body = JSON.parse(rawBody); } catch { return json(400, "A solicitação de voz não está em um formato válido."); }
     const text = typeof body.text === "string" ? body.text.trim() : "";
     if (!text) return json(400, "Texto para narração não informado.");
     if (text.length > 1800) return json(413, "Texto muito longo para uma única narração.");
