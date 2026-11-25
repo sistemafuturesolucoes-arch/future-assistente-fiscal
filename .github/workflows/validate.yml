@@ -44,7 +44,7 @@ jobs:
       - name: Verificar funções Supabase
         run: |
           deno check supabase/functions/ai-assistant/index.ts
-          deno --node-modules-dir=auto check supabase/functions/assistant-voice/index.ts
+          deno check supabase/functions/assistant-voice/index.ts
 
       - name: Preparar navegador para testes reais da extensão
         run: |
