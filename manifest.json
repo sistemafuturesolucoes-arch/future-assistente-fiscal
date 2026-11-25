@@ -20,7 +20,8 @@
   },
   "web_accessible_resources": [],
   "host_permissions": [
-    "https://sistema.emissorfiscalonline.com.br/*"
+    "https://sistema.emissorfiscalonline.com.br/*",
+    "https://itbppoailqkuxajesgys.supabase.co/*"
   ],
   "content_scripts": [
     {
