@@ -1025,6 +1025,8 @@
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
+    clearTimeout(guideState.waitTimer);
+    clearTimeout(guideState.navigationTimer);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
@@ -1115,14 +1117,15 @@
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
   function navigationSnapshot() {
-    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary,[aria-controls]";
+    // Inclui componentes customizados comuns em SPAs sem transformar qualquer div em alvo clicável.
+    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[data-action],[aria-expanded],summary,[aria-controls],[tabindex]:not([tabindex='-1'])";
     const items = [...document.querySelectorAll(selector)].filter(el => {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
       const rect = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
-    const fingerprint = items.slice(0, 320).map(el => [
+    const fingerprint = items.slice(0, 420).map(el => [
       normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
       el.getAttribute("aria-expanded") || "",
       el.getAttribute("aria-controls") || "",
@@ -1208,10 +1211,14 @@
     `;
     shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
-      if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
+      if (!guideState) return;
+      const target = event.target;
+      const isNode = value => Boolean(value && typeof value === "object" && typeof value.nodeType === "number");
+      if (isNode(target) && (card.contains(target) || host.contains(target))) return;
       const current = guideState.steps[guideState.index];
-      if (!current?.element) return;
-      const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
+      if (!current?.element || !isNode(current.element)) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
+      const clicked = path.find(node => isNode(node) && (node === current.element || current.element.contains(node)));
       if (!clicked) return;
         if (current.validationField) return;
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
@@ -1225,7 +1232,7 @@
       guideState.card.querySelector(".guide-desc").textContent = "Aguarde: estou verificando o que apareceu depois do clique.";
       status.textContent = "Lendo a nova tela ou submenu...";
       persistGuideProgress(nextIndex);
-      window.setTimeout(async () => {
+      guideState.navigationTimer = window.setTimeout(async () => {
         if (!navigationGuideActive) return;
         const changed = await navigationUpdate;
         if (!navigationGuideActive) return;
@@ -1242,7 +1249,7 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, reposition: () => showGuideStep(guideState?.index || 0) };
     stopButton.disabled = false;
     dismiss.addEventListener("click", () => {
       clearNavigationTask();
