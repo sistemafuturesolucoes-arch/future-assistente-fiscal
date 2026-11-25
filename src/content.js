@@ -1103,6 +1103,10 @@
   let navigationGuideActive = false;
   let navigationLastCompletedStep = "";
   let navigationLastCompletedRoute = "";
+  let navigationPlan = [];
+  let navigationPlanIndex = 0;
+  const NAVIGATION_PLAN_OPEN = "[[FUTURE_NAVIGATION_PLAN]]";
+  const NAVIGATION_PLAN_CLOSE = "[[/FUTURE_NAVIGATION_PLAN]]";
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
   function persistNavigationTask() {
     if (!navigationTask || !navigationGuideActive) return;
@@ -1110,9 +1114,53 @@
       sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({
         task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
         lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
-        savedAt: Date.now()
+        plan: navigationPlan, planIndex: navigationPlanIndex, savedAt: Date.now()
       }));
     } catch {}
+  }
+  function extractNavigationPlan(answer) {
+    let plan = null;
+    const cleanAnswer = String(answer || "").replace(/\\[\\[FUTURE_NAVIGATION_PLAN\\]\\]([\\s\\S]*?)\\[\\[\\/FUTURE_NAVIGATION_PLAN\\]\\]/g, (_, raw) => {
+      try {
+        const parsed = JSON.parse(raw.trim());
+        if (!Array.isArray(parsed)) return "";
+        const valid = parsed.slice(0, 18).filter(item =>
+          item && typeof item.label === "string" && item.label.trim() &&
+          typeof item.description === "string" && item.description.trim()
+        ).map(item => ({
+          label: item.label.trim().slice(0, 100),
+          description: item.description.trim().slice(0, 360),
+          path: typeof item.path === "string" ? item.path.trim().slice(0, 240) : ""
+        }));
+        if (valid.length) plan = valid;
+      } catch {}
+      return "";
+    }).trim();
+    return { cleanAnswer, plan };
+  }
+  function activateNavigationPlan(plan) {
+    navigationPlan = Array.isArray(plan) ? plan : [];
+    navigationPlanIndex = 0;
+    persistNavigationTask();
+  }
+  function advanceLocalNavigationPlan() {
+    if (!navigationGuideActive || !navigationPlan.length) return false;
+    if (navigationPlanIndex >= navigationPlan.length) {
+      clearNavigationTask();
+      closeGuide();
+      status.textContent = "Chegamos ao destino indicado no Manual. A IA pode ajudar agora com os campos e a operação, sem executar nada por você.";
+      addMessage("Chegamos à tela indicada no caminho do Manual. Se quiser, posso orientar o preenchimento passo a passo.", "bot");
+      return true;
+    }
+    const next = navigationPlan[navigationPlanIndex];
+    const element = findElementByName(next.label);
+    if (!element) return false;
+    startVisualGuide([{
+      element, title: next.label,
+      description: (next.path ? "Caminho: " + next.path + ". " : "") + next.description
+    }]);
+    status.textContent = "Navegação local ativa — próximo passo " + (navigationPlanIndex + 1) + " de " + navigationPlan.length + ".";
+    return true;
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
@@ -1171,7 +1219,10 @@
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
-    status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
+    if (advanceLocalNavigationPlan()) return;
+    status.textContent = "Não encontrei com segurança o próximo item do caminho do Manual. Vou pedir ajuda à IA para reavaliar esta tela...";
+    navigationPlan = [];
+    navigationPlanIndex = 0;
     const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
       ". Última ação confirmada pelo usuário: " + (navigationLastCompletedStep || "ainda não confirmada") +
       ". Rota em que essa ação ocorreu: " + (navigationLastCompletedRoute || "não registrada") +
@@ -1225,6 +1276,7 @@
         if (current.validationField) return;
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
       navigationLastCompletedRoute = location.pathname;
+      if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
       persistNavigationTask();
       const beforeSnapshot = navigationSnapshot();
       const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
@@ -1239,6 +1291,10 @@
         const changed = await navigationUpdate;
         if (!navigationGuideActive) return;
         if (!changed) {
+          if (navigationPlan.length) {
+            navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
+            persistNavigationTask();
+          }
           if (guideState) {
             guideState.waitingForNavigation = false;
             guideState.card.querySelector(".guide-desc").textContent = "Não detectei mudança na tela. Verifique se o menu abriu ou envie um print para eu localizar a opção correta. Não vou repetir o mesmo clique automaticamente.";
@@ -1327,8 +1383,12 @@
     navigationTask = saved.task;
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
+    navigationPlan = Array.isArray(saved.plan) ? saved.plan : [];
+    navigationPlanIndex = Number.isInteger(saved.planIndex) ? Math.max(0, saved.planIndex) : 0;
     navigationGuideActive = true;
-    status.textContent = "Retomando a navegação assistida na nova tela...";
+    status.textContent = navigationPlan.length
+      ? "Retomando o caminho do Manual nesta tela..."
+      : "Retomando a navegação assistida na nova tela...";
     continueNavigationGuide();
   }
 
@@ -1379,6 +1439,11 @@
 
   function maybeStartAutomaticGuide(answer) {
     if (lastRequestKind === "document-review" || lastRequestKind === "error-diagnosis") return false;
+    const parsedPlan = extractNavigationPlan(answer);
+    if (parsedPlan.plan) {
+      activateNavigationPlan(parsedPlan.plan);
+      answer = parsedPlan.cleanAnswer;
+    }
     if (/não está habilitado|nao esta habilitado|sem permissão|sem permissao|chame o suporte|chamar o suporte|não aparece no seu perfil|nao aparece no seu perfil/i.test(answer)) {
       clearNavigationTask();
       return false;
@@ -1402,6 +1467,12 @@
       }
     }
     const steps = findGuideSteps(answer);
+    if (navigationPlan.length) {
+      if (advanceLocalNavigationPlan()) return true;
+      navigationPlan = [];
+      navigationPlanIndex = 0;
+      persistNavigationTask();
+    }
     if (!steps.length) return false;
     startVisualGuide(steps.slice(0, 1));
     status.textContent = "Navegação assistida ativa. Clique no destaque; vou ler a próxima tela e orientar o próximo passo.";
@@ -1746,7 +1817,10 @@
     const manualPolicy = knowledge
       ? "\n\nREGRA OBRIGATÓRIA DE CONSULTA AO MANUAL FUTURE: use primeiro o conteúdo publicado fornecido em BASE DE CONHECIMENTO DO MANUAL FUTURE. Cruze a tarefa com o caminho, aula, resumo, conteúdo e referências visuais. Não responda com procedimento genérico se houver orientação no Manual. Se a tela atual divergir do Manual, descreva a diferença e peça confirmação/print; nunca invente rótulos ou cliques. Informe o título da aula usada e inclua o link da aula quando disponível.\n"
       : "\n\nMANUAL FUTURE INDISPONÍVEL NESTA CONSULTA: não afirme que consultou o Manual, não invente procedimentos nem sequência de cliques. Explique que o conteúdo do Manual não carregou agora e peça para tentar novamente ou enviar um print; responda apenas dúvidas gerais que não dependam do procedimento específico.\n";
-    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
+    const navigationPlanRequest = navigationTask && !isNavigationContinuation && !files.length
+      ? "\\n\\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\\nO usuário pediu para chegar a uma função/tela. Consulte o MANUAL FUTURE já carregado e planeje o caminho de menus e submenus até a tela de destino. Responda normalmente em português e, ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\\\"label\\\":\\\"rótulo exato do próximo menu ou controle visível\\\",\\\"description\\\":\\\"instrução curta\\\",\\\"path\\\":\\\"caminho documentado no Manual\\\"}]"+NAVIGATION_PLAN_CLOSE+". Inclua somente controles de navegação (menus, submenus, links e abas) que apareçam no caminho documentado; um item por clique, na ordem correta. Use rótulos exatos do Manual, não invente. Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar. Se não houver caminho confiável no Manual, não produza o bloco e explique a limitação.\\n"
+      : "";
+    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
