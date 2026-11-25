@@ -177,18 +177,18 @@ test("extensão aceita XML e enriquece o contexto visual sem ler valores digitad
 });
 
 test("cliques da navegação validam Node antes de usar contains e composedPath", () => {
-  assert.match(source, /typeof value\.nodeType === "number"/);
-  assert.match(source, /typeof event\.composedPath === "function"/);
-  assert.match(source, /path\.find\(node => isNode\(node\)/);
+  assert.ok(source.includes('typeof value.nodeType === "number"'));
+  assert.ok(source.includes('typeof event.composedPath === "function"'));
+  assert.ok(source.includes("path.find(node => isNode(node)"));
 });
 
 test("alvos de navegação reconhecem componentes customizados com tabindex e data-action", () => {
-  assert.match(source, /\[data-action\]/);
-  assert.match(source, /\[tabindex\]:not\(\[tabindex='-1'\]\)/);
+  assert.ok(source.includes("[data-action]"));
+  assert.ok(source.includes("[tabindex]:not([tabindex='-1'])"));
 });
 
 test("temporizadores do guia são limpos ao fechar ou trocar de rota", () => {
-  assert.match(source, /clearTimeout\(guideState\.waitTimer\)/);
-  assert.match(source, /clearTimeout\(guideState\.navigationTimer\)/);
-  assert.match(source, /navigationTimer: null/);
+  assert.ok(source.includes("clearTimeout(guideState.waitTimer)"));
+  assert.ok(source.includes("clearTimeout(guideState.navigationTimer)"));
+  assert.ok(source.includes("navigationTimer: null"));
 });
