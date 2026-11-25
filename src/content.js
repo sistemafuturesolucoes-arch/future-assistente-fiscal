@@ -71,11 +71,6 @@
   const SOUND_KEY = "futureAssistenteErrorSound";
   let soundEnabled = true;
   let audioContext = null;
-  let lastErrorFingerprint = "";
-  let lastErrorAt = 0;
-  let lastAutoDiagnosisFingerprint = "";
-  let lastAutoDiagnosisAt = 0;
-  let autoDiagnosisInProgress = false;
 
   function renderPendingAttachments() {
     pendingFilesEl.replaceChildren();
@@ -719,11 +714,6 @@
 
   async function reviewDocument() {
     if (reviewActive || requestInProgress) return;
-    if (autoDiagnosisInProgress) {
-      status.textContent = "A análise automática do erro está terminando. A revisão completa começará em seguida.";
-      window.setTimeout(() => { if (!reviewActive && !requestInProgress && !autoDiagnosisInProgress) reviewDocument(); }, 500);
-      return;
-    }
     reviewActive = true;
     reviewButton.disabled = true;
     reviewButton.textContent = "Revisando…";
@@ -1337,7 +1327,24 @@
 
   scheduleGuideRestore();
 
-  function playErrorBeeps() {
+  let requestInProgress = false;
+
+  function dismissErrorSpotlight() {}
+  
+  function isLikelyFiscalError(el, message) {
+    if (!message || message.length < 4 || message.length > 500) return false;
+    if (NON_ERROR_TEXT_PATTERN.test(message) && !/\\b(erro|falha|inv[aá]lid[oa]|rejeitad[oa])\\b/i.test(message)) return false;
+    const classText = String(el.className?.baseVal || el.className || "");
+    const hasStrongSemantic = el.getAttribute("role") === "alert" ||
+      el.getAttribute("aria-live") === "assertive" ||
+      el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
+    const hasErrorClass = /\\b(invalid|error|danger|toast-error)\\b/i.test(classText);
+    const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
+    if (el.matches(".text-danger") && !hasErrorLanguage) return false;
+    return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
+  }
+
+  function maybeStartAutomaticGuide(answer) {
     if (!soundEnabled) return;
     try {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
@@ -1414,7 +1421,6 @@
   function runPendingErrorDiagnosis() {
     if (!pendingErrorDiagnostic || requestInProgress || autoDiagnosisInProgress) return;
     const pending = pendingErrorDiagnostic;
-    pendingErrorDiagnostic = null;
     lastAutoDiagnosisFingerprint = pending.fingerprint;
     lastAutoDiagnosisAt = Date.now();
     autoDiagnosisInProgress = true;
@@ -1798,7 +1804,7 @@
   let lastRequestKind = "chat";
   let activeRequestController = null;
   function stopCurrentConversation() {
-    const wasActive = requestInProgress || autoDiagnosisInProgress || Boolean(guideState) || voiceIsSpeaking;
+    const wasActive = requestInProgress || Boolean(guideState) || voiceIsSpeaking;
     activeRequestController?.abort();
     activeRequestController = null;
     pendingErrorDiagnostic = null;
@@ -1951,7 +1957,6 @@
       stopButton.disabled = true;
       if (voiceModeActive) scheduleVoiceRecognition();
       input.focus();
-      if (pendingErrorDiagnostic && !autoDiagnosisInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
     }
     return target;
   }
@@ -1959,7 +1964,7 @@
   form.addEventListener("submit", event => {
     event.preventDefault();
     const question = input.value.trim();
-    if ((!question && pendingAttachments.length === 0) || requestInProgress || autoDiagnosisInProgress) return;
+    if ((!question && pendingAttachments.length === 0) || requestInProgress) return;
     const visibleQuestion = question || (pendingAttachments.length ? "📎 Anexo enviado para análise." : "");
     const files = pendingAttachments.splice(0, pendingAttachments.length);
     renderPendingAttachments();
