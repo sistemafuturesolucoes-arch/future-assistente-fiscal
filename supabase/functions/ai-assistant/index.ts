@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from "npm:@ai-sdk/google@4.0.121";
 import { convertToModelMessages, generateText, streamText, type UIMessage } from "npm:ai@7.0.170";
+import { XMLParser, XMLValidator } from "npm:fast-xml-parser@5.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -195,13 +196,20 @@ async function extractXmlAttachments(message?: UIMessage) {
       continue;
     }
     if (/<!DOCTYPE|<!ENTITY/i.test(xml)) { errors.push(name + ": DOCTYPE/ENTITY recusado por segurança."); continue; }
-    const parser = typeof DOMParser !== "undefined" ? new DOMParser() : null;
-    if (!parser) { errors.push(name + ": analisador XML indisponível nesta execução."); continue; }
-    const parsedXml = parser.parseFromString(xml, "application/xml");
-    if (parsedXml.getElementsByTagName("parsererror").length || !parsedXml.documentElement) {
-      errors.push(name + ": XML malformado; não foi possível analisar sua estrutura."); continue;
+    const validation = XMLValidator.validate(xml);
+    if (validation !== true) {
+      errors.push(name + ": XML malformado; " + validation.err.msg.slice(0, 180));
+      continue;
     }
-    const root = parsedXml.documentElement.localName || parsedXml.documentElement.nodeName;
+    const parsedXml = new XMLParser({
+      ignoreAttributes: true,
+      parseTagValue: false,
+      trimValues: true,
+      processEntities: true,
+    }).parse(xml) as Record<string, unknown>;
+    const rootKey = Object.keys(parsedXml).find((key) => !key.startsWith("?"));
+    if (!rootKey) { errors.push(name + ": XML sem elemento raiz reconhecível."); continue; }
+    const root = rootKey.split(":").pop() || rootKey;
     const type = /^(nfeProc|NFe)$/i.test(root) ? "NF-e/NFC-e" :
       /^(cteProc|CTe)$/i.test(root) ? "CT-e" :
       /^(mdfeProc|MDFe)$/i.test(root) ? "MDF-e" :
@@ -215,14 +223,37 @@ async function extractXmlAttachments(message?: UIMessage) {
       "xMunIni", "xMunFim", "chNFe", "chCTe", "chMDFe", "cStat", "xMotivo",
       "cServ", "xDescServ", "vServ", "vISS", "vLiq"
     ];
-    const allElements = Array.from(parsedXml.getElementsByTagName("*"));
+    const collected = new Map<string, string[]>();
+    const visitXmlNode = (node: unknown) => {
+      if (Array.isArray(node)) { node.forEach(visitXmlNode); return; }
+      if (!node || typeof node !== "object") return;
+      for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
+        const localName = key.split(":").pop() || key;
+        if (wantedTags.includes(localName)) {
+          const candidates = Array.isArray(child) ? child : [child];
+          for (const candidate of candidates) {
+            const value = typeof candidate === "string" || typeof candidate === "number"
+              ? String(candidate)
+              : candidate && typeof candidate === "object" && "#text" in candidate
+                ? String((candidate as Record<string, unknown>)["#text"] ?? "")
+                : "";
+            if (value.trim()) {
+              const values = collected.get(localName) || [];
+              if (values.length < 15) values.push(value.trim());
+              collected.set(localName, values);
+            }
+          }
+        }
+        visitXmlNode(child);
+      }
+    };
+    visitXmlNode(parsedXml);
     const summary = wantedTags.map((tag) => {
-      const values = allElements
-        .filter((element) => element.localName === tag)
-        .slice(0, 15)
-        .map((element) => (element.textContent || "").trim())
-        .filter(Boolean)
-        .map((value) => tag === "CNPJ" || tag === "CPF" ? value.split("").map((char, index) => index < value.length - 4 ? "*" : char).join("") : value);
+      const values = (collected.get(tag) || []).map((value) =>
+        tag === "CNPJ" || tag === "CPF"
+          ? [...value].map((char, index) => index < value.length - 4 ? "*" : char).join("")
+          : value
+      );
       return values.length ? tag + ": " + values.join(" | ") : "";
     }).filter(Boolean).join("\n");
     blocks.push("ARQUIVO: " + name + "\nTIPO PROVÁVEL: " + type + "\nELEMENTO RAIZ: " + root +
@@ -630,7 +661,8 @@ Deno.serve(async (request: Request) => {
         }))
       : messages;
     const result = streamText({
-      model: webSearchIntent ? google(model, { useSearchGrounding: true }) : google(model),
+      model: google(model),
+      tools: webSearchIntent ? { google_search: google.tools.googleSearch({}) } : undefined,
       system: buildSystemPrompt(knowledge, tela),
       messages: await convertToModelMessages(modelMessages),
       abortSignal: request.signal,
