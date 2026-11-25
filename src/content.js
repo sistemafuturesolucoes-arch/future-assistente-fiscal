@@ -729,7 +729,7 @@
       const message = getVisibleErrorMessage(control) || control.getAttribute("aria-errormessage") || "O campo está marcado como inválido ou obrigatório.";
       add(control, message, "campo inválido");
     }
-    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[data-testid*="error" i],[data-testid*="alert" i]')].filter(isVisibleOnPage);
+    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,.toast-body,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"],[data-testid*="error" i],[data-testid*="alert" i],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[class*="validation" i]')].filter(isVisibleOnPage);
     const fiscalReturnNodes = [...document.querySelectorAll("body *")].filter(el => {
       if (host.contains(el) || !isVisibleOnPage(el)) return false;
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
@@ -821,8 +821,10 @@
         "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
       ].join("\n");
       const reviewMessage = await ask(question, []);
-      if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true") {
-        throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber a resposta da IA.");
+      if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true" ||
+          !String(reviewMessage.textContent || "").trim() ||
+          /não recebi uma resposta/i.test(reviewMessage.textContent || "")) {
+        throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber uma resposta válida da IA.");
       }
       renderReviewIssueCards(issues, reviewMessage);
       reviewCompleted = true;
@@ -1423,8 +1425,8 @@
     const classText = String(el.className?.baseVal || el.className || "");
     const hasStrongSemantic = el.getAttribute("role") === "alert" ||
       el.getAttribute("aria-live") === "assertive" ||
-      el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
-    const hasErrorClass = /\b(invalid|error|danger|toast-error)\b/i.test(classText);
+      el.matches(".invalid-feedback,.toast,.toast-body,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state=error],[aria-invalid=true]");
+    const hasErrorClass = /\b(invalid|error|danger|toast|alert|validation|rejected)\b/i.test(classText);
     const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
     if (el.matches(".text-danger") && !hasErrorLanguage) return false;
     return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
@@ -1789,7 +1791,13 @@
     }, 60000);
     send.disabled = true;
     stopButton.disabled = false;
-    const context = safeScreenContext();
+    let context = "";
+    try {
+      context = safeScreenContext();
+    } catch (error) {
+      console.warn("Future: não foi possível ler os metadados da tela; a conversa continuará sem esse contexto.", error);
+      context = "Os metadados visuais da tela não puderam ser lidos nesta tentativa. Responda apenas à pergunta do usuário e peça um print se precisar localizar um campo.";
+    }
     let knowledge = "";
     try {
       status.textContent = "Carregando as aulas do Manual relacionadas a esta tela...";
@@ -1875,7 +1883,11 @@
       }
       if (signal.aborted) {
         target.textContent = "Conversa interrompida por você.";
-      } else if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      } else if (!answer.trim()) {
+        target.dataset.requestFailed = "true";
+        target.textContent = "Não recebi uma resposta da IA desta vez. A revisão não foi concluída; tente novamente ou envie sua dúvida no chat.";
+        status.textContent = "A IA encerrou a conexão sem enviar uma resposta.";
+      }
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
