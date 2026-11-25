@@ -782,7 +782,10 @@
     ].join("\n");
     try {
       const reviewMessage = await ask(question, []);
-      if (reviewMessage) renderReviewIssueCards(issues, reviewMessage);
+      if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true") {
+        throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber a resposta da IA.");
+      }
+      renderReviewIssueCards(issues, reviewMessage);
       status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
     } catch (error) {
@@ -1719,6 +1722,11 @@
     const controller = new AbortController();
     activeRequestController = controller;
     const signal = controller.signal;
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, 60000);
     send.disabled = true;
     stopButton.disabled = false;
     const context = safeScreenContext();
@@ -1741,6 +1749,7 @@
       status.textContent = "O Manual não respondeu a tempo. Vou continuar sem ele e avisar a IA para não inventar procedimentos.";
     }
     if (signal.aborted) {
+      clearTimeout(requestTimeout);
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
@@ -1820,7 +1829,11 @@
         ? "Manual conectado: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + "."
         : knowledge ? "Conectado ao assistente e ao Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
     } catch (error) {
-      if (signal.aborted || error?.name === "AbortError") {
+      target.dataset.requestFailed = "true";
+      if (requestTimedOut) {
+        target.textContent = "A IA demorou mais de 60 segundos para responder. A revisão não foi concluída; tente novamente.";
+        status.textContent = "Tempo limite da IA atingido.";
+      } else if (signal.aborted || error?.name === "AbortError") {
         target.textContent = "Conversa interrompida por você.";
         status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
       } else {
@@ -1828,6 +1841,7 @@
         status.textContent = "Falha de conexão.";
       }
     } finally {
+      clearTimeout(requestTimeout);
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
