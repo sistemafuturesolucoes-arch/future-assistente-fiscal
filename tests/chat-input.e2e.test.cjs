@@ -83,7 +83,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     const launcher = await query(".launcher");
     await call(launcher, "function(){ this.click(); return true; }");
     const textarea = await query(".composer textarea");
-    const focused = await call(textarea, "function(){ this.focus(); return document.activeElement === this; }");
+    const focused = await call(textarea, "function(){ this.focus(); return this.getRootNode().activeElement === this; }");
     assert.equal(focused.result.value, true, "o campo precisa receber foco");
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
