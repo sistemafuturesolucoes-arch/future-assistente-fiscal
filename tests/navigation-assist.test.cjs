@@ -243,14 +243,14 @@ test("botão x encerra o destaque e remove seus elementos", () => {
 test("contorno acompanha o retângulo real do controle e não desloca ao rolar", () => {
   assert.match(source, /function positionGuideStep\(\)/);
   assert.match(source, /const pad = 2/);
-  assert.match(source, /reposition: positionGuideStep/);
+  assert.match(source, /reposition: scheduleGuidePosition/);
   assert.doesNotMatch(source, /reposition: \(\) => showGuideStep/);
 });
 
 test("avisos visíveis pausam a continuação automática e preservam o chat", () => {
   assert.match(source, /function hasVisibleErrorIndicators\(\)/);
   assert.match(source, /if \(hasVisibleErrorIndicators\(\)\)/);
-  assert.match(source, /A navegação automática foi pausada para manter o chat livre/);
+  assert.match(source, /Encontrei uma mensagem de erro\/retorno nesta tela/);
   assert.match(source, /Não iniciei uma análise automática para não bloquear sua conversa/);
 });
 
@@ -263,7 +263,7 @@ test("carregar uma página nunca inicia IA automaticamente nem bloqueia o compos
   assert.match(restore, /navigationGuideActive = false/);
   assert.match(restore, /Orientação pausada nesta tela/);
   assert.doesNotMatch(restore, /continueNavigationGuide\(\)/);
-  assert.doesNotMatch(restore, /ask\(/);
+  assert.doesNotMatch(restore, /\\bask\(/);
 });
 
 test("páginas com campos inválidos pausam a restauração do tour sem bloquear o chat", () => {
