@@ -143,3 +143,17 @@ test("continuidade salva a última etapa confirmada para não reiniciar o roteir
   assert.match(source, /Última ação confirmada pelo usuário/);
   assert.match(source, /navigationLastCompletedStep = saved\.lastCompletedStep/);
 });
+
+
+test("erros do Emissor não iniciam diagnóstico automático nem interrompem o chat", () => {
+  assert.doesNotMatch(source, /function detectVisibleErrors/);
+  assert.doesNotMatch(source, /new MutationObserver\(\(\) => \{[\s\S]{0,180}diagnos/i);
+  assert.doesNotMatch(source, /autoDiagnosisInProgress|pendingErrorDiagnostic|queueErrorDiagnosis/);
+  assert.match(source, /if \(\(!question && pendingAttachments\.length === 0\) \|\| requestInProgress\) return;/);
+});
+
+test("a coleta de erros é executada somente ao clicar em Revisar documento", () => {
+  assert.match(source, /reviewButton\.addEventListener\("click", \(\) => \{/);
+  assert.match(source, /const issues = collectDocumentIssues\(\)/);
+  assert.doesNotMatch(source, /setTimeout\(detectVisibleErrors|errorObserver\.observe/);
+});
