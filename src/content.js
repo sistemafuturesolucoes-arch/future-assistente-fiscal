@@ -29,7 +29,7 @@
     .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
     .guide-card button{border:1px solid #9d73c8;border-radius:8px;background:#48216e;color:#fff;padding:7px 9px;font:600 11px system-ui;cursor:pointer}
     .guide-card .guide-end{background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
-    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-dismiss{position:fixed;z-index:2147483647;width:19px;height:19px;border:1px solid #fff;border-radius:50%;background:#b4234c;color:#fff;font:800 13px/1 system-ui;box-shadow:0 2px 8px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-dismiss{position:fixed;z-index:2147483647;width:19px;height:19px;border:1px solid #fff;border-radius:50%;background:#b4234c;color:#fff;font:800 13px/1 system-ui;box-shadow:0 2px 8px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-question,.guide-dismiss{pointer-events:auto;touch-action:manipulation}
     .guide-card[hidden],.guide-question[hidden]{display:none!important}
     .proposal-card{margin-top:9px;padding:10px;border:1px solid #d8c5ef;border-radius:11px;background:#fbf8ff;color:#30213e;font-size:12px}.proposal-title{font-weight:750;margin-bottom:5px}.proposal-field{font-weight:700;margin-top:7px}.proposal-value{padding:7px;margin:4px 0 8px;background:#fff;border:1px solid #e7deef;border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere}.proposal-actions{display:flex;gap:7px}.proposal-actions button{border:0;border-radius:8px;padding:7px 10px;font:650 11px system-ui;cursor:pointer}.proposal-confirm{background:#54218a;color:#fff}.proposal-cancel{background:#eee8f4;color:#4d3b5c}.proposal-note{font-size:10px;color:#756782;margin-top:7px}
     @media(max-width:520px){.panel{right:8px;left:8px;top:8px;bottom:8px;width:auto;height:auto;max-height:none;min-height:0;border-radius:14px}.head{padding:10px 11px;gap:8px}.head-tools{gap:5px}.head-tools button{font-size:10px;padding:6px 7px;min-height:30px}.close{width:34px;height:34px;flex-basis:34px}.launcher{right:14px;bottom:14px}.messages{min-height:0}.notice{padding-bottom:7px}}
@@ -1298,6 +1298,8 @@
       return [
         normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
         el.getAttribute("aria-expanded") || "",
+        String(el.className || "").slice(0, 180),
+        el.getAttribute("style") || "",
         el.getAttribute("aria-controls") || "",
         el.getAttribute("data-state") || "",
         el.getAttribute("aria-disabled") || (el.disabled ? "true" : ""),
@@ -1309,7 +1311,7 @@
     return [location.pathname, location.hash, fingerprint].join("::");
   }
 
-  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 3000) {
+  async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 5000) {
     return new Promise(resolve => {
       let settled = false;
       let checkTimer = null;
