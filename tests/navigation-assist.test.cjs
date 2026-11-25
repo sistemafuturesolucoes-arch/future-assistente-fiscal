@@ -213,6 +213,6 @@ test("avanço normal do roteiro local não chama a IA a cada clique", () => {
 
 test("o plano local não executa ações fiscais nem preenche formulários automaticamente", () => {
   assert.match(source, /Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar/);
-  assert.match(source, /O usuário fará cada clique/);
+  assert.match(source, /um item por clique, na ordem correta/);
   assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
 });
