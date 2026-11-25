@@ -2,6 +2,8 @@ name: Package Chrome Extension
 
 on:
   push:
+    branches: [main, feat/navegacao-local-manual-20261125]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -25,7 +27,8 @@ jobs:
       - name: Build Chrome Web Store package
         run: |
           mkdir -p dist
-          zip -r dist/future-assistente-fiscal-chrome.zip manifest.json src
+          test -f icon.png
+          zip -r dist/future-assistente-fiscal-chrome.zip manifest.json icon.png src README.md docs
 
       - name: Upload install package
         uses: actions/upload-artifact@v4
