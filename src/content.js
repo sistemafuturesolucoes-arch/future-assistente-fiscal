@@ -1114,6 +1114,10 @@
   }
 
   function closeGuide() {
+    if (guidePositionFrame) {
+      cancelAnimationFrame(guidePositionFrame);
+      guidePositionFrame = 0;
+    }
     if (!guideState) {
       clearGuideProgress();
       return;
