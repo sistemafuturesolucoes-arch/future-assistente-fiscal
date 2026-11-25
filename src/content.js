@@ -159,7 +159,15 @@
   });
 
   const focusComposer = () => {
-    if (!panel.classList.contains("open") || input.disabled || input.readOnly) return;
+    if (!panel.classList.contains("open")) return;
+    input.disabled = false;
+    input.readOnly = false;
+    input.removeAttribute("disabled");
+    input.removeAttribute("readonly");
+    input.style.pointerEvents = "auto";
+    input.style.userSelect = "text";
+    input.style.webkitUserSelect = "text";
+    input.tabIndex = 0;
     input.focus({ preventScroll: true });
   };
   input.disabled = false;
@@ -171,6 +179,12 @@
     input.style.pointerEvents = "auto";
     input.style.userSelect = "text";
     input.style.webkitUserSelect = "text";
+  });
+  input.addEventListener("input", () => {
+    if (input.disabled || input.readOnly) {
+      input.disabled = false;
+      input.readOnly = false;
+    }
   });
 
   input.addEventListener("keydown", event => {
@@ -586,14 +600,14 @@
     const opening = !panel.classList.contains("open");
     panel.classList.toggle("open", opening);
     positionPanelNearLauncher();
-    if (opening) requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    if (opening) requestAnimationFrame(() => focusComposer());
   });
   if (globalThis.chrome?.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener(message => {
       if (message?.type === "FUTURE_ASSISTENTE_OPEN") {
         panel.classList.add("open");
         positionPanelNearLauncher();
-        input.focus();
+        requestAnimationFrame(() => focusComposer());
       }
     });
   }
@@ -821,15 +835,20 @@
         "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
       ].join("\n");
       const reviewMessage = await ask(question, []);
-      if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true" ||
-          !String(reviewMessage.textContent || "").trim() ||
-          /não recebi uma resposta/i.test(reviewMessage.textContent || "")) {
-        throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber uma resposta válida da IA.");
+      if (!reviewMessage || !String(reviewMessage.textContent || "").trim()) {
+        throw new Error("A revisão local não conseguiu produzir um resultado nesta tentativa.");
       }
-      renderReviewIssueCards(issues, reviewMessage);
-      reviewCompleted = true;
-      status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso.";
-      addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
+      if (reviewMessage.dataset?.requestFailed === "true") {
+        renderReviewIssueCards(issues, reviewMessage);
+        reviewCompleted = true;
+        status.textContent = "Revisão visual local concluída. A IA está indisponível; confira os alertas encontrados.";
+        addMessage("A IA não respondeu nesta tentativa, mas a verificação visual do navegador foi concluída. Os alertas identificados estão listados acima. Isso não substitui a validação fiscal oficial.", "bot");
+      } else {
+        renderReviewIssueCards(issues, reviewMessage);
+        reviewCompleted = true;
+        status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso.";
+        addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
+      }
     } catch (error) {
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
       clearDocumentReview();
@@ -1611,13 +1630,18 @@
   }
 
   function renderReviewIssueCards(issues, target) {
-    if (!issues.length) return;
     const card = document.createElement("section");
     card.className = "proposal-card review-issue-cards";
     const heading = document.createElement("div");
     heading.className = "proposal-title";
-    heading.textContent = "Pontos encontrados nesta revisão — confira um por um";
+    heading.textContent = issues.length ? "Pontos encontrados nesta revisão — confira um por um" : "Verificação visual concluída";
     card.appendChild(heading);
+    if (!issues.length) {
+      const empty = document.createElement("div");
+      empty.className = "proposal-value";
+      empty.textContent = "Não foram encontrados campos inválidos ou alertas de erro visíveis nesta tela. Isso não confirma a correção fiscal do documento nem substitui o retorno oficial da prefeitura/SEFAZ.";
+      card.appendChild(empty);
+    }
     issues.forEach((issue, index) => {
       const item = document.createElement("div");
       item.className = "review-issue-item";
@@ -1909,8 +1933,16 @@
         target.textContent = "Conversa interrompida por você.";
         status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
       } else {
-        target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
-        status.textContent = "Falha de conexão.";
+        const detail = String(error?.message || "Falha de conexão.");
+        const quotaOrProviderFailure = /HTTP 429|quota|resource.?exhausted|rate.?limit|HTTP 5\\d\\d|failed to fetch|networkerror/i.test(detail);
+        const manualExcerpt = String(knowledge || "").trim().slice(0, 1100);
+        target.textContent = quotaOrProviderFailure
+          ? "A IA está temporariamente indisponível, mas o chat continua ativo. " +
+            (manualExcerpt
+              ? "Encontrei este conteúdo do Manual para ajudar agora:\\n\\n" + manualExcerpt + "\\n\\nSe esse trecho não responder à sua dúvida, envie um print da tela ou tente novamente em alguns minutos."
+              : "O Manual não carregou nesta tentativa. Envie um print ou descreva o campo e a mensagem exibida; vou manter a orientação limitada ao que estiver visível, sem inventar procedimentos.")
+          : "Não consegui conectar ao assistente agora. " + detail + " Você pode continuar digitando e tentar enviar novamente.";
+        status.textContent = quotaOrProviderFailure ? "IA indisponível; modo de apoio pelo Manual ativo." : "Falha de conexão. O campo de mensagem permanece disponível.";
       }
     } finally {
       clearTimeout(requestTimeout);
