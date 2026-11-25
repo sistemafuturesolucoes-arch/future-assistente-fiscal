@@ -103,7 +103,6 @@ test("respostas interrompidas recebem até três tentativas automáticas de cont
   assert.match(source, /\[CONTINUAÇÃO AUTOMÁTICA /);
 });
 
-
 test("indicador visual pode ser fechado sem reativar a navegação", () => {
   assert.match(source, /className = "guide-dismiss"/);
   assert.match(source, /clearNavigationTask\(\);\s*closeGuide\(\)/);
@@ -144,7 +143,6 @@ test("continuidade salva a última etapa confirmada para não reiniciar o roteir
   assert.match(source, /navigationLastCompletedStep = saved\.lastCompletedStep/);
 });
 
-
 test("erros do Emissor não iniciam diagnóstico automático nem interrompem o chat", () => {
   assert.doesNotMatch(source, /function detectVisibleErrors/);
   assert.doesNotMatch(source, /new MutationObserver\(\(\) => \{[\s\S]{0,180}diagnos/i);
@@ -152,12 +150,12 @@ test("erros do Emissor não iniciam diagnóstico automático nem interrompem o c
   assert.match(source, /if \(\(!question && pendingAttachments\.length === 0\) \|\| requestInProgress\) return;/);
 });
 
-test("a coleta de erros é executada somente ao clicar em Revisar documento", () => {
+test("a coleta de erros é executada somente ao clicar em Revisar documento e é protegida contra falhas", () => {
   assert.match(source, /reviewButton\.addEventListener\("click", \(\) => \{/);
-  assert.match(source, /const issues = collectDocumentIssues\(\)/);
+  assert.match(source, /try\s*\{\s*issues = collectDocumentIssues\(\)/);
+  assert.match(source, /finally\s*\{[\s\S]{0,900}reviewActive = false/);
   assert.doesNotMatch(source, /setTimeout\(detectVisibleErrors|errorObserver\.observe/);
 });
-
 
 test("campo de conversa permanece interativo dentro do Shadow DOM", () => {
   assert.ok(source.includes('host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none'));
