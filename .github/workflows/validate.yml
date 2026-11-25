@@ -53,7 +53,8 @@ jobs:
       - name: Montar pacote instalável da extensão
         run: |
           mkdir -p dist
-          zip -r dist/Future-Assistente-Fiscal-Chrome.zip manifest.json src README.md docs
+          test -f icon.png
+          zip -r dist/Future-Assistente-Fiscal-Chrome.zip manifest.json icon.png src README.md docs
 
       - name: Publicar pacote para teste
         uses: actions/upload-artifact@v4
