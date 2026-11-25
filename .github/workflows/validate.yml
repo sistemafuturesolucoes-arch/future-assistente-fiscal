@@ -22,6 +22,11 @@ jobs:
         with:
           node-version: 22
 
+      - name: Instalar e compilar Driver.js headless
+        run: |
+          npm install --no-audit --no-fund
+          npm run build:driver
+
       - name: Validar JSON do Manifest
         run: node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('manifest.json válido')"
 
