@@ -196,7 +196,7 @@ test("falha ao ler metadados da tela não deixa o chat bloqueado", () => {
 
 
 test("compositor recupera foco e permanece editável ao abrir o painel", () => {
-  assert.match(source, /const focusComposer = \(\) => \{[\\s\\S]*?input\.disabled = false;[\\s\\S]*?input\.readOnly = false;[\\s\\S]*?input\.focus\(/);
+  assert.match(source, /const focusComposer = \(\) => \{[\s\S]*?input\.disabled = false;[\s\S]*?input\.readOnly = false;[\s\S]*?input\.focus\(/);
   assert.match(source, /requestAnimationFrame\(\(\) => focusComposer\(\)\)/);
   assert.match(source, /input\.addEventListener\("input"/);
 });
