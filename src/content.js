@@ -1026,10 +1026,28 @@
       s.opacity !== "0" && !el.disabled && el.getAttribute("aria-disabled") !== "true" && el.getAttribute("aria-hidden") !== "true";
   }
 
+  // Varre o documento inteiro e raízes Shadow DOM abertas, incluindo portais.
+  function collectPageElements(selector) {
+    const found = new Set();
+    const visitedRoots = new Set();
+    const visitRoot = root => {
+      if (!root || visitedRoots.has(root)) return;
+      visitedRoots.add(root);
+      try {
+        root.querySelectorAll(selector).forEach(el => { if (!host.contains(el)) found.add(el); });
+        root.querySelectorAll('*').forEach(el => {
+          if (el.shadowRoot) visitRoot(el.shadowRoot);
+          if (el.tagName === 'IFRAME') { try { if (el.contentDocument) visitRoot(el.contentDocument); } catch {} }
+        });
+      } catch (error) { console.debug('Future: uma região da tela não pôde ser inspecionada.', error); }
+    };
+    visitRoot(document);
+    return [...found];
+  }
   function findElementByName(name) {
     const wanted = normalize(name);
     if (!wanted) return null;
-    const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
+    const nodes = collectPageElements(GUIDE_NODE_SELECTOR).filter(isGuideNodeVisible);
     const exact = nodes.filter(el => getElementNames(el).some(label => normalize(label) === wanted));
     return exact.length === 1 ? exact[0] : null;
   }
@@ -1286,17 +1304,21 @@
   }
   function navigationSnapshot() {
     const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary,[aria-controls]";
-    const items = [...document.querySelectorAll(selector)].filter(el => {
+    const items = collectPageElements(selector).filter(el => {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
       const rect = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
-    const fingerprint = items.slice(0, 900).map(el => {
+    const fingerprint = items.map(el => {
       const rect = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       return [
-        normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
+        el.tagName,
+        el.getAttribute("role") || "",
+        normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 120),
+        el.getAttribute("aria-label") || "",
+        el.getAttribute("title") || "",
         el.getAttribute("aria-expanded") || "",
         String(el.className || "").slice(0, 180),
         el.getAttribute("style") || "",
