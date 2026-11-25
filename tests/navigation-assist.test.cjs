@@ -214,3 +214,42 @@ test("revisão visual termina localmente mesmo sem resposta da IA", () => {
   assert.match(source, /renderReviewIssueCards\(issues, reviewMessage\)/);
   assert.match(source, /Não foram encontrados campos inválidos ou alertas de erro visíveis/);
 });
+
+
+test("submenus atualizados são detectados mesmo quando ficam fora dos primeiros itens do DOM", () => {
+  assert.match(source, /items\.slice\(0, 900\)/);
+  assert.match(source, /getBoundingClientRect\(\)/);
+  assert.match(source, /style\.display \+ "\/" \+ style\.visibility/);
+});
+
+test("destaque prefere o controle mais específico dentro de menus aninhados", () => {
+  assert.match(source, /const specificCandidates = candidates\.filter/);
+  assert.match(source, /candidate\.el\.contains\(other\.el\)/);
+  assert.match(source, /return a\.name\.length - b\.name\.length/);
+});
+
+test("marcador ? abre e fecha o balão sem perder o evento de clique", () => {
+  assert.match(source, /marker\.addEventListener\("click", event =>/);
+  assert.match(source, /guideState\.card\.hidden = !guideState\.card\.hidden/);
+  assert.match(source, /event\.stopPropagation\(\)/);
+});
+
+test("botão x encerra o destaque e remove seus elementos", () => {
+  assert.match(source, /dismiss\.addEventListener\("click", event =>/);
+  assert.match(source, /clearNavigationTask\(\);\s*closeGuide\(\);/);
+  assert.match(source, /guideState\.dismiss\?\.remove\(\)/);
+});
+
+test("contorno acompanha o retângulo real do controle e não desloca ao rolar", () => {
+  assert.match(source, /function positionGuideStep\(\)/);
+  assert.match(source, /const pad = 2/);
+  assert.match(source, /reposition: positionGuideStep/);
+  assert.doesNotMatch(source, /reposition: \(\) => showGuideStep/);
+});
+
+test("avisos visíveis pausam a continuação automática e preservam o chat", () => {
+  assert.match(source, /function hasVisibleErrorIndicators\(\)/);
+  assert.match(source, /if \(hasVisibleErrorIndicators\(\)\)/);
+  assert.match(source, /A navegação automática foi pausada para manter o chat livre/);
+  assert.match(source, /Não iniciei uma análise automática para não bloquear sua conversa/);
+});
