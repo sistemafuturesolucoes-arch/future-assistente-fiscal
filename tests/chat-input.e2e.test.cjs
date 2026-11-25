@@ -32,7 +32,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await page.route("https://sistema.emissorfiscalonline.com.br/**", route =>
       route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button>Salvar rascunho</button></body></html>" })
     );
-    const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type", "access-control-allow-methods": "POST, OPTIONS" };
+    const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type, x-client-info", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS" };
     await page.route("https://itbppoailqkuxajesgys.supabase.co/functions/v1/ai-assistant", async route => {
       if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders });
       aiRequests += 1;
