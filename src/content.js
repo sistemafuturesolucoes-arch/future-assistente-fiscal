@@ -780,19 +780,27 @@
       "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
       "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
     ].join("\n");
+    let reviewCompleted = false;
     try {
       const reviewMessage = await ask(question, []);
       if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true") {
         throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber a resposta da IA.");
       }
       renderReviewIssueCards(issues, reviewMessage);
-      status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
+      reviewCompleted = true;
+      status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso.";
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
     } catch (error) {
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
+      clearDocumentReview();
     } finally {
       reviewButton.disabled = false;
-      reviewButton.textContent = "Finalizar revisão";
+      if (reviewCompleted) {
+        reviewButton.textContent = "Finalizar revisão";
+      } else {
+        reviewActive = false;
+        reviewButton.textContent = "Revisar documento";
+      }
     }
   }
 
@@ -1650,11 +1658,25 @@
       let readResult;
       try {
         readResult = await new Promise((resolve, reject) => {
-          const timeout = window.setTimeout(() => reject(new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000);
-          reader.read().then(value => { clearTimeout(timeout); resolve(value); }, error => { clearTimeout(timeout); reject(error); });
+          let settled = false;
+          const finish = (callback, value) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            signal?.removeEventListener("abort", onAbort);
+            callback(value);
+          };
+          const onAbort = () => {
+            reader.cancel().catch(() => {});
+            finish(reject, new DOMException("Conversa interrompida pelo usuário.", "AbortError"));
+          };
+          const timeout = window.setTimeout(() => finish(reject, new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000);
+          if (signal?.aborted) return onAbort();
+          signal?.addEventListener("abort", onAbort, { once: true });
+          reader.read().then(value => finish(resolve, value), error => finish(reject, error));
         });
       } catch (error) {
-        if (signal?.aborted) throw new DOMException("Conversa interrompida pelo usuário.", "AbortError");
+        if (signal?.aborted || error?.name === "AbortError") throw new DOMException("Conversa interrompida pelo usuário.", "AbortError");
         stalled = true;
         console.warn("Fluxo da IA ficou sem novos dados; será tentada a recuperação automática.", error);
         break;
