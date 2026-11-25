@@ -47,7 +47,7 @@
     <header class="head"><div class="head-top"><div class="brand-wrap"><div class="brand">Future Assistente Fiscal</div><div class="sub">Seu copiloto dentro do Emissor</div></div><button class="close" type="button" aria-label="Fechar" title="Fechar assistente">×</button></div><nav class="head-tools" aria-label="Ferramentas do assistente"><button class="tour-button" type="button" title="Aprenda uma função do Emissor passo a passo">🧭 Tour guiado</button><button class="review-button" type="button">Revisar documento</button><button class="voice-toggle" type="button" aria-label="Ativar conversa por voz" aria-pressed="false" title="Ativar conversa por voz">🎙️ Voz</button><button class="sound-toggle" type="button" aria-label="Ativar ou desativar alertas sonoros" aria-pressed="true" title="Alertas sonoros">🔔 Som</button><button class="manual-link" type="button">Manual</button></nav></header>
     <div class="messages" aria-live="polite"><div class="msg bot">Olá! Sou o assistente da Future. Posso ajudar a entender a tela, localizar campos e interpretar mensagens de erro. Também posso destacar campos e botões para orientar você visualmente. Não vou emitir nem transmitir documentos por você.</div></div>
     <div class="status">O Manual será consultado conforme a tela atual.</div>
-    <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*" multiple><button class="attach" type="button" title="Anexar print ou áudio" aria-label="Anexar print ou áudio">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="stop" type="button" title="Parar a conversa atual" aria-label="Parar a conversa atual" disabled>■</button><button class="send" type="submit">Enviar</button></form>
+    <form class="composer"><div class="pending-files" aria-live="polite"></div><input class="hidden-file" type="file" accept="image/*,audio/*,application/xml,text/xml,.xml" multiple><button class="attach" type="button" title="Anexar print, áudio ou XML" aria-label="Anexar print, áudio ou XML">📎</button><button class="record" type="button" title="Gravar áudio" aria-label="Gravar áudio">🎙</button><textarea aria-label="Digite sua dúvida" placeholder="Digite sua dúvida ou cole um print..." maxlength="3000"></textarea><button class="stop" type="button" title="Parar a conversa atual" aria-label="Parar a conversa atual" disabled>■</button><button class="send" type="submit">Enviar</button></form>
     <div class="notice">Evite enviar CPF/CNPJ, dados de notas, senhas ou PINs. Orientações fiscais devem ser confirmadas com a contabilidade.</div>
   `;
   shadow.append(launcher, panel);
@@ -79,7 +79,8 @@
       const chip = document.createElement("div");
       chip.className = "pending-file";
       const name = document.createElement("span");
-      name.textContent = (file.mediaType.startsWith("image/") ? "🖼 " : "🎧 ") + file.name;
+      const fileIcon = file.mediaType.startsWith("image/") ? "🖼 " : file.mediaType.includes("xml") ? "📄 " : "🎧 ";
+      name.textContent = fileIcon + file.name;
       const remove = document.createElement("button");
       remove.type = "button";
       remove.textContent = "×";
@@ -106,8 +107,9 @@
     if (!file) return;
     const isImage = file.type.startsWith("image/");
     const isAudio = file.type.startsWith("audio/");
-    if (!isImage && !isAudio) {
-      status.textContent = "Anexe apenas imagens ou arquivos de áudio.";
+    const isXml = file.type.includes("xml") || (file.name || "").toLowerCase().endsWith(".xml");
+    if (!isImage && !isAudio && !isXml) {
+      status.textContent = "Anexe imagens, áudio ou arquivos XML (.xml).";
       return;
     }
     if (isImage && file.size > 6 * 1024 * 1024) {
@@ -116,6 +118,10 @@
     }
     if (isAudio && file.size > 8 * 1024 * 1024) {
       status.textContent = "O áudio deve ter até 8 MB.";
+      return;
+    }
+    if (isXml && file.size > 1500 * 1024) {
+      status.textContent = "O XML deve ter até 1,5 MB.";
       return;
     }
     const queuedBytes = pendingAttachments.reduce((total, item) => total + item.size, 0);
@@ -131,9 +137,13 @@
       status.textContent = "Envie apenas um áudio por mensagem.";
       return;
     }
+    if (isXml && pendingAttachments.some(item => item.mediaType.includes("xml"))) {
+      status.textContent = "Envie apenas um XML por mensagem.";
+      return;
+    }
     try {
       const url = await fileAsDataUrl(file);
-      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : "audio.webm"), mediaType: isAudio ? (file.type || "audio/webm") : file.type, size: file.size, url });
+      pendingAttachments.push({ name: file.name || (isImage ? "print.png" : isXml ? "documento.xml" : "audio.webm"), mediaType: isXml ? "application/xml" : isAudio ? (file.type || "audio/webm") : file.type, size: file.size, url });
       renderPendingAttachments();
       status.textContent = "Anexo pronto. Escreva sua pergunta ou envie diretamente.";
     } catch (error) {
@@ -817,14 +827,18 @@
       .filter(isVisible).slice(0, 16).map(el => (el.innerText || "").trim()).filter(Boolean);
     const labels = [...document.querySelectorAll("label")]
       .filter(isVisible).slice(0, 60).map(el => (el.innerText || "").trim()).filter(Boolean);
+    const focused = document.activeElement instanceof Element && !host.contains(document.activeElement) ? document.activeElement : null;
+    const focusedLabel = focused ? getElementNames(focused).slice(0, 3).join(" / ") : "";
     const controls = [...document.querySelectorAll("input,select,textarea,[role=combobox]")]
       .filter(isVisible).slice(0, 70).map(el => {
         const label = el.labels ? [...el.labels].map(item => (item.innerText || "").trim()).filter(Boolean).join(" / ") : "";
         const aria = el.getAttribute("aria-label") || "";
         const placeholder = el.getAttribute("placeholder") || "";
         const type = el.tagName.toLowerCase() === "input" ? (el.getAttribute("type") || "text") : el.tagName.toLowerCase();
-        const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : ""].filter(Boolean).join(", ");
-        return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags].filter(Boolean).join(" — ");
+        const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : "", el.getAttribute("aria-invalid") === "true" ? "inválido" : ""].filter(Boolean).join(", ");
+        const helpIds = (el.getAttribute("aria-describedby") || "").split(/\\s+/).filter(Boolean);
+        const help = helpIds.map(id => document.getElementById(id)?.innerText || "").join(" ").replace(/\\s+/g, " ").slice(0, 180);
+        return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags, help].filter(Boolean).join(" — ");
       });
     const buttons = [...document.querySelectorAll("button,a,[role=button],[role=menuitem],[role=tab],[data-menu-item],summary,input[type=button],input[type=submit]")]
       .filter(isVisible).slice(0, 120).map(el => (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
@@ -855,7 +869,7 @@
       "Rota: " + route,
       "Título: " + title,
       "Títulos e rótulos visíveis (sem valores preenchidos): " + redact([...headings, ...labels, ...errors].join(" | ")).slice(0, 6500),
-      "Metadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 5000),
+      "Campo em foco (sem ler o valor digitado): " + redact(focusedLabel || "nenhum") + "\\nMetadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 6000),
       "Botões visíveis: " + redact(buttons.join(" | ")).slice(0, 3500),
       "MAPA COMPLETO DA NAVEGAÇÃO VISÍVEL (menus laterais, itens, submenus e estado aberto/fechado): " + redact([...new Set([...navigationItems, ...visibleMenuText])].join(" | ")).slice(0, 14000)
     ].join("\n");
@@ -1709,11 +1723,13 @@
       stopButton.disabled = true;
       return null;
     }
-    const attachmentContext = files.some(file => file.mediaType.startsWith("audio/"))
-      ? "\n\nO usuário anexou um áudio. Transcreva o que foi dito em português, identifique a dúvida e responda com base no Manual e na tela atual. Se algo estiver inaudível, informe isso sem adivinhar."
-      : files.some(file => file.mediaType.startsWith("image/"))
-        ? "\n\nO usuário anexou um print ou imagem. Analise o que está visível, leia mensagens de erro e oriente com cuidado. Não presuma dados que não aparecem na imagem."
-        : "";
+    const attachmentContext = files.some(file => file.mediaType.includes("xml"))
+      ? "\n\nO usuário anexou um XML fiscal. Analise o documento e os avisos de leitura fornecidos pelo servidor. Separe erros de estrutura, validações fiscais e campos que exigem confirmação externa. Nunca repita CPF/CNPJ ou dados pessoais; não invente valores ausentes."
+      : files.some(file => file.mediaType.startsWith("audio/"))
+        ? "\n\nO usuário anexou um áudio. Transcreva o que foi dito em português, identifique a dúvida e responda com base no Manual e na tela atual. Se algo estiver inaudível, informe isso sem adivinhar."
+        : files.some(file => file.mediaType.startsWith("image/"))
+          ? "\n\nO usuário anexou um print ou imagem. Analise o que está visível, leia mensagens de erro e oriente com cuidado. Não presuma dados que não aparecem na imagem."
+          : "";
     const isDocumentReview = (question || "").includes("Faça uma revisão orientativa do documento");
     const proposalProtocol = isDocumentReview
       ? "\n\nREVISÃO DE DOCUMENTO — FORMATO OBRIGATÓRIO: Para CADA erro ou campo que você identificar com base nos sinais fornecidos e no Manual, explique o problema e o que o usuário deve conferir. Quando houver base segura e suficiente para um valor específico, acrescente ao final um bloco isolado [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato e visível do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]] com uma entrada por campo (máximo 8). Esse bloco é obrigatório sempre que houver ao menos uma sugestão de valor realmente fundamentada. Nunca invente valores fiscais nem use dados pessoais/sensíveis. Se não houver base para preencher com segurança, não invente: explique isso e ainda assim indique o campo e a ação manual de conferência. Não omita os erros identificados. A extensão mostrará cartões de revisão e botões para destacar cada item; o preenchimento continua sujeito à confirmação explícita. Nunca recomende emissão, transmissão, autorização ou encerramento automáticos."
