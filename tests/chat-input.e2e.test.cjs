@@ -9,7 +9,9 @@ test("Chrome real permite digitar, enviar e anexar print no chat da extensão", 
   const extensionPath = path.resolve(__dirname, "..");
   const profilePath = fs.mkdtempSync(path.join(os.tmpdir(), "future-assistente-chrome-"));
   const imagePath = path.join(profilePath, "print-teste.png");
+  const xmlPath = path.join(profilePath, "documento.xml");
   fs.writeFileSync(imagePath, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  fs.writeFileSync(xmlPath, "<?xml version=\"1.0\"?><NFe><infNFe><ide><nNF>123</nNF></ide></infNFe></NFe>");
   let aiRequests = 0;
   let lastPayload = null;
   let context;
@@ -85,16 +87,20 @@ test("Chrome real permite digitar, enviar e anexar print no chat da extensão", 
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
     const typed = await call(textarea, "function(){ return this.value; }");
     assert.equal(typed.result.value, "Como localizo o campo de serviço?", "o texto deve entrar no campo");
-    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
-    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
+    await cdp.send("Input.insertText", { text: "Pode detalhar?" });
+    const multiline = await call(textarea, "function(){ return this.value; }");
+    assert.match(multiline.result.value, /\\nPode detalhar\\?/);
     for (let i = 0; i < 40 && aiRequests === 0; i++) await new Promise(resolve => setTimeout(resolve, 100));
     assert.equal(aiRequests, 1, "Enter deve enviar a mensagem uma única vez");
     assert.ok(lastPayload?.messages?.length, "a pergunta deve chegar à IA");
     assert.match(JSON.stringify(lastPayload.messages), /Como localizo o campo de serviço/);
+    assert.match(JSON.stringify(lastPayload.messages), /Pode detalhar/);
 
     await call(textarea, "function(){ this.value = 'Analise este print'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
     const fileInput = await query(".hidden-file");
-    await cdp.send("DOM.setFileInputFiles", { nodeId: fileInput, files: [imagePath] });
+    await cdp.send("DOM.setFileInputFiles", { nodeId: fileInput, files: [imagePath, xmlPath] });
     await call(fileInput, "function(){ this.dispatchEvent(new Event('change', {bubbles:true})); }");
     await new Promise(resolve => setTimeout(resolve, 350));
     const chips = await query(".pending-files");
