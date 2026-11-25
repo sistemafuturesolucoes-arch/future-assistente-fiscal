@@ -157,3 +157,12 @@ test("a coleta de erros é executada somente ao clicar em Revisar documento", ()
   assert.match(source, /const issues = collectDocumentIssues\(\)/);
   assert.doesNotMatch(source, /setTimeout\(detectVisibleErrors|errorObserver\.observe/);
 });
+
+
+test("campo de conversa permanece interativo dentro do Shadow DOM", () => {
+  assert.match(source, /host\.style\.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none/);
+  assert.match(source, /:host\\{all:initial;pointer-events:none\\}/);
+  assert.match(source, /\.panel\\{pointer-events:auto;position:fixed/);
+  assert.match(source, /\.composer textarea\\{display:block;position:relative;z-index:1;pointer-events:auto;user-select:text;-webkit-user-select:text/);
+  assert.match(source, /requestAnimationFrame\\(\\(\\) => input\.focus\\(\\{ preventScroll: true \\}\\)\\)/);
+});
