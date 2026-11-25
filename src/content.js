@@ -1042,6 +1042,8 @@
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
+    clearTimeout(guideState.waitTimer);
+    clearTimeout(guideState.navigationTimer);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
