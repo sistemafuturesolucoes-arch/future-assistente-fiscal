@@ -662,7 +662,7 @@ Deno.serve(async (request: Request) => {
       : messages;
     const result = streamText({
       model: google(model),
-      tools: webSearchIntent ? { google_search: google.tools.googleSearch({}) } : undefined,
+      tools: webSearchIntent ? ({ google_search: google.tools.googleSearch({}) } as any) : undefined,
       system: buildSystemPrompt(knowledge, tela),
       messages: await convertToModelMessages(modelMessages),
       abortSignal: request.signal,
