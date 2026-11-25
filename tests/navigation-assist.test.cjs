@@ -162,7 +162,9 @@ test("campo de conversa permanece interativo dentro do Shadow DOM", () => {
   assert.ok(source.includes(":host{all:initial;pointer-events:none}"));
   assert.ok(source.includes(".panel{pointer-events:auto;position:fixed"));
   assert.ok(source.includes(".composer textarea{display:block;position:relative;z-index:1;pointer-events:auto;user-select:text;-webkit-user-select:text"));
-  assert.ok(source.includes("requestAnimationFrame(() => input.focus({ preventScroll: true }))"));
+  assert.ok(source.includes("requestAnimationFrame(() => focusComposer())"));
+  assert.ok(source.includes("const focusComposer = () =>"));
+  assert.ok(source.includes("input.addEventListener(\"input\""));
 });
 
 test("extensão aceita XML e enriquece o contexto visual sem ler valores digitados", () => {
