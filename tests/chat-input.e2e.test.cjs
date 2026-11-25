@@ -18,6 +18,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
 
   try {
     context = await chromium.launchPersistentContext(profilePath, {
+      channel: "chromium",
       headless: true,
       args: [
         "--headless=new",
