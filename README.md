@@ -19,7 +19,7 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 ## Verificações automáticas
 O GitHub Actions valida o JSON do Manifest, a sintaxe dos scripts e executa testes automatizados do cache e da priorização contextual do Manual em cada push ou pull request para `main`.
 
-## Instalação de desenvolvimento
+## Carregamento da extensão\n- O Manifest carrega `src/knowledge.js` e `src/content.js` nas páginas do Emissor e usa `src/background.js` como service worker. O ícone da extensão abre o painel flutuante.\n\n## Instalação de desenvolvimento
 1. Baixe o repositório como ZIP ou clone-o.
 2. Abra `chrome://extensions`.
 3. Ative **Modo do desenvolvedor**.
@@ -49,7 +49,7 @@ A extensão não cria uma segunda IA nem um segundo banco de conhecimento. Ela c
 
 
 ## Navegação assistida e atualizações
-- A navegação assistida apresenta uma ação por vez: destaca o elemento atual, aguarda o clique do usuário, lê novamente a tela e pede à IA a próxima ação. O progresso da tarefa é preservado durante navegações da mesma aba por até 20 minutos.
+- A navegação assistida consulta a IA uma vez para interpretar a intenção e montar, com base nos caminhos publicados no Manual, um roteiro de menus e submenus. Depois disso, o JavaScript local encontra e destaca cada próximo item, acompanha alterações do DOM e rotas SPA e avança após o clique do usuário, sem uma chamada de IA por etapa. A IA só é chamada novamente quando o próximo alvo não é encontrado com segurança ou a tela diverge do roteiro. O progresso é preservado durante navegações da mesma aba por até 20 minutos.
 - A extensão não clica nem executa ações fiscais pelo usuário. Ações irreversíveis como emitir, transmitir, autorizar e encerrar continuam sob controle humano.
 - A notificação interna de versão aparece depois que o Chrome instala uma atualização oficial. Para distribuição com atualização automática, publique a extensão na Chrome Web Store e mantenha o mesmo ID de extensão. A instalação de desenvolvimento por “Carregar sem compactação” não recebe atualizações automáticas da Web Store.
 - O Chrome gerencia a verificação e instalação das atualizações da Web Store; o aviso dentro do chat apenas informa a versão que já foi instalada, não substitui o mecanismo oficial de atualização.
