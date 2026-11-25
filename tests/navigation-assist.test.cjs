@@ -217,9 +217,10 @@ test("revisão visual termina localmente mesmo sem resposta da IA", () => {
 
 
 test("submenus atualizados são detectados mesmo quando ficam fora dos primeiros itens do DOM", () => {
-  assert.match(source, /items\.slice\(0, 900\)/);
+  assert.match(source, /function collectPageElements\(selector\)/);
   assert.match(source, /getBoundingClientRect\(\)/);
   assert.match(source, /style\.display \+ "\/" \+ style\.visibility/);
+  assert.doesNotMatch(source, /items\.slice\(0, 900\)/);
 });
 
 test("destaque prefere o controle mais específico dentro de menus aninhados", () => {
