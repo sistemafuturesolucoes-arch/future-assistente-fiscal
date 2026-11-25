@@ -311,3 +311,11 @@ test("navegação varre todos os elementos interativos sem truncar os primeiros 
   assert.doesNotMatch(source, /items\.slice\(0, 900\)/);
   assert.match(source, /el\.getAttribute\("aria-label"\)/);
 });
+
+test("clique do guia valida cada item de composedPath antes de usar Node.contains", () => {
+  assert.match(source, /const eventTarget = event\.target/);
+  assert.match(source, /typeof eventTarget\.nodeType !== "number"/);
+  assert.match(source, /const eventPath = typeof event\.composedPath === "function"/);
+  assert.match(source, /node && typeof node\.nodeType === "number"/);
+  assert.match(source, /current\.element\.contains\(node\)/);
+});
