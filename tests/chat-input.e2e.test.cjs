@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { chromium } = require("playwright");
 
-test("Chrome real permite digitar, enviar e anexar print no chat da extensão", async () => {
+test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML", async () => {
   const extensionPath = path.resolve(__dirname, "..");
   const profilePath = fs.mkdtempSync(path.join(os.tmpdir(), "future-assistente-chrome-"));
   const imagePath = path.join(profilePath, "print-teste.png");
@@ -83,29 +83,45 @@ test("Chrome real permite digitar, enviar e anexar print no chat da extensão", 
     const launcher = await query(".launcher");
     await call(launcher, "function(){ this.click(); return true; }");
     const textarea = await query(".composer textarea");
-    await call(textarea, "function(){ this.focus(); return document.activeElement === this; }");
+    const focused = await call(textarea, "function(){ this.focus(); return document.activeElement === this; }");
+    assert.equal(focused.result.value, true, "o campo precisa receber foco");
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
-    const typed = await call(textarea, "function(){ return this.value; }");
-    assert.equal(typed.result.value, "Como localizo o campo de serviço?", "o texto deve entrar no campo");
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
     await cdp.send("Input.insertText", { text: "Pode detalhar?" });
     const multiline = await call(textarea, "function(){ return this.value; }");
-    assert.match(multiline.result.value, /\\nPode detalhar\\?/);
+    assert.match(multiline.result.value, /\nPode detalhar\?/);
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     for (let i = 0; i < 40 && aiRequests === 0; i++) await new Promise(resolve => setTimeout(resolve, 100));
     assert.equal(aiRequests, 1, "Enter deve enviar a mensagem uma única vez");
-    assert.ok(lastPayload?.messages?.length, "a pergunta deve chegar à IA");
-    assert.match(JSON.stringify(lastPayload.messages), /Como localizo o campo de serviço/);
-    assert.match(JSON.stringify(lastPayload.messages), /Pode detalhar/);
+    assert.match(JSON.stringify(lastPayload?.messages || []), /Como localizo o campo de serviço/);
+    assert.match(JSON.stringify(lastPayload?.messages || []), /Pode detalhar/);
 
-    await call(textarea, "function(){ this.value = 'Analise este print'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
+    const stopButton = await query(".stop");
+    for (let i = 0; i < 40; i++) {
+      const stopped = await call(stopButton, "function(){ return this.disabled; }");
+      if (stopped.result.value) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    await call(textarea, "function(){ this.value = 'Analise este print e XML'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
     const fileInput = await query(".hidden-file");
     await cdp.send("DOM.setFileInputFiles", { nodeId: fileInput, files: [imagePath, xmlPath] });
     await call(fileInput, "function(){ this.dispatchEvent(new Event('change', {bubbles:true})); }");
-    await new Promise(resolve => setTimeout(resolve, 350));
+    await new Promise(resolve => setTimeout(resolve, 500));
     const chips = await query(".pending-files");
     const chipText = await call(chips, "function(){ return this.innerText; }");
     assert.match(chipText.result.value, /print-teste\.png/i, "o print deve aparecer como anexo pendente");
+    assert.match(chipText.result.value, /documento\.xml/i, "o XML deve aparecer como anexo pendente");
+
+    const sendButton = await query(".send");
+    await call(sendButton, "function(){ this.click(); return true; }");
+    for (let i = 0; i < 40 && aiRequests < 2; i++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(aiRequests, 2, "print e XML devem ser enviados à IA");
+    const serialized = JSON.stringify(lastPayload?.messages || []);
+    assert.match(serialized, /data:image\/png;base64/);
+    assert.match(serialized, /application\/xml/);
+    assert.match(serialized, /documento\.xml/);
   } finally {
     if (context) await context.close();
     fs.rmSync(profilePath, { recursive: true, force: true });
