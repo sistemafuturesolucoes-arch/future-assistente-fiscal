@@ -1431,10 +1431,18 @@
     `;
     shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
-      if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
+      // composedPath() também contém Window, Document e ShadowRoot.
+      // Node.contains() aceita somente nós DOM; validar evita TypeError em eventos compostos.
+      const eventTarget = event.target;
+      if (!eventTarget || typeof eventTarget.nodeType !== "number") return;
+      if (!guideState || card.contains(eventTarget) || host.contains(eventTarget)) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element) return;
-      const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
+      const eventPath = typeof event.composedPath === "function" ? event.composedPath() : [eventTarget];
+      const clicked = eventPath.some(node =>
+        node && typeof node.nodeType === "number" &&
+        (node === current.element || current.element.contains(node))
+      );
       if (!clicked) return;
         if (current.validationField) return;
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
