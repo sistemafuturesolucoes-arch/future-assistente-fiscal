@@ -205,7 +205,7 @@ async function extractXmlAttachments(message?: UIMessage) {
       ignoreAttributes: true,
       parseTagValue: false,
       trimValues: true,
-      processEntities: true,
+      processEntities: false,
     }).parse(xml) as Record<string, unknown>;
     const rootKey = Object.keys(parsedXml).find((key) => !key.startsWith("?"));
     if (!rootKey) { errors.push(name + ": XML sem elemento raiz reconhecível."); continue; }
