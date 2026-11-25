@@ -1327,18 +1327,20 @@
 
   scheduleGuideRestore();
 
+  const ERROR_TEXT_PATTERN = /\b(erro|error|falha|failed|inv[aá]lid[oa]|invalid|obrigat[oó]ri[oa]|required|n[aã]o foi poss[ií]vel|n[aã]o permitido|n[aã]o pode|n[aã]o corresponde|n[aã]o autorizado|n[aã]o informado|rejeitad[oa]|rejei[cç][aã]o|inconsist[eê]ncia|incompat[ií]vel|duplicad[oa]|j[aá] cadastrad[oa]|fora do padr[aã]o|excede|limite|ausente|n[aã]o encontrado|n[aã]o localizado|preencha|informe|selecione|corrija|aten[cç][aã]o)\b/i;
+  const NON_ERROR_TEXT_PATTERN = /\b(sucesso|conclu[ií]d[oa]|salvo com sucesso|opera[cç][aã]o realizada|processado com sucesso)\b/i;
   let requestInProgress = false;
 
   function dismissErrorSpotlight() {}
-  
+
   function isLikelyFiscalError(el, message) {
     if (!message || message.length < 4 || message.length > 500) return false;
-    if (NON_ERROR_TEXT_PATTERN.test(message) && !/\\b(erro|falha|inv[aá]lid[oa]|rejeitad[oa])\\b/i.test(message)) return false;
+    if (NON_ERROR_TEXT_PATTERN.test(message) && !/\b(erro|falha|inv[aá]lid[oa]|rejeitad[oa])\b/i.test(message)) return false;
     const classText = String(el.className?.baseVal || el.className || "");
     const hasStrongSemantic = el.getAttribute("role") === "alert" ||
       el.getAttribute("aria-live") === "assertive" ||
       el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
-    const hasErrorClass = /\\b(invalid|error|danger|toast-error)\\b/i.test(classText);
+    const hasErrorClass = /\b(invalid|error|danger|toast-error)\b/i.test(classText);
     const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
     if (el.matches(".text-danger") && !hasErrorLanguage) return false;
     return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
