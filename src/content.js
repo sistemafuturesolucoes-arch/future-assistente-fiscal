@@ -1120,7 +1120,7 @@
   }
   function extractNavigationPlan(answer) {
     let plan = null;
-    const cleanAnswer = String(answer || "").replace(/\\[\\[FUTURE_NAVIGATION_PLAN\\]\\]([\\s\\S]*?)\\[\\[\\/FUTURE_NAVIGATION_PLAN\\]\\]/g, (_, raw) => {
+    const cleanAnswer = String(answer || "").replace(/\[\[FUTURE_NAVIGATION_PLAN\]\]([\s\S]*?)\[\[\/FUTURE_NAVIGATION_PLAN\]\]/g, (_, raw) => {
       try {
         const parsed = JSON.parse(raw.trim());
         if (!Array.isArray(parsed)) return "";
@@ -1164,6 +1164,8 @@
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
+    navigationPlan = [];
+    navigationPlanIndex = 0;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
   }
   function navigationSnapshot() {
@@ -1817,8 +1819,9 @@
     const manualPolicy = knowledge
       ? "\n\nREGRA OBRIGATÓRIA DE CONSULTA AO MANUAL FUTURE: use primeiro o conteúdo publicado fornecido em BASE DE CONHECIMENTO DO MANUAL FUTURE. Cruze a tarefa com o caminho, aula, resumo, conteúdo e referências visuais. Não responda com procedimento genérico se houver orientação no Manual. Se a tela atual divergir do Manual, descreva a diferença e peça confirmação/print; nunca invente rótulos ou cliques. Informe o título da aula usada e inclua o link da aula quando disponível.\n"
       : "\n\nMANUAL FUTURE INDISPONÍVEL NESTA CONSULTA: não afirme que consultou o Manual, não invente procedimentos nem sequência de cliques. Explique que o conteúdo do Manual não carregou agora e peça para tentar novamente ou enviar um print; responda apenas dúvidas gerais que não dependam do procedimento específico.\n";
-    const navigationPlanRequest = navigationTask && !isNavigationContinuation && !files.length
-      ? "\\n\\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\\nO usuário pediu para chegar a uma função/tela. Consulte o MANUAL FUTURE já carregado e planeje o caminho de menus e submenus até a tela de destino. Responda normalmente em português e, ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\\\"label\\\":\\\"rótulo exato do próximo menu ou controle visível\\\",\\\"description\\\":\\\"instrução curta\\\",\\\"path\\\":\\\"caminho documentado no Manual\\\"}]"+NAVIGATION_PLAN_CLOSE+". Inclua somente controles de navegação (menus, submenus, links e abas) que apareçam no caminho documentado; um item por clique, na ordem correta. Use rótulos exatos do Manual, não invente. Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar. Se não houver caminho confiável no Manual, não produza o bloco e explique a limitação.\\n"
+    const navigationIntent = /\[TOUR GUIADO\]|\b(quero|preciso|me ajude|me ajuda|como faço|como faco|cadastrar|cadastre|acesse|abrir|ir para|chegar|localizar|encontrar|criar|incluir|editar|consultar)\b/i.test(question || "");
+    const navigationPlanRequest = navigationTask && navigationIntent && !isNavigationContinuation && !files.length
+      ? "\n\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\nO usuário pediu para chegar a uma função/tela. Consulte o MANUAL FUTURE já carregado e planeje o caminho de menus e submenus até a tela de destino. Responda normalmente em português e, ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\"label\":\"rótulo exato do próximo menu ou controle visível\",\"description\":\"instrução curta\",\"path\":\"caminho documentado no Manual\"}]"+NAVIGATION_PLAN_CLOSE+". Inclua somente controles de navegação (menus, submenus, links e abas) que apareçam no caminho documentado; um item por clique, na ordem correta. Use rótulos exatos do Manual, não invente. Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar. Se não houver caminho confiável no Manual, não produza o bloco e explique a limitação.\n"
       : "";
     const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
@@ -1869,7 +1872,9 @@
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
-        const safeAnswer = renderFieldProposals(answer, target);
+        const navigationResult = extractNavigationPlan(answer);
+        if (navigationResult.plan) activateNavigationPlan(navigationResult.plan);
+        const safeAnswer = renderFieldProposals(navigationResult.cleanAnswer, target);
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
         maybeStartAutomaticGuide(safeAnswer);
         if (voiceModeActive) await speakAssistantReply(safeAnswer);
