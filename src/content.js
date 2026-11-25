@@ -6,7 +6,7 @@
   const MANUAL_URL = "https://crm.futuresolucoes.com.br/manual/";
   const host = document.createElement("div");
   host.id = "future-assistente-host";
-  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:0;height:0;";
+  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:100vw;height:100vh;overflow:visible;box-sizing:border-box;";
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: "closed" });
 
@@ -158,9 +158,19 @@
     fileInput.value = "";
   });
 
-  input.addEventListener("pointerdown", () => {
-    if (!panel.classList.contains("open")) return;
+  const focusComposer = () => {
+    if (!panel.classList.contains("open") || input.disabled || input.readOnly) return;
     input.focus({ preventScroll: true });
+  };
+  input.disabled = false;
+  input.readOnly = false;
+  input.tabIndex = 0;
+  input.addEventListener("pointerdown", focusComposer, true);
+  input.addEventListener("click", focusComposer, true);
+  input.addEventListener("focus", () => {
+    input.style.pointerEvents = "auto";
+    input.style.userSelect = "text";
+    input.style.webkitUserSelect = "text";
   });
 
   input.addEventListener("keydown", event => {
@@ -779,12 +789,15 @@
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
     } finally {
       reviewButton.disabled = false;
-      reviewButton.textContent = "Revisar novamente";
+      reviewButton.textContent = "Finalizar revisão";
     }
   }
 
   reviewButton.addEventListener("click", () => {
-    if (reviewActive) clearDocumentReview();
+    if (reviewActive) {
+      clearDocumentReview();
+      return;
+    }
     reviewDocument();
   });
 
@@ -1712,9 +1725,20 @@
     let knowledge = "";
     try {
       status.textContent = "Carregando as aulas do Manual relacionadas a esta tela...";
-      knowledge = await window.FutureManualKnowledge.load({ route: location.pathname, question });
+      let manualTimeout;
+      try {
+        knowledge = await Promise.race([
+          window.FutureManualKnowledge.load({ route: location.pathname, question }),
+          new Promise((_, reject) => {
+            manualTimeout = setTimeout(() => reject(new Error("O Manual demorou mais de 12 segundos para responder.")), 12000);
+          })
+        ]);
+      } finally {
+        clearTimeout(manualTimeout);
+      }
     } catch (error) {
-      console.warn("Não foi possível carregar o Manual Academy", error);
+      console.warn("Não foi possível carregar o Manual Future nesta tentativa", error);
+      status.textContent = "O Manual não respondeu a tempo. Vou continuar sem ele e avisar a IA para não inventar procedimentos.";
     }
     if (signal.aborted) {
       requestInProgress = false;
