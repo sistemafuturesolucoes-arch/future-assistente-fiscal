@@ -1283,11 +1283,21 @@
     });
   }
 
+  function hasVisibleErrorIndicators() {
+    if (collectVisibleFiscalReturnMessages().length) return true;
+    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"]';
+    return [...document.querySelectorAll(selectors)].some(el => {
+      if (!isVisibleOnPage(el)) return false;
+      const message = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+      return message.length >= 4 && message.length <= 1200 && ERROR_TEXT_PATTERN.test(message);
+    });
+  }
+
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
     // Uma rejeição/alerta visível deve ficar sob controle do usuário: não iniciar
     // outra chamada automática que desabilite o envio do chat.
-    if (collectVisibleFiscalReturnMessages().length) {
+    if (hasVisibleErrorIndicators()) {
       clearNavigationTask();
       closeGuide();
       status.textContent = "Encontrei uma mensagem de erro/retorno nesta tela. O chat permanece disponível; clique em Revisar documento quando quiser analisar o aviso.";
@@ -1440,6 +1450,11 @@
     try { saved = JSON.parse(sessionStorage.getItem(NAVIGATION_SESSION_KEY) || "null"); } catch {}
     if (!saved?.task || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 20 * 60 * 1000) {
       if (saved) clearNavigationTask();
+      return;
+    }
+    if (hasVisibleErrorIndicators()) {
+      clearNavigationTask();
+      status.textContent = "Há um aviso de erro nesta tela. A navegação automática foi pausada para manter o chat livre.";
       return;
     }
     navigationTask = saved.task;
