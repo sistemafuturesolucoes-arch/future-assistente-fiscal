@@ -674,6 +674,43 @@
     return minimal.map(el => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 5);
   }
 
+  function getVisibleErrorMessage(el) {
+    if (!el || !(el instanceof Element)) return "";
+    const candidates = [];
+    const addText = value => {
+      const text = String(value || "").replace(/\\s+/g, " ").trim();
+      if (text && text.length >= 3 && text.length <= 1200 && !candidates.includes(text)) candidates.push(text);
+    };
+    try {
+      const errorMessageId = el.getAttribute("aria-errormessage");
+      if (errorMessageId) addText(document.getElementById(errorMessageId)?.innerText || document.getElementById(errorMessageId)?.textContent);
+      const describedBy = (el.getAttribute("aria-describedby") || "").split(/\\s+/).filter(Boolean);
+      for (const id of describedBy) {
+        const described = document.getElementById(id);
+        if (described && isVisibleOnPage(described)) addText(described.innerText || described.textContent);
+      }
+      if (el.matches("input,select,textarea") && el.validity && !el.validity.valid) addText(el.validationMessage);
+      addText(el.getAttribute("data-error"));
+      addText(el.getAttribute("title"));
+      if (!el.matches("input,select,textarea")) addText(el.innerText || el.textContent);
+      const wrapper = el.closest(".form-group,.form-field,.field,.form-item,[data-field-wrapper],fieldset,[class*=field]");
+      if (wrapper) {
+        wrapper.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.error-message,.field-error,[class*="error" i]').forEach(node => {
+          if (isVisibleOnPage(node)) addText(node.innerText || node.textContent);
+        });
+      }
+      if (!candidates.length) {
+        const next = el.nextElementSibling;
+        if (next && isVisibleOnPage(next)) addText(next.innerText || next.textContent);
+      }
+    } catch (error) {
+      console.debug("Future: não foi possível ler a mensagem de validação deste elemento.", error);
+    }
+    return candidates.find(text => ERROR_TEXT_PATTERN.test(text) || /\\bE\\d{4,5}\\b/i.test(text) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(text))
+      || candidates[0]
+      || "";
+  }
+
   function collectDocumentIssues() {
     const issues = [];
     const seen = new Set();
@@ -750,38 +787,39 @@
     reviewWash = document.createElement("div");
     reviewWash.className = "review-wash";
     shadow.appendChild(reviewWash);
-    const issues = collectDocumentIssues();
-    reviewFrames = issues.map(issue => {
-      const frame = document.createElement("div");
-      frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
-      const label = document.createElement("span");
-      label.className = "review-label";
-      label.textContent = issue.title;
-      frame.appendChild(label);
-      shadow.appendChild(frame);
-      return { frame, element: issue.element };
-    });
-    if (issues[0]) issues[0].element.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
-    reviewReposition = positionReviewFrames;
-    document.addEventListener("scroll", reviewReposition, true);
-    window.addEventListener("resize", reviewReposition);
-    positionReviewFrames();
-    addMessage("🟣 Revisão iniciada. A tela está destacada em roxo enquanto verifico os campos e mensagens de validação visíveis.", "bot");
-    status.textContent = "IA revisando o documento…";
-    const issueSummary = issues.length
-      ? issues.map((issue, index) => (index + 1) + ". " + issue.title + ": " + issue.message + " (" + issue.source + ")").join("\n")
-      : "Nenhum campo inválido ou alerta de erro visível foi identificado pelo navegador nesta tela.";
-    const question = [
-      "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
-      "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
-      "",
-      "RESPOSTA DIRETA E CURTA: comece pelo erro identificado e pelo código. Use este formato: ERRO: [o que a prefeitura rejeitou]. ONDE: [nome exato do campo destacado]. CORREÇÃO: [uma ação objetiva para o usuário conferir/fazer]. Se houver dois campos envolvidos, liste os dois separadamente. Explique por que em no máximo duas frases. Não comece com saudação, não faça introdução longa, não repita o manual e não gere roteiro genérico de emissão de nota.",
-      "Use o Manual Future e os metadados da tela para explicar a correção. Separe erros confirmados de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores. Se o contexto não permitir afirmar qual valor deve ser usado, diga exatamente qual campo conferir e qual informação falta; não mande alterar por tentativa.",
-      "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
-      "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
-    ].join("\n");
+    let issues = [];
     let reviewCompleted = false;
     try {
+      issues = collectDocumentIssues();
+      reviewFrames = issues.map(issue => {
+        const frame = document.createElement("div");
+        frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
+        const label = document.createElement("span");
+        label.className = "review-label";
+        label.textContent = issue.title;
+        frame.appendChild(label);
+        shadow.appendChild(frame);
+        return { frame, element: issue.element };
+      });
+      if (issues[0]) issues[0].element.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+      reviewReposition = positionReviewFrames;
+      document.addEventListener("scroll", reviewReposition, true);
+      window.addEventListener("resize", reviewReposition);
+      positionReviewFrames();
+      addMessage("🟣 Revisão iniciada. A tela está destacada em roxo enquanto verifico os campos e mensagens de validação visíveis.", "bot");
+      status.textContent = "IA revisando o documento…";
+      const issueSummary = issues.length
+        ? issues.map((issue, index) => (index + 1) + ". " + issue.title + ": " + issue.message + " (" + issue.source + ")").join("\n")
+        : "Nenhum campo inválido ou alerta de erro visível foi identificado pelo navegador nesta tela.";
+      const question = [
+        "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
+        "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
+        "",
+        "RESPOSTA DIRETA E CURTA: comece pelo erro identificado e pelo código. Use este formato: ERRO: [o que a prefeitura rejeitou]. ONDE: [nome exato do campo destacado]. CORREÇÃO: [uma ação objetiva para o usuário conferir/fazer]. Se houver dois campos envolvidos, liste os dois separadamente. Explique por que em no máximo duas frases. Não comece com saudação, não faça introdução longa, não repita o manual e não gere roteiro genérico de emissão de nota.",
+        "Use o Manual Future e os metadados da tela para explicar a correção. Separe erros confirmados de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores. Se o contexto não permitir afirmar qual valor deve ser usado, diga exatamente qual campo conferir e qual informação falta; não mande alterar por tentativa.",
+        "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
+        "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
+      ].join("\n");
       const reviewMessage = await ask(question, []);
       if (!reviewMessage || reviewMessage.dataset?.requestFailed === "true") {
         throw new Error(reviewMessage?.textContent || "A revisão foi interrompida antes de receber a resposta da IA.");
