@@ -192,3 +192,27 @@ test("temporizadores do guia são limpos ao fechar ou trocar de rota", () => {
   assert.ok(source.includes("clearTimeout(guideState.navigationTimer)"));
   assert.ok(source.includes("navigationTimer: null"));
 });
+
+
+test("rotas do Manual viram um plano local e o próximo passo é resolvido no DOM", () => {
+  assert.match(source, /FUTURE_NAVIGATION_PLAN_REQUEST/);
+  assert.match(source, /function extractNavigationPlan\(answer\)/);
+  assert.match(source, /function advanceLocalNavigationPlan\(\)/);
+  assert.match(source, /findElementByName\(next\.label\)/);
+  assert.match(source, /plan: navigationPlan, planIndex: navigationPlanIndex/);
+  assert.match(source, /navigationPlanIndex = Number\.isInteger\(saved\.planIndex\)/);
+});
+
+test("avanço normal do roteiro local não chama a IA a cada clique", () => {
+  const localAdvance = source.indexOf("if (advanceLocalNavigationPlan()) return;");
+  const aiFallback = source.indexOf("const responseMessage = await ask(prompt, []);", localAdvance);
+  assert.ok(localAdvance > 0, "deve tentar resolver o próximo alvo localmente primeiro");
+  assert.ok(aiFallback > localAdvance, "a IA só deve ser chamada depois que o alvo local não for encontrado");
+  assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
+});
+
+test("o plano local não executa ações fiscais nem preenche formulários automaticamente", () => {
+  assert.match(source, /Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar/);
+  assert.match(source, /O usuário fará cada clique/);
+  assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+});
