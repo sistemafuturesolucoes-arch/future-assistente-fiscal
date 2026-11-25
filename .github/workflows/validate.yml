@@ -31,6 +31,16 @@ jobs:
       - name: Verificar sintaxe do carregador do Manual
         run: node --check src/knowledge.js
 
+      - name: Preparar Deno para validar as funções Supabase
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verificar funções Supabase
+        run: |
+          deno check supabase/functions/ai-assistant/index.ts
+          deno check supabase/functions/assistant-voice/index.ts
+
       - name: Preparar navegador para testes reais da extensão
         run: |
           npm install --no-save playwright@1.56.1
