@@ -1061,16 +1061,29 @@
       // Evita destacar controles por coincidência de uma palavra genérica.
       if (best && (best.exactAt >= 0 || best.score >= 0.82)) candidates.push(best);
     }
-    candidates.sort((a, b) => {
-      if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
+    // Prefere o controle interativo mais específico; evita enquadrar o menu pai
+    // quando existe um item de submenu com o mesmo rótulo.
+    const specificCandidates = candidates.filter(candidate => !candidates.some(other =>
+      other.el !== candidate.el &&
+      candidate.el.contains(other.el) &&
+      other.exactAt >= 0 &&
+      (normalize(candidate.name) === normalize(other.name) ||
+       normalize(candidate.name).includes(normalize(other.name)))
+    ));
+    specificCandidates.sort((a, b) => {
+      if (a.exactAt >= 0 && b.exactAt >= 0) {
+        if (a.exactAt !== b.exactAt) return a.exactAt - b.exactAt;
+        return a.name.length - b.name.length;
+      }
       if (a.exactAt >= 0) return -1;
       if (b.exactAt >= 0) return 1;
-      return b.score - a.score;
+      if (a.score !== b.score) return b.score - a.score;
+      return a.name.length - b.name.length;
     });
     const steps = [];
     const seenElements = new Set();
     const seenNames = new Set();
-    for (const candidate of candidates) {
+    for (const candidate of specificCandidates) {
       if (seenElements.has(candidate.el) || seenNames.has(candidate.key)) continue;
       seenElements.add(candidate.el);
       seenNames.add(candidate.key);
@@ -1130,6 +1143,43 @@
     guideState = null;
   }
 
+  function positionGuideStep() {
+    if (!guideState) return;
+    const step = guideState.steps[guideState.index];
+    if (!step?.element?.isConnected) return;
+    const rect = step.element.getBoundingClientRect();
+    // Contorno justo: somente 2 px de respiro ao redor do controle real.
+    const pad = 2;
+    Object.assign(guideState.frame.style, {
+      left: Math.max(1, rect.left - pad) + "px",
+      top: Math.max(1, rect.top - pad) + "px",
+      width: Math.max(8, rect.width + pad * 2) + "px",
+      height: Math.max(8, rect.height + pad * 2) + "px"
+    });
+    const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
+    const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
+    guideState.marker.style.left = markerLeft + "px";
+    guideState.marker.style.top = markerTop + "px";
+    guideState.dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
+    guideState.dismiss.style.top = Math.max(4, markerTop - 7) + "px";
+    if (!guideState.card.hidden) positionGuideCard();
+  }
+
+  function positionGuideCard() {
+    if (!guideState || guideState.card.hidden) return;
+    const rect = guideState.steps[guideState.index]?.element?.getBoundingClientRect();
+    if (!rect) return;
+    const cardRect = guideState.card.getBoundingClientRect();
+    const cardWidth = Math.min(330, window.innerWidth - 28);
+    const cardHeight = cardRect.height || 170;
+    const roomRight = window.innerWidth - rect.right;
+    const roomLeft = rect.left;
+    const left = roomRight >= cardWidth + 18 ? rect.right + 12 : roomLeft >= cardWidth + 18 ? rect.left - cardWidth - 12 : Math.max(8, Math.min(window.innerWidth - cardWidth - 8, rect.left));
+    const top = rect.bottom + cardHeight + 18 < window.innerHeight ? rect.bottom + 12 : Math.max(8, rect.top - cardHeight - 12);
+    guideState.card.style.top = Math.max(8, Math.min(window.innerHeight - cardHeight - 8, top)) + "px";
+    guideState.card.style.left = left + "px";
+  }
+
   function showGuideStep(index) {
     if (!guideState) return;
     const step = guideState.steps[index];
@@ -1140,34 +1190,13 @@
     guideState.index = index;
     guideState.pendingIndex = null;
     persistGuideProgress(index);
-    step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    const rect = step.element.getBoundingClientRect();
-    const pad = 5;
-    Object.assign(guideState.frame.style, {
-      left: Math.max(2, rect.left - pad) + "px",
-      top: Math.max(2, rect.top - pad) + "px",
-      width: Math.max(12, rect.width + pad * 2) + "px",
-      height: Math.max(12, rect.height + pad * 2) + "px"
-    });
     guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
     guideState.card.hidden = true;
     guideState.marker.hidden = false;
-    const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
-    const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
-    guideState.marker.style.left = markerLeft + "px";
-    guideState.marker.style.top = markerTop + "px";
-    guideState.dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
-    guideState.dismiss.style.top = Math.max(4, markerTop - 7) + "px";
-    const cardWidth = Math.min(330, window.innerWidth - 28);
-    const cardHeight = guideState.card.getBoundingClientRect().height || 170;
-    const roomRight = window.innerWidth - rect.right;
-    const roomLeft = rect.left;
-    const left = roomRight >= cardWidth + 18 ? rect.right + 12 : roomLeft >= cardWidth + 18 ? rect.left - cardWidth - 12 : Math.max(8, Math.min(window.innerWidth - cardWidth - 8, rect.left));
-    const top = rect.bottom + cardHeight + 18 < window.innerHeight ? rect.bottom + 12 : Math.max(8, rect.top - cardHeight - 12);
-    guideState.card.style.top = Math.max(8, Math.min(window.innerHeight - cardHeight - 8, top)) + "px";
-    guideState.card.style.left = left + "px";
+    step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    requestAnimationFrame(positionGuideStep);
     if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
     const waitingAtStep = index;
     guideState.waitTimer = window.setTimeout(() => {
@@ -1205,13 +1234,21 @@
       const style = getComputedStyle(el);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
-    const fingerprint = items.slice(0, 320).map(el => [
-      normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
-      el.getAttribute("aria-expanded") || "",
-      el.getAttribute("aria-controls") || "",
-      el.getAttribute("data-state") || "",
-      el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
-    ].join(":")).join("|");
+    const fingerprint = items.slice(0, 900).map(el => {
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return [
+        normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
+        el.getAttribute("aria-expanded") || "",
+        el.getAttribute("aria-controls") || "",
+        el.getAttribute("data-state") || "",
+        el.getAttribute("aria-disabled") || (el.disabled ? "true" : ""),
+        el.getAttribute("hidden") !== null ? "hidden" : "shown",
+        String(el.className?.baseVal || el.className || "").slice(0, 100),
+        Math.round(rect.left) + "," + Math.round(rect.top) + "," + Math.round(rect.width) + "," + Math.round(rect.height),
+        style.display + "/" + style.visibility
+      ].join(":");
+    }).join("|");
     return [location.pathname, location.hash, fingerprint].join("::");
   }
 
@@ -1248,6 +1285,15 @@
 
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
+    // Uma rejeição/alerta visível deve ficar sob controle do usuário: não iniciar
+    // outra chamada automática que desabilite o envio do chat.
+    if (collectVisibleFiscalReturnMessages().length) {
+      clearNavigationTask();
+      closeGuide();
+      status.textContent = "Encontrei uma mensagem de erro/retorno nesta tela. O chat permanece disponível; clique em Revisar documento quando quiser analisar o aviso.";
+      addMessage("Detectei um aviso visível nesta tela. Não iniciei uma análise automática para não bloquear sua conversa. Quando quiser, clique em “Revisar documento”.", "bot");
+      return;
+    }
     closeGuide();
     status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
     const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
@@ -1325,23 +1371,21 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: positionGuideStep };
     stopButton.disabled = false;
-    dismiss.addEventListener("click", () => {
+    dismiss.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       clearNavigationTask();
       closeGuide();
       status.textContent = "Indicador fechado. Você pode continuar usando o Emissor normalmente.";
     });
-    marker.addEventListener("click", () => {
+    marker.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       if (!guideState) return;
-      const rect = guideState.card.getBoundingClientRect();
-      guideState.card.hidden = false;
-      const cardRect = guideState.card.getBoundingClientRect();
-      const markerRect = marker.getBoundingClientRect();
-      const left = Math.max(8, Math.min(window.innerWidth - cardRect.width - 8, markerRect.left - cardRect.width + markerRect.width));
-      const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
-      guideState.card.style.left = left + "px";
-      guideState.card.style.top = top + "px";
+      guideState.card.hidden = !guideState.card.hidden;
+      if (!guideState.card.hidden) requestAnimationFrame(positionGuideCard);
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
