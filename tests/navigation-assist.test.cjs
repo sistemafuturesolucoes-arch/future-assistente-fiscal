@@ -300,3 +300,13 @@ test("mudanças de estado CSS em menus são reconhecidas pela navegação guiada
   assert.match(source, /el\.getAttribute\("style"\) \|\| ""/);
   assert.match(source, /async function waitForNavigationUpdate\(beforeSnapshot, timeoutMs = 5000\)/);
 });
+
+test("navegação varre todos os elementos interativos sem truncar os primeiros 900", () => {
+  assert.match(source, /function collectPageElements\(selector\)/);
+  assert.match(source, /root\.querySelectorAll\(selector\)/);
+  assert.match(source, /if \(el\.shadowRoot\) visitRoot\(el\.shadowRoot\)/);
+  assert.match(source, /if \(el\.tagName === 'IFRAME'\)/);
+  assert.match(source, /const fingerprint = items\.map\(el =>/);
+  assert.doesNotMatch(source, /items\.slice\(0, 900\)/);
+  assert.match(source, /el\.getAttribute\("aria-label"\)/);
+});
