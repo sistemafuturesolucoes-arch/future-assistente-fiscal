@@ -253,3 +253,38 @@ test("avisos visíveis pausam a continuação automática e preservam o chat", (
   assert.match(source, /A navegação automática foi pausada para manter o chat livre/);
   assert.match(source, /Não iniciei uma análise automática para não bloquear sua conversa/);
 });
+
+
+test("carregar uma página nunca inicia IA automaticamente nem bloqueia o compositor", () => {
+  const start = source.indexOf("function restoreNavigationAfterPageLoad()");
+  const end = source.indexOf('window.addEventListener("pageshow"', start);
+  assert.ok(start >= 0 && end > start);
+  const restore = source.slice(start, end);
+  assert.match(restore, /navigationGuideActive = false/);
+  assert.match(restore, /Orientação pausada nesta tela/);
+  assert.doesNotMatch(restore, /continueNavigationGuide\(\)/);
+  assert.doesNotMatch(restore, /ask\(/);
+});
+
+test("páginas com campos inválidos pausam a restauração do tour sem bloquear o chat", () => {
+  assert.match(source, /input:invalid,select:invalid,textarea:invalid/);
+  assert.match(source, /\[aria-invalid="true"\]/);
+  assert.match(source, /\.is-invalid/);
+  assert.match(source, /\.field-error/);
+  assert.match(source, /A orientação foi pausada e o chat está livre/);
+});
+
+test("marcador visual não usa sombra de tela inteira nem animação de layout", () => {
+  const start = source.indexOf(".spotlight{");
+  const end = source.indexOf("}", start);
+  const css = source.slice(start, end);
+  assert.doesNotMatch(css, /9999px/);
+  assert.match(css, /transition:none/);
+  assert.match(source, /function scheduleGuidePosition\(\)/);
+  assert.match(source, /requestAnimationFrame\(\(\) => \{\s*guidePositionFrame = 0;\s*positionGuideStep\(\)/);
+  assert.match(source, /reposition: scheduleGuidePosition/);
+});
+
+test("fechar orientação cancela atualização visual pendente", () => {
+  assert.match(source, /function closeGuide\(\) \{\s*if \(guidePositionFrame\) \{\s*cancelAnimationFrame\(guidePositionFrame\)/);
+});
