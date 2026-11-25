@@ -7,11 +7,21 @@
   let lastStatus = null;
 
   async function fetchRows(table, query) {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-      headers: { apikey: PUBLISHABLE_KEY }
-    });
-    if (!response.ok) throw new Error(`Falha ao carregar ${table} (HTTP ${response.status}).`);
-    return response.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+        headers: { apikey: PUBLISHABLE_KEY },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Falha ao carregar ${table} (HTTP ${response.status}).`);
+      return await response.json();
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error(`O Manual demorou para carregar ${table}. A consulta pode continuar sem o Manual.`);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function normalize(value) {
