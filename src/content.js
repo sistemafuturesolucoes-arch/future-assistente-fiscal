@@ -1244,8 +1244,7 @@
         el.getAttribute("data-state") || "",
         el.getAttribute("aria-disabled") || (el.disabled ? "true" : ""),
         el.getAttribute("hidden") !== null ? "hidden" : "shown",
-        String(el.className?.baseVal || el.className || "").slice(0, 100),
-        Math.round(rect.left) + "," + Math.round(rect.top) + "," + Math.round(rect.width) + "," + Math.round(rect.height),
+        el.getAttribute("aria-haspopup") || "",
         style.display + "/" + style.visibility
       ].join(":");
     }).join("|");
