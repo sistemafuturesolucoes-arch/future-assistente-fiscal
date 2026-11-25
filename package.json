@@ -4,7 +4,7 @@
   "version": "0.1.18",
   "description": "Build tooling for Future Assistente Fiscal Chrome extension",
   "scripts": {
-    "build:driver": "esbuild src/driver-headless-entry.js --bundle --format=iife --global-name=FutureDriverHeadless --outfile=src/driver-headless.bundle.js && license_file=$(find node_modules/driver.js -maxdepth 2 -type f -iname '*license*' | head -n 1) && test -n \"$license_file\" && cp \"$license_file\" docs/DRIVERJS-LICENSE.txt"
+    "build:driver": "esbuild src/driver-headless-entry.js --bundle --format=iife --global-name=FutureDriverHeadless --outfile=src/driver-headless.bundle.js"
   },
   "dependencies": {
     "driver.js": "1.14.0"
