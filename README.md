@@ -14,9 +14,7 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 - Quando a resposta contém instruções acionáveis e cita elementos existentes na tela, a extensão inicia automaticamente a orientação visual, sem botão intermediário. O guia cria uma moldura brilhante, descrição, contador de etapas e controles Anterior/Próximo/Encerrar.
 - A orientação visual reconhece rótulos associados por HTML/ARIA, atributos de dados, placeholders, títulos, grupos de formulário e componentes personalizados. Correspondências ambíguas não são escolhidas automaticamente. As etapas são separadas por quebras de linha reais.
 - A orientação visual apenas destaca e rola até os elementos; não clica, não preenche e não altera dados.
-- O monitor de erros observa alertas semânticos, mensagens de validação e alterações de texto no DOM. Filtra mensagens de sucesso e exige indícios de erro para não tratar qualquer texto vermelho como falha.
-- Mensagens repetidas são deduplicadas por conteúdo; a análise automática aguarda uma conversa em andamento terminar, evitando requisições simultâneas. O diagnóstico usa o Manual compartilhado e apenas metadados seguros da tela.
-- Alertas detectados podem abrir o chat, destacar temporariamente a mensagem e emitir cinco bipes quando o som está habilitado. O destaque da extensão desaparece ao começar a editar um campo ou após o tempo limite.
+- A análise de mensagens de erro e validação só acontece quando o usuário clica em **Revisar documento**. A extensão não monitora erros automaticamente, não abre diagnósticos sozinha e não emite bipes por mensagens do Emissor.
 
 ## Verificações automáticas
 O GitHub Actions valida o JSON do Manifest, a sintaxe dos scripts e executa testes automatizados do cache e da priorização contextual do Manual em cada push ou pull request para `main`.
@@ -40,8 +38,9 @@ A extensão não cria uma segunda IA nem um segundo banco de conhecimento. Ela c
 - Não captura imagens da tela automaticamente nem executa cliques ou preenchimento. Prints e áudios só são enviados quando o usuário os anexa ou grava explicitamente.
 - Quando a IA tiver base suficiente para sugerir um valor, pode apresentar uma proposta estruturada para um campo identificado pelo rótulo exato. O usuário precisa clicar em **Confirmar e preencher** antes de qualquer alteração. A sugestão é invalidada ao navegar para outra rota, opções de seleção exigem correspondência única e datas são validadas no calendário. Campos sensíveis (CPF, CNPJ, e-mail, telefone, senha, PIN, token e certificado), campos ambíguos e componentes não suportados ficam bloqueados. A extensão não executa ações fiscais irreversíveis.
 - Não emite, transmite, salva ou altera documentos fiscais.
-- A Edge Function existente está configurada com `verify_jwt=false`; autenticação, rate limit por identidade e proteção contra abuso precisam ser revisados antes de ampla distribuição.
-- A tabela `assistant_knowledge` tem padrão `approved` no banco atual. O aprendizado automático não deve ser considerado validado; respostas fiscais precisam de revisão humana antes de serem tratadas como soluções oficiais.
+- A Edge Function pública continua com `verify_jwt=false` para permitir o uso pela extensão sem login. O limite de uso usa o IP de origem confiável `cf-connecting-ip`, falha de forma segura se a proteção não puder ser verificada e limita o corpo das mensagens. Isso é proteção por IP, não autenticação individual de usuário.
+- As respostas novas de aprendizado entram como `pending`; as 65 respostas anteriores também foram reclassificadas como pendentes. Somente registros aprovados manualmente podem ser reutilizados como respostas compartilhadas.
+- O aprendizado compartilhado não transforma uma resposta recém-gerada em solução oficial. Respostas pendentes aguardam revisão antes de serem disponibilizadas a outros usuários.
 
 ## Privacidade
 - Não lê valores de CPF/CNPJ, valores monetários, dados preenchidos da nota, senhas ou PINs.

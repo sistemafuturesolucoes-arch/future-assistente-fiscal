@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(__dirname, "../src/content.js"), "utf8"
 
 test("botão Tour guiado inicia orientação interativa baseada no Manual", () => {
   assert.match(source, /class="tour-button"/);
-  assert.match(source, /\\[TOUR GUIADO\\]/);
+  assert.match(source, /\[TOUR GUIADO\]/);
   assert.match(source, /identifique a aula correspondente/);
   assert.match(source, /aguarde o usuário clicar/);
   assert.match(source, /até concluir o procedimento/);
@@ -156,4 +156,22 @@ test("a coleta de erros é executada somente ao clicar em Revisar documento", ()
   assert.match(source, /reviewButton\.addEventListener\("click", \(\) => \{/);
   assert.match(source, /const issues = collectDocumentIssues\(\)/);
   assert.doesNotMatch(source, /setTimeout\(detectVisibleErrors|errorObserver\.observe/);
+});
+
+
+test("campo de conversa permanece interativo dentro do Shadow DOM", () => {
+  assert.ok(source.includes('host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none'));
+  assert.ok(source.includes(":host{all:initial;pointer-events:none}"));
+  assert.ok(source.includes(".panel{pointer-events:auto;position:fixed"));
+  assert.ok(source.includes(".composer textarea{display:block;position:relative;z-index:1;pointer-events:auto;user-select:text;-webkit-user-select:text"));
+  assert.ok(source.includes("requestAnimationFrame(() => input.focus({ preventScroll: true }))"));
+});
+
+test("extensão aceita XML e enriquece o contexto visual sem ler valores digitados", () => {
+  assert.ok(source.includes('accept="image/*,audio/*,application/xml,text/xml,.xml"'));
+  assert.ok(source.includes('const isXml = file.type.includes("xml")'));
+  assert.ok(source.includes("file.size > 1500 * 1024"));
+  assert.ok(source.includes("Campo em foco (sem ler o valor digitado)"));
+  assert.ok(source.includes('el.getAttribute("aria-invalid") === "true"'));
+  assert.ok(source.includes('el.getAttribute("aria-describedby")'));
 });
