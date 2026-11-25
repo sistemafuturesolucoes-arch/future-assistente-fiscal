@@ -6,7 +6,7 @@
   const MANUAL_URL = "https://crm.futuresolucoes.com.br/manual/";
   const host = document.createElement("div");
   host.id = "future-assistente-host";
-  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:0;height:0;";
+  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:100vw;height:100vh;overflow:visible;box-sizing:border-box;";
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: "closed" });
 
@@ -21,7 +21,7 @@
     .status{flex:0 0 auto;min-width:0;overflow-wrap:anywhere;font-size:11px;color:#786c83;padding:5px 13px}.composer{flex:0 0 auto;display:flex;align-items:flex-end;gap:7px;padding:10px;border-top:1px solid #eee9f4;flex-wrap:wrap}.composer textarea{display:block;position:relative;z-index:1;pointer-events:auto;user-select:text;-webkit-user-select:text;touch-action:manipulation;box-sizing:border-box;resize:vertical;flex:1 1 150px;min-width:110px;min-height:48px;height:48px;max-height:120px;border:1px solid #d9d0e3;border-radius:11px;padding:9px;font:13px/1.35 system-ui;outline-color:#7840bd;background:#fff;color:#211b2b;opacity:1}.send{border:0;border-radius:11px;background:#54218a;color:white;padding:0 14px;height:48px;font-weight:650;cursor:pointer}.send:disabled{opacity:.5;cursor:wait}.stop{width:42px;height:48px;border:1px solid #e4c7d0;border-radius:11px;background:#fff5f6;color:#b4234c;font-size:17px;font-weight:800;cursor:pointer}.stop:disabled{opacity:.35;cursor:default}.attach,.record{height:42px;min-width:38px;border:1px solid #d9d0e3;border-radius:10px;background:#fff;color:#54218a;font-size:18px;cursor:pointer}.record.recording{background:#fff0f0;border-color:#d33;color:#b21f2d}.pending-files{display:flex;gap:5px;flex-wrap:wrap;width:100%;padding:0 1px}.pending-file{display:flex;align-items:center;gap:5px;background:#f0e8f8;border-radius:7px;padding:4px 7px;font-size:10px;color:#452069;max-width:100%}.pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}.pending-file button{border:0;background:transparent;color:#6c3a90;cursor:pointer;font-size:13px}.hidden-file{display:none}
     .notice{flex:0 0 auto;font-size:10px;color:#81768b;padding:0 12px 9px}
     .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
-    .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
+    .spotlight{position:fixed;z-index:2147483645;border:2px solid #ffbf36;border-radius:7px;background:rgba(255,191,54,.035);box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 9px rgba(255,140,0,.45);pointer-events:none;transition:none;contain:layout paint}
     .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
     .guide-card .guide-title{font-size:15px;font-weight:800;margin:4px 0 6px}
@@ -158,9 +158,33 @@
     fileInput.value = "";
   });
 
-  input.addEventListener("pointerdown", () => {
+  const focusComposer = () => {
     if (!panel.classList.contains("open")) return;
+    input.disabled = false;
+    input.readOnly = false;
+    input.removeAttribute("disabled");
+    input.removeAttribute("readonly");
+    input.style.pointerEvents = "auto";
+    input.style.userSelect = "text";
+    input.style.webkitUserSelect = "text";
+    input.tabIndex = 0;
     input.focus({ preventScroll: true });
+  };
+  input.disabled = false;
+  input.readOnly = false;
+  input.tabIndex = 0;
+  input.addEventListener("pointerdown", focusComposer, true);
+  input.addEventListener("click", focusComposer, true);
+  input.addEventListener("focus", () => {
+    input.style.pointerEvents = "auto";
+    input.style.userSelect = "text";
+    input.style.webkitUserSelect = "text";
+  });
+  input.addEventListener("input", () => {
+    if (input.disabled || input.readOnly) {
+      input.disabled = false;
+      input.readOnly = false;
+    }
   });
 
   input.addEventListener("keydown", event => {
@@ -576,14 +600,14 @@
     const opening = !panel.classList.contains("open");
     panel.classList.toggle("open", opening);
     positionPanelNearLauncher();
-    if (opening) requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    if (opening) requestAnimationFrame(() => focusComposer());
   });
   if (globalThis.chrome?.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener(message => {
       if (message?.type === "FUTURE_ASSISTENTE_OPEN") {
         panel.classList.add("open");
         positionPanelNearLauncher();
-        input.focus();
+        requestAnimationFrame(() => focusComposer());
       }
     });
   }
@@ -664,6 +688,43 @@
     return minimal.map(el => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 5);
   }
 
+  function getVisibleErrorMessage(el) {
+    if (!el || !(el instanceof Element)) return "";
+    const candidates = [];
+    const addText = value => {
+      const text = String(value || "").replace(/\\s+/g, " ").trim();
+      if (text && text.length >= 3 && text.length <= 1200 && !candidates.includes(text)) candidates.push(text);
+    };
+    try {
+      const errorMessageId = el.getAttribute("aria-errormessage");
+      if (errorMessageId) addText(document.getElementById(errorMessageId)?.innerText || document.getElementById(errorMessageId)?.textContent);
+      const describedBy = (el.getAttribute("aria-describedby") || "").split(/\\s+/).filter(Boolean);
+      for (const id of describedBy) {
+        const described = document.getElementById(id);
+        if (described && isVisibleOnPage(described)) addText(described.innerText || described.textContent);
+      }
+      if (el.matches("input,select,textarea") && el.validity && !el.validity.valid) addText(el.validationMessage);
+      addText(el.getAttribute("data-error"));
+      addText(el.getAttribute("title"));
+      if (!el.matches("input,select,textarea")) addText(el.innerText || el.textContent);
+      const wrapper = el.closest(".form-group,.form-field,.field,.form-item,[data-field-wrapper],fieldset,[class*=field]");
+      if (wrapper) {
+        wrapper.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.error-message,.field-error,[class*="error" i]').forEach(node => {
+          if (isVisibleOnPage(node)) addText(node.innerText || node.textContent);
+        });
+      }
+      if (!candidates.length) {
+        const next = el.nextElementSibling;
+        if (next && isVisibleOnPage(next)) addText(next.innerText || next.textContent);
+      }
+    } catch (error) {
+      console.debug("Future: não foi possível ler a mensagem de validação deste elemento.", error);
+    }
+    return candidates.find(text => ERROR_TEXT_PATTERN.test(text) || /\\bE\\d{4,5}\\b/i.test(text) || /retorno\\s+(?:da\\s+)?prefeitura/i.test(text))
+      || candidates[0]
+      || "";
+  }
+
   function collectDocumentIssues() {
     const issues = [];
     const seen = new Set();
@@ -682,7 +743,7 @@
       const message = getVisibleErrorMessage(control) || control.getAttribute("aria-errormessage") || "O campo está marcado como inválido ou obrigatório.";
       add(control, message, "campo inválido");
     }
-    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,[data-state="error"],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[data-testid*="error" i],[data-testid*="alert" i]')].filter(isVisibleOnPage);
+    const errorNodes = [...document.querySelectorAll('[role="alert"],[aria-live="assertive"],.invalid-feedback,.toast-error,.toast-body,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"],[data-testid*="error" i],[data-testid*="alert" i],[class*="error" i],[class*="invalid" i],[class*="alert" i],[class*="toast" i],[class*="validation" i]')].filter(isVisibleOnPage);
     const fiscalReturnNodes = [...document.querySelectorAll("body *")].filter(el => {
       if (host.contains(el) || !isVisibleOnPage(el)) return false;
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
@@ -740,51 +801,73 @@
     reviewWash = document.createElement("div");
     reviewWash.className = "review-wash";
     shadow.appendChild(reviewWash);
-    const issues = collectDocumentIssues();
-    reviewFrames = issues.map(issue => {
-      const frame = document.createElement("div");
-      frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
-      const label = document.createElement("span");
-      label.className = "review-label";
-      label.textContent = issue.title;
-      frame.appendChild(label);
-      shadow.appendChild(frame);
-      return { frame, element: issue.element };
-    });
-    if (issues[0]) issues[0].element.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
-    reviewReposition = positionReviewFrames;
-    document.addEventListener("scroll", reviewReposition, true);
-    window.addEventListener("resize", reviewReposition);
-    positionReviewFrames();
-    addMessage("🟣 Revisão iniciada. A tela está destacada em roxo enquanto verifico os campos e mensagens de validação visíveis.", "bot");
-    status.textContent = "IA revisando o documento…";
-    const issueSummary = issues.length
-      ? issues.map((issue, index) => (index + 1) + ". " + issue.title + ": " + issue.message + " (" + issue.source + ")").join("\n")
-      : "Nenhum campo inválido ou alerta de erro visível foi identificado pelo navegador nesta tela.";
-    const question = [
-      "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
-      "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
-      "",
-      "RESPOSTA DIRETA E CURTA: comece pelo erro identificado e pelo código. Use este formato: ERRO: [o que a prefeitura rejeitou]. ONDE: [nome exato do campo destacado]. CORREÇÃO: [uma ação objetiva para o usuário conferir/fazer]. Se houver dois campos envolvidos, liste os dois separadamente. Explique por que em no máximo duas frases. Não comece com saudação, não faça introdução longa, não repita o manual e não gere roteiro genérico de emissão de nota.",
-      "Use o Manual Future e os metadados da tela para explicar a correção. Separe erros confirmados de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores. Se o contexto não permitir afirmar qual valor deve ser usado, diga exatamente qual campo conferir e qual informação falta; não mande alterar por tentativa.",
-      "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
-      "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
-    ].join("\n");
+    let issues = [];
+    let reviewCompleted = false;
     try {
+      issues = collectDocumentIssues();
+      reviewFrames = issues.map(issue => {
+        const frame = document.createElement("div");
+        frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
+        const label = document.createElement("span");
+        label.className = "review-label";
+        label.textContent = issue.title;
+        frame.appendChild(label);
+        shadow.appendChild(frame);
+        return { frame, element: issue.element };
+      });
+      if (issues[0]) issues[0].element.scrollIntoView?.({ behavior: "smooth", block: "center", inline: "nearest" });
+      reviewReposition = positionReviewFrames;
+      document.addEventListener("scroll", reviewReposition, true);
+      window.addEventListener("resize", reviewReposition);
+      positionReviewFrames();
+      addMessage("🟣 Revisão iniciada. A tela está destacada em roxo enquanto verifico os campos e mensagens de validação visíveis.", "bot");
+      status.textContent = "IA revisando o documento…";
+      const issueSummary = issues.length
+        ? issues.map((issue, index) => (index + 1) + ". " + issue.title + ": " + issue.message + " (" + issue.source + ")").join("\n")
+        : "Nenhum campo inválido ou alerta de erro visível foi identificado pelo navegador nesta tela.";
+      const question = [
+        "Faça uma revisão orientativa do documento atualmente aberto no Emissor Fiscal.",
+        "Sinais visíveis de validação identificados pela extensão (ela não leu os valores preenchidos):", issueSummary,
+        "",
+        "RESPOSTA DIRETA E CURTA: comece pelo erro identificado e pelo código. Use este formato: ERRO: [o que a prefeitura rejeitou]. ONDE: [nome exato do campo destacado]. CORREÇÃO: [uma ação objetiva para o usuário conferir/fazer]. Se houver dois campos envolvidos, liste os dois separadamente. Explique por que em no máximo duas frases. Não comece com saudação, não faça introdução longa, não repita o manual e não gere roteiro genérico de emissão de nota.",
+        "Use o Manual Future e os metadados da tela para explicar a correção. Separe erros confirmados de pontos que apenas merecem conferência. Não invente regras fiscais, NCM, CNAE, códigos, alíquotas ou valores. Se o contexto não permitir afirmar qual valor deve ser usado, diga exatamente qual campo conferir e qual informação falta; não mande alterar por tentativa.",
+        "A extensão não lê os valores preenchidos da nota, documentos pessoais, senhas ou certificados. Não afirme que conferiu cálculos ou conteúdo que não foi disponibilizado. Se não houver alertas, diga que a revisão visual não encontrou validações visíveis, mas isso não garante correção fiscal.",
+        "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
+      ].join("\n");
       const reviewMessage = await ask(question, []);
-      if (reviewMessage) renderReviewIssueCards(issues, reviewMessage);
-      status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
-      addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
+      if (!reviewMessage || !String(reviewMessage.textContent || "").trim()) {
+        throw new Error("A revisão local não conseguiu produzir um resultado nesta tentativa.");
+      }
+      if (reviewMessage.dataset?.requestFailed === "true") {
+        renderReviewIssueCards(issues, reviewMessage);
+        reviewCompleted = true;
+        status.textContent = "Revisão visual local concluída. A IA está indisponível; confira os alertas encontrados.";
+        addMessage("A IA não respondeu nesta tentativa, mas a verificação visual do navegador foi concluída. Os alertas identificados estão listados acima. Isso não substitui a validação fiscal oficial.", "bot");
+      } else {
+        renderReviewIssueCards(issues, reviewMessage);
+        reviewCompleted = true;
+        status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso.";
+        addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
+      }
     } catch (error) {
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
+      clearDocumentReview();
     } finally {
       reviewButton.disabled = false;
-      reviewButton.textContent = "Revisar novamente";
+      if (reviewCompleted) {
+        reviewButton.textContent = "Finalizar revisão";
+      } else {
+        reviewActive = false;
+        reviewButton.textContent = "Revisar documento";
+      }
     }
   }
 
   reviewButton.addEventListener("click", () => {
-    if (reviewActive) clearDocumentReview();
+    if (reviewActive) {
+      clearDocumentReview();
+      return;
+    }
     reviewDocument();
   });
 
@@ -978,16 +1061,29 @@
       // Evita destacar controles por coincidência de uma palavra genérica.
       if (best && (best.exactAt >= 0 || best.score >= 0.82)) candidates.push(best);
     }
-    candidates.sort((a, b) => {
-      if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
+    // Prefere o controle interativo mais específico; evita enquadrar o menu pai
+    // quando existe um item de submenu com o mesmo rótulo.
+    const specificCandidates = candidates.filter(candidate => !candidates.some(other =>
+      other.el !== candidate.el &&
+      candidate.el.contains(other.el) &&
+      other.exactAt >= 0 &&
+      (normalize(candidate.name) === normalize(other.name) ||
+       normalize(candidate.name).includes(normalize(other.name)))
+    ));
+    specificCandidates.sort((a, b) => {
+      if (a.exactAt >= 0 && b.exactAt >= 0) {
+        if (a.exactAt !== b.exactAt) return a.exactAt - b.exactAt;
+        return a.name.length - b.name.length;
+      }
       if (a.exactAt >= 0) return -1;
       if (b.exactAt >= 0) return 1;
-      return b.score - a.score;
+      if (a.score !== b.score) return b.score - a.score;
+      return a.name.length - b.name.length;
     });
     const steps = [];
     const seenElements = new Set();
     const seenNames = new Set();
-    for (const candidate of candidates) {
+    for (const candidate of specificCandidates) {
       if (seenElements.has(candidate.el) || seenNames.has(candidate.key)) continue;
       seenElements.add(candidate.el);
       seenNames.add(candidate.key);
@@ -1018,6 +1114,10 @@
   }
 
   function closeGuide() {
+    if (guidePositionFrame) {
+      cancelAnimationFrame(guidePositionFrame);
+      guidePositionFrame = 0;
+    }
     if (!guideState) {
       clearGuideProgress();
       return;
@@ -1047,6 +1147,52 @@
     guideState = null;
   }
 
+  function positionGuideStep() {
+    if (!guideState) return;
+    const step = guideState.steps[guideState.index];
+    if (!step?.element?.isConnected) return;
+    const rect = step.element.getBoundingClientRect();
+    // Contorno justo: somente 2 px de respiro ao redor do controle real.
+    const pad = 2;
+    Object.assign(guideState.frame.style, {
+      left: Math.max(1, rect.left - pad) + "px",
+      top: Math.max(1, rect.top - pad) + "px",
+      width: Math.max(8, rect.width + pad * 2) + "px",
+      height: Math.max(8, rect.height + pad * 2) + "px"
+    });
+    const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
+    const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
+    guideState.marker.style.left = markerLeft + "px";
+    guideState.marker.style.top = markerTop + "px";
+    guideState.dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
+    guideState.dismiss.style.top = Math.max(4, markerTop - 7) + "px";
+    if (!guideState.card.hidden) positionGuideCard();
+  }
+
+  let guidePositionFrame = 0;
+  function scheduleGuidePosition() {
+    if (guidePositionFrame) return;
+    guidePositionFrame = requestAnimationFrame(() => {
+      guidePositionFrame = 0;
+      positionGuideStep();
+    });
+  }
+
+  function positionGuideCard() {
+    if (!guideState || guideState.card.hidden) return;
+    const rect = guideState.steps[guideState.index]?.element?.getBoundingClientRect();
+    if (!rect) return;
+    const cardRect = guideState.card.getBoundingClientRect();
+    const cardWidth = Math.min(330, window.innerWidth - 28);
+    const cardHeight = cardRect.height || 170;
+    const roomRight = window.innerWidth - rect.right;
+    const roomLeft = rect.left;
+    const left = roomRight >= cardWidth + 18 ? rect.right + 12 : roomLeft >= cardWidth + 18 ? rect.left - cardWidth - 12 : Math.max(8, Math.min(window.innerWidth - cardWidth - 8, rect.left));
+    const top = rect.bottom + cardHeight + 18 < window.innerHeight ? rect.bottom + 12 : Math.max(8, rect.top - cardHeight - 12);
+    guideState.card.style.top = Math.max(8, Math.min(window.innerHeight - cardHeight - 8, top)) + "px";
+    guideState.card.style.left = left + "px";
+  }
+
   function showGuideStep(index) {
     if (!guideState) return;
     const step = guideState.steps[index];
@@ -1057,34 +1203,13 @@
     guideState.index = index;
     guideState.pendingIndex = null;
     persistGuideProgress(index);
-    step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    const rect = step.element.getBoundingClientRect();
-    const pad = 5;
-    Object.assign(guideState.frame.style, {
-      left: Math.max(2, rect.left - pad) + "px",
-      top: Math.max(2, rect.top - pad) + "px",
-      width: Math.max(12, rect.width + pad * 2) + "px",
-      height: Math.max(12, rect.height + pad * 2) + "px"
-    });
     guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
     guideState.card.hidden = true;
     guideState.marker.hidden = false;
-    const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
-    const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
-    guideState.marker.style.left = markerLeft + "px";
-    guideState.marker.style.top = markerTop + "px";
-    guideState.dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
-    guideState.dismiss.style.top = Math.max(4, markerTop - 7) + "px";
-    const cardWidth = Math.min(330, window.innerWidth - 28);
-    const cardHeight = guideState.card.getBoundingClientRect().height || 170;
-    const roomRight = window.innerWidth - rect.right;
-    const roomLeft = rect.left;
-    const left = roomRight >= cardWidth + 18 ? rect.right + 12 : roomLeft >= cardWidth + 18 ? rect.left - cardWidth - 12 : Math.max(8, Math.min(window.innerWidth - cardWidth - 8, rect.left));
-    const top = rect.bottom + cardHeight + 18 < window.innerHeight ? rect.bottom + 12 : Math.max(8, rect.top - cardHeight - 12);
-    guideState.card.style.top = Math.max(8, Math.min(window.innerHeight - cardHeight - 8, top)) + "px";
-    guideState.card.style.left = left + "px";
+    step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    requestAnimationFrame(positionGuideStep);
     if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
     const waitingAtStep = index;
     guideState.waitTimer = window.setTimeout(() => {
@@ -1122,13 +1247,20 @@
       const style = getComputedStyle(el);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
-    const fingerprint = items.slice(0, 320).map(el => [
-      normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
-      el.getAttribute("aria-expanded") || "",
-      el.getAttribute("aria-controls") || "",
-      el.getAttribute("data-state") || "",
-      el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
-    ].join(":")).join("|");
+    const fingerprint = items.slice(0, 900).map(el => {
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return [
+        normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
+        el.getAttribute("aria-expanded") || "",
+        el.getAttribute("aria-controls") || "",
+        el.getAttribute("data-state") || "",
+        el.getAttribute("aria-disabled") || (el.disabled ? "true" : ""),
+        el.getAttribute("hidden") !== null ? "hidden" : "shown",
+        el.getAttribute("aria-haspopup") || "",
+        style.display + "/" + style.visibility
+      ].join(":");
+    }).join("|");
     return [location.pathname, location.hash, fingerprint].join("::");
   }
 
@@ -1163,8 +1295,30 @@
     });
   }
 
+  function hasVisibleErrorIndicators() {
+    // Inclui erros de validação de campos, mesmo quando o site não usa role=alert.
+    const invalidControls = [...document.querySelectorAll('input:invalid,select:invalid,textarea:invalid,[aria-invalid="true"],[data-invalid="true"],.is-invalid,.has-error')];
+    if (invalidControls.some(isVisibleOnPage)) return true;
+    if (collectVisibleFiscalReturnMessages().length) return true;
+    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.field-error,.form-error,.error-message,.text-danger,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state="error"]';
+    return [...document.querySelectorAll(selectors)].some(el => {
+      if (!isVisibleOnPage(el)) return false;
+      const message = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+      return message.length >= 3 && message.length <= 1200 && ERROR_TEXT_PATTERN.test(message);
+    });
+  }
+
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
+    // Uma rejeição/alerta visível deve ficar sob controle do usuário: não iniciar
+    // outra chamada automática que desabilite o envio do chat.
+    if (hasVisibleErrorIndicators()) {
+      clearNavigationTask();
+      closeGuide();
+      status.textContent = "Encontrei uma mensagem de erro/retorno nesta tela. O chat permanece disponível; clique em Revisar documento quando quiser analisar o aviso.";
+      addMessage("Detectei um aviso visível nesta tela. Não iniciei uma análise automática para não bloquear sua conversa. Quando quiser, clique em “Revisar documento”.", "bot");
+      return;
+    }
     closeGuide();
     status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
     const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
@@ -1242,23 +1396,21 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: scheduleGuidePosition };
     stopButton.disabled = false;
-    dismiss.addEventListener("click", () => {
+    dismiss.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       clearNavigationTask();
       closeGuide();
       status.textContent = "Indicador fechado. Você pode continuar usando o Emissor normalmente.";
     });
-    marker.addEventListener("click", () => {
+    marker.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       if (!guideState) return;
-      const rect = guideState.card.getBoundingClientRect();
-      guideState.card.hidden = false;
-      const cardRect = guideState.card.getBoundingClientRect();
-      const markerRect = marker.getBoundingClientRect();
-      const left = Math.max(8, Math.min(window.innerWidth - cardRect.width - 8, markerRect.left - cardRect.width + markerRect.width));
-      const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
-      guideState.card.style.left = left + "px";
-      guideState.card.style.top = top + "px";
+      guideState.card.hidden = !guideState.card.hidden;
+      if (!guideState.card.hidden) requestAnimationFrame(positionGuideCard);
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
@@ -1271,6 +1423,10 @@
   let guideRestoreTimer = null;
   function restoreVisualGuide() {
     if (guideState) return;
+    if (hasVisibleErrorIndicators()) {
+      clearGuideProgress();
+      return;
+    }
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(GUIDE_SESSION_KEY) || "null"); } catch {}
     if (!saved || !Array.isArray(saved.titles) || !saved.titles.length) return;
@@ -1315,12 +1471,19 @@
       if (saved) clearNavigationTask();
       return;
     }
+    if (hasVisibleErrorIndicators()) {
+      clearNavigationTask();
+      clearGuideProgress();
+      status.textContent = "Há um erro ou campo inválido nesta tela. A orientação foi pausada e o chat está livre.";
+      return;
+    }
+    // Nunca dispara uma nova chamada da IA automaticamente ao carregar uma página.
+    // A continuação só ocorre depois de uma ação explícita do usuário no tour.
     navigationTask = saved.task;
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
-    navigationGuideActive = true;
-    status.textContent = "Retomando a navegação assistida na nova tela...";
-    continueNavigationGuide();
+    navigationGuideActive = false;
+    status.textContent = "Orientação pausada nesta tela. O chat está disponível; peça “continuar orientação” quando quiser retomar.";
   }
 
   window.addEventListener("pageshow", scheduleGuideRestore);
@@ -1361,8 +1524,8 @@
     const classText = String(el.className?.baseVal || el.className || "");
     const hasStrongSemantic = el.getAttribute("role") === "alert" ||
       el.getAttribute("aria-live") === "assertive" ||
-      el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
-    const hasErrorClass = /\b(invalid|error|danger|toast-error)\b/i.test(classText);
+      el.matches(".invalid-feedback,.toast,.toast-body,.toast-error,.alert-danger,.alert-error,.notification-error,.validation-error,[data-sonner-toast],[data-state=error],[aria-invalid=true]");
+    const hasErrorClass = /\b(invalid|error|danger|toast|alert|validation|rejected)\b/i.test(classText);
     const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
     if (el.matches(".text-danger") && !hasErrorLanguage) return false;
     return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
@@ -1547,13 +1710,18 @@
   }
 
   function renderReviewIssueCards(issues, target) {
-    if (!issues.length) return;
     const card = document.createElement("section");
     card.className = "proposal-card review-issue-cards";
     const heading = document.createElement("div");
     heading.className = "proposal-title";
-    heading.textContent = "Pontos encontrados nesta revisão — confira um por um";
+    heading.textContent = issues.length ? "Pontos encontrados nesta revisão — confira um por um" : "Verificação visual concluída";
     card.appendChild(heading);
+    if (!issues.length) {
+      const empty = document.createElement("div");
+      empty.className = "proposal-value";
+      empty.textContent = "Não foram encontrados campos inválidos ou alertas de erro visíveis nesta tela. Isso não confirma a correção fiscal do documento nem substitui o retorno oficial da prefeitura/SEFAZ.";
+      card.appendChild(empty);
+    }
     issues.forEach((issue, index) => {
       const item = document.createElement("div");
       item.className = "review-issue-item";
@@ -1634,11 +1802,25 @@
       let readResult;
       try {
         readResult = await new Promise((resolve, reject) => {
-          const timeout = window.setTimeout(() => reject(new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000);
-          reader.read().then(value => { clearTimeout(timeout); resolve(value); }, error => { clearTimeout(timeout); reject(error); });
+          let settled = false;
+          const finish = (callback, value) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            signal?.removeEventListener("abort", onAbort);
+            callback(value);
+          };
+          const onAbort = () => {
+            reader.cancel().catch(() => {});
+            finish(reject, new DOMException("Conversa interrompida pelo usuário.", "AbortError"));
+          };
+          const timeout = window.setTimeout(() => finish(reject, new Error("A resposta demorou demais e a conexão pode ter travado.")), 45000);
+          if (signal?.aborted) return onAbort();
+          signal?.addEventListener("abort", onAbort, { once: true });
+          reader.read().then(value => finish(resolve, value), error => finish(reject, error));
         });
       } catch (error) {
-        if (signal?.aborted) throw new DOMException("Conversa interrompida pelo usuário.", "AbortError");
+        if (signal?.aborted || error?.name === "AbortError") throw new DOMException("Conversa interrompida pelo usuário.", "AbortError");
         stalled = true;
         console.warn("Fluxo da IA ficou sem novos dados; será tentada a recuperação automática.", error);
         break;
@@ -1706,17 +1888,40 @@
     const controller = new AbortController();
     activeRequestController = controller;
     const signal = controller.signal;
+    let requestTimedOut = false;
+    const requestTimeout = window.setTimeout(() => {
+      requestTimedOut = true;
+      controller.abort();
+    }, 60000);
     send.disabled = true;
     stopButton.disabled = false;
-    const context = safeScreenContext();
+    let context = "";
+    try {
+      context = safeScreenContext();
+    } catch (error) {
+      console.warn("Future: não foi possível ler os metadados da tela; a conversa continuará sem esse contexto.", error);
+      context = "Os metadados visuais da tela não puderam ser lidos nesta tentativa. Responda apenas à pergunta do usuário e peça um print se precisar localizar um campo.";
+    }
     let knowledge = "";
     try {
       status.textContent = "Carregando as aulas do Manual relacionadas a esta tela...";
-      knowledge = await window.FutureManualKnowledge.load({ route: location.pathname, question });
+      let manualTimeout;
+      try {
+        knowledge = await Promise.race([
+          window.FutureManualKnowledge.load({ route: location.pathname, question }),
+          new Promise((_, reject) => {
+            manualTimeout = setTimeout(() => reject(new Error("O Manual demorou mais de 12 segundos para responder.")), 12000);
+          })
+        ]);
+      } finally {
+        clearTimeout(manualTimeout);
+      }
     } catch (error) {
-      console.warn("Não foi possível carregar o Manual Academy", error);
+      console.warn("Não foi possível carregar o Manual Future nesta tentativa", error);
+      status.textContent = "O Manual não respondeu a tempo. Vou continuar sem ele e avisar a IA para não inventar procedimentos.";
     }
     if (signal.aborted) {
+      clearTimeout(requestTimeout);
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
@@ -1782,7 +1987,11 @@
       }
       if (signal.aborted) {
         target.textContent = "Conversa interrompida por você.";
-      } else if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      } else if (!answer.trim()) {
+        target.dataset.requestFailed = "true";
+        target.textContent = "Não recebi uma resposta da IA desta vez. A revisão não foi concluída; tente novamente ou envie sua dúvida no chat.";
+        status.textContent = "A IA encerrou a conexão sem enviar uma resposta.";
+      }
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
@@ -1796,14 +2005,27 @@
         ? "Manual conectado: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + "."
         : knowledge ? "Conectado ao assistente e ao Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
     } catch (error) {
-      if (signal.aborted || error?.name === "AbortError") {
+      target.dataset.requestFailed = "true";
+      if (requestTimedOut) {
+        target.textContent = "A IA demorou mais de 60 segundos para responder. A revisão não foi concluída; tente novamente.";
+        status.textContent = "Tempo limite da IA atingido.";
+      } else if (signal.aborted || error?.name === "AbortError") {
         target.textContent = "Conversa interrompida por você.";
         status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
       } else {
-        target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
-        status.textContent = "Falha de conexão.";
+        const detail = String(error?.message || "Falha de conexão.");
+        const quotaOrProviderFailure = /HTTP 429|quota|resource.?exhausted|rate.?limit|HTTP 5\d\d|failed to fetch|networkerror/i.test(detail);
+        const manualExcerpt = String(knowledge || "").trim().slice(0, 1100);
+        target.textContent = quotaOrProviderFailure
+          ? "A IA está temporariamente indisponível, mas o chat continua ativo. " +
+            (manualExcerpt
+              ? "Encontrei este conteúdo do Manual para ajudar agora:\n\n" + manualExcerpt + "\n\nSe esse trecho não responder à sua dúvida, envie um print da tela ou tente novamente em alguns minutos."
+              : "O Manual não carregou nesta tentativa. Envie um print ou descreva o campo e a mensagem exibida; vou manter a orientação limitada ao que estiver visível, sem inventar procedimentos.")
+          : "Não consegui conectar ao assistente agora. " + detail + " Você pode continuar digitando e tentar enviar novamente.";
+        status.textContent = quotaOrProviderFailure ? "IA indisponível; modo de apoio pelo Manual ativo." : "Falha de conexão. O campo de mensagem permanece disponível.";
       }
     } finally {
+      clearTimeout(requestTimeout);
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;

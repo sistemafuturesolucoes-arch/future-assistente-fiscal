@@ -22,7 +22,7 @@ test("recalcula a relevância por pergunta usando o cache da mesma rota", async 
     window: { chrome: { storage: { local: storage } } },
     chrome: { storage: { local: storage } },
     location: { pathname: "/app/dashboard" },
-    Date, Map, Set, Promise, String, Array, Object, Math,
+    Date, Map, Set, Promise, String, Array, Object, Math, AbortController, setTimeout, clearTimeout,
     fetch: async url => {
       fetchCount++;
       const isModules = String(url).includes("course_modules");
@@ -50,7 +50,7 @@ test("não reutiliza o cache de outra rota", async () => {
     window: { chrome: { storage: { local: storage } } },
     chrome: { storage: { local: storage } },
     location: { pathname: "/app/one" },
-    Date, Map, Set, Promise, String, Array, Object, Math,
+    Date, Map, Set, Promise, String, Array, Object, Math, AbortController, setTimeout, clearTimeout,
     fetch: async url => {
       fetchCount++;
       return { ok: true, async json() {
@@ -82,7 +82,7 @@ test("prioriza a aula cujo título corresponde à intenção de navegação do u
     window: { chrome: { storage: { local: storage } } },
     chrome: { storage: { local: storage } },
     location: { pathname: "/app/dashboard" },
-    Date, Map, Set, Promise, String, Array, Object, Math,
+    Date, Map, Set, Promise, String, Array, Object, Math, AbortController, setTimeout, clearTimeout,
     fetch: async url => ({
       ok: true,
       async json() { return String(url).includes("course_modules") ? modules : lessons; }
@@ -112,7 +112,7 @@ test("pergunta sobre regra fiscal prioriza as aulas de grupo tributário e tribu
     window: { chrome: { storage: { local: storage } } },
     chrome: { storage: { local: storage } },
     location: { pathname: "/app/dashboard" },
-    Date, Map, Set, Promise, String, Array, Object, Math,
+    Date, Map, Set, Promise, String, Array, Object, Math, AbortController, setTimeout, clearTimeout,
     fetch: async url => ({
       ok: true,
       async json() { return String(url).includes("course_modules") ? modules : lessons; }
