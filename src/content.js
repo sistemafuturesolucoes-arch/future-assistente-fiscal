@@ -1934,12 +1934,12 @@
         status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
       } else {
         const detail = String(error?.message || "Falha de conexão.");
-        const quotaOrProviderFailure = /HTTP 429|quota|resource.?exhausted|rate.?limit|HTTP 5\\d\\d|failed to fetch|networkerror/i.test(detail);
+        const quotaOrProviderFailure = /HTTP 429|quota|resource.?exhausted|rate.?limit|HTTP 5\d\d|failed to fetch|networkerror/i.test(detail);
         const manualExcerpt = String(knowledge || "").trim().slice(0, 1100);
         target.textContent = quotaOrProviderFailure
           ? "A IA está temporariamente indisponível, mas o chat continua ativo. " +
             (manualExcerpt
-              ? "Encontrei este conteúdo do Manual para ajudar agora:\\n\\n" + manualExcerpt + "\\n\\nSe esse trecho não responder à sua dúvida, envie um print da tela ou tente novamente em alguns minutos."
+              ? "Encontrei este conteúdo do Manual para ajudar agora:\n\n" + manualExcerpt + "\n\nSe esse trecho não responder à sua dúvida, envie um print da tela ou tente novamente em alguns minutos."
               : "O Manual não carregou nesta tentativa. Envie um print ou descreva o campo e a mensagem exibida; vou manter a orientação limitada ao que estiver visível, sem inventar procedimentos.")
           : "Não consegui conectar ao assistente agora. " + detail + " Você pode continuar digitando e tentar enviar novamente.";
         status.textContent = quotaOrProviderFailure ? "IA indisponível; modo de apoio pelo Manual ativo." : "Falha de conexão. O campo de mensagem permanece disponível.";
