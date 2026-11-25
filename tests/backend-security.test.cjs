@@ -35,6 +35,17 @@ test("aprendizado não armazena contexto com dados privados de clientes", () => 
   assert.match(ai, /if \(containsPrivateBusinessData\(question\) \|\| containsPrivateBusinessData\(answer\)\)/);
 });
 
+test("análise XML usa parser compatível com Deno e valida a estrutura", () => {
+  assert.match(ai, /XMLParser, XMLValidator/);
+  assert.match(ai, /XMLValidator\.validate\(xml\)/);
+  assert.doesNotMatch(ai, /DOMParser/);
+});
+
+test("Google Search usa a ferramenta definida pelo provider na versão atual do AI SDK", () => {
+  assert.match(ai, /google_search: google\.tools\.googleSearch\(\{\}\)/);
+  assert.doesNotMatch(ai, /useSearchGrounding/);
+});
+
 test("pesquisa externa só é ativada por pedido explícito ou regra atual", () => {
   assert.match(ai, /const explicitlyRequestsResearch/);
   assert.match(ai, /const asksCurrentRule/);
