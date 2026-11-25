@@ -173,3 +173,23 @@ test("extensão aceita XML e enriquece o contexto visual sem ler valores digitad
   assert.ok(source.includes('el.getAttribute("aria-invalid") === "true"'));
   assert.ok(source.includes('el.getAttribute("aria-describedby")'));
 });
+
+test("revisão não declara sucesso quando a IA devolve resposta vazia", () => {
+  assert.match(source, /!String\(reviewMessage\.textContent \|\| ""\)\.trim\(\)/);
+  assert.match(source, /não recebi uma resposta/i);
+  assert.match(source, /target\.dataset\.requestFailed = "true"/);
+});
+
+test("revisão reconhece alertas comuns do Emissor, incluindo toast e mensagens de validação", () => {
+  assert.match(source, /\.toast-body/);
+  assert.match(source, /\.alert-danger/);
+  assert.match(source, /\[data-sonner-toast\]/);
+  assert.match(source, /validation\|rejected/);
+});
+
+test("falha ao ler metadados da tela não deixa o chat bloqueado", () => {
+  assert.match(source, /let context = "";\s*try\s*\{\s*context = safeScreenContext\(\)/);
+  assert.match(source, /metadados visuais da tela não puderam ser lidos/);
+  assert.match(source, /requestInProgress = false/);
+  assert.match(source, /send\.disabled = false/);
+});
