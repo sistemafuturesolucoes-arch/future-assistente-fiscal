@@ -288,3 +288,15 @@ test("marcador visual não usa sombra de tela inteira nem animação de layout",
 test("fechar orientação cancela atualização visual pendente", () => {
   assert.match(source, /function closeGuide\(\) \{\s*if \(guidePositionFrame\) \{\s*cancelAnimationFrame\(guidePositionFrame\)/);
 });
+
+test("marcadores ? e × recebem cliques mesmo dentro do host com pointer-events desativado", () => {
+  assert.match(source, /\.guide-question,\.guide-dismiss\{pointer-events:auto;touch-action:manipulation\}/);
+  assert.match(source, /marker\.addEventListener\("click"/);
+  assert.match(source, /dismiss\.addEventListener\("click"/);
+});
+
+test("mudanças de estado CSS em menus são reconhecidas pela navegação guiada", () => {
+  assert.match(source, /String\(el\.className \|\| ""\)\.slice\(0, 180\)/);
+  assert.match(source, /el\.getAttribute\("style"\) \|\| ""/);
+  assert.match(source, /async function waitForNavigationUpdate\(beforeSnapshot, timeoutMs = 5000\)/);
+});
