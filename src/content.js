@@ -370,7 +370,7 @@
 
   function submitVoiceText(transcript) {
     const question = String(transcript || "").trim();
-    if (!question || requestInProgress || autoDiagnosisInProgress) return;
+    if (!question || requestInProgress) return;
     addMessage(question, "user");
     voiceRequestPending = true;
     ask(question, []).finally(() => {
@@ -1347,178 +1347,6 @@
   }
 
   function maybeStartAutomaticGuide(answer) {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtor = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtor) return;
-      audioContext ||= new AudioCtor();
-      audioContext.resume().then(() => {
-        for (let i = 0; i < 5; i++) {
-          const start = audioContext.currentTime + i * 0.22;
-          const oscillator = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          oscillator.type = "sine";
-          oscillator.frequency.value = 880;
-          gain.gain.setValueAtTime(0.0001, start);
-          gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
-          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.11);
-          oscillator.connect(gain);
-          gain.connect(audioContext.destination);
-          oscillator.start(start);
-          oscillator.stop(start + 0.12);
-        }
-      }).catch(() => {});
-    } catch {}
-  }
-
-  let activeErrorSpotlight = null;
-  let activeErrorSpotlightTimer = null;
-
-  function dismissErrorSpotlight() {
-    if (activeErrorSpotlightTimer) clearTimeout(activeErrorSpotlightTimer);
-    activeErrorSpotlightTimer = null;
-    activeErrorSpotlight?.remove();
-    activeErrorSpotlight = null;
-  }
-
-  // A orientação visual é temporária: ao começar a editar qualquer campo,
-  // removemos somente o destaque criado pela extensão, nunca o campo do Emissor.
-  document.addEventListener("click", event => {
-    if (!activeErrorSpotlight || host.contains(event.target)) return;
-    const path = event.composedPath?.() || [];
-    const clickedField = path.some(node =>
-      node instanceof Element &&
-      (node.matches("input,select,textarea,[role=combobox],[contenteditable=true]") ||
-       node.closest?.("input,select,textarea,[role=combobox],[contenteditable=true]"))
-    );
-    if (clickedField) dismissErrorSpotlight();
-  }, true);
-
-  const ERROR_TEXT_PATTERN = /\b(erro|error|falha|failed|inv[aá]lid[oa]|invalid|obrigat[oó]ri[oa]|required|n[aã]o foi poss[ií]vel|n[aã]o permitido|n[aã]o pode|n[aã]o corresponde|n[aã]o autorizado|n[aã]o informado|rejeitad[oa]|rejei[cç][aã]o|inconsist[eê]ncia|incompat[ií]vel|duplicad[oa]|j[aá] cadastrad[oa]|fora do padr[aã]o|excede|limite|ausente|n[aã]o encontrado|n[aã]o localizado|preencha|informe|selecione|corrija|aten[cç][aã]o)\b/i;
-  const NON_ERROR_TEXT_PATTERN = /\b(sucesso|conclu[ií]d[oa]|salvo com sucesso|opera[cç][aã]o realizada|processado com sucesso)\b/i;
-  const recentErrorFingerprints = new Map();
-  let requestInProgress = false;
-  let pendingErrorDiagnostic = null;
-
-  function isLikelyFiscalError(el, message) {
-    if (!message || message.length < 4 || message.length > 500) return false;
-    if (NON_ERROR_TEXT_PATTERN.test(message) && !/\b(erro|falha|inv[aá]lid[oa]|rejeitad[oa])\b/i.test(message)) return false;
-    const classText = String(el.className?.baseVal || el.className || "");
-    const hasStrongSemantic = el.getAttribute("role") === "alert" ||
-      el.getAttribute("aria-live") === "assertive" ||
-      el.matches(".invalid-feedback,[data-state=error],.toast-error,[aria-invalid=true]");
-    const hasErrorClass = /\b(invalid|error|danger|toast-error)\b/i.test(classText);
-    const hasErrorLanguage = ERROR_TEXT_PATTERN.test(message);
-    // .text-danger sozinho é usado também para decoração; exige texto de erro.
-    if (el.matches(".text-danger") && !hasErrorLanguage) return false;
-    return hasErrorLanguage && (hasStrongSemantic || hasErrorClass || el.matches("[role=alert],[aria-live=assertive]"));
-  }
-
-  function queueErrorDiagnosis(message, fingerprint) {
-    if (fingerprint === lastAutoDiagnosisFingerprint && Date.now() - lastAutoDiagnosisAt <= 60000) return;
-    pendingErrorDiagnostic = { message, fingerprint };
-    if (!requestInProgress && !autoDiagnosisInProgress) runPendingErrorDiagnosis();
-  }
-
-  function runPendingErrorDiagnosis() {
-    if (!pendingErrorDiagnostic || requestInProgress || autoDiagnosisInProgress) return;
-    const pending = pendingErrorDiagnostic;
-    lastAutoDiagnosisFingerprint = pending.fingerprint;
-    lastAutoDiagnosisAt = Date.now();
-    autoDiagnosisInProgress = true;
-    addMessage("Estou analisando esse erro com o Manual e a tela atual. Aguarde...", "bot");
-    const diagnosticQuestion = [
-      "A extensão detectou automaticamente esta mensagem de possível erro no Emissor Fiscal:",
-      pending.message,
-      "",
-      "Explique o que a mensagem provavelmente significa, indique a causa somente se houver base no Manual ou no contexto disponível e oriente passo a passo onde o usuário deve conferir.",
-      "Se faltarem informações, diga exatamente o que precisa ser verificado e peça ao usuário. Não invente regra fiscal, código, alíquota ou enquadramento.",
-      "Não preencha campos, não clique em botões e não execute emissão, transmissão, autorização ou encerramento.",
-      "Considere apenas a mensagem acima, a rota e os metadados seguros da tela; não solicite nem exponha senhas, PINs, certificados ou dados pessoais."
-    ].join("\n");
-    ask(diagnosticQuestion, []).finally(() => {
-      autoDiagnosisInProgress = false;
-      if (pendingErrorDiagnostic && !requestInProgress) window.setTimeout(runPendingErrorDiagnosis, 0);
-    });
-  }
-
-  function getVisibleErrorMessage(el) {
-    const pieces = [el.innerText || el.textContent || ""];
-    const describedBy = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
-    for (const id of describedBy) {
-      const description = document.getElementById(id);
-      if (!description) continue;
-      const style = getComputedStyle(description);
-      const rect = description.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden") {
-        pieces.push(description.innerText || description.textContent || "");
-      }
-    }
-    const group = el.closest(".form-group,.form-field,.field,.form-item");
-    if (group) {
-      group.querySelectorAll(".invalid-feedback,[role=alert],[data-state=error]").forEach(messageEl => {
-        if (messageEl !== el) pieces.push(messageEl.innerText || messageEl.textContent || "");
-      });
-    }
-    return [...new Set(pieces.map(value => String(value || "").trim()).filter(Boolean))].join(" ").replace(/\s+/g, " ").slice(0, 500);
-  }
-
-  function detectVisibleErrors() {
-    const selectors = '[role="alert"],[aria-live="assertive"],.invalid-feedback,.text-danger,[data-state="error"],.toast-error,[aria-invalid="true"]';
-    const candidates = [...document.querySelectorAll(selectors)].filter(el => {
-      if (host.contains(el)) return false;
-      const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      return r.width > 0 && r.height > 0 && s.display !== "none" && s.visibility !== "hidden" && s.opacity !== "0";
-    });
-    for (const el of candidates) {
-      const rawMessage = getVisibleErrorMessage(el);
-      if (!isLikelyFiscalError(el, rawMessage)) continue;
-      const message = redactSensitiveText(rawMessage);
-      const fingerprint = normalize(message);
-      const previousAt = recentErrorFingerprints.get(fingerprint) || 0;
-      if (Date.now() - previousAt < 12000) continue;
-      recentErrorFingerprints.set(fingerprint, Date.now());
-      if (recentErrorFingerprints.size > 40) {
-        const oldest = [...recentErrorFingerprints.entries()].sort((a, b) => a[1] - b[1])[0];
-        if (oldest) recentErrorFingerprints.delete(oldest[0]);
-      }
-      lastErrorFingerprint = fingerprint;
-      lastErrorAt = Date.now();
-      playErrorBeeps();
-      panel.classList.add("open");
-      addMessage("⚠️ Detectei uma mensagem de possível erro na tela:\n" + message + "\n\nVou ajudar a interpretar. Confira o campo destacado e, se necessário, envie sua dúvida no chat.", "bot");
-      status.textContent = "Erro detectado. Preparando análise automática com o Manual...";
-      const fieldTarget = fieldForErrorNode(el) || el;
-      fieldTarget.scrollIntoView?.({ block: "center", inline: "nearest" });
-      const rect = fieldTarget.getBoundingClientRect();
-      dismissErrorSpotlight();
-      const frame = document.createElement("div");
-      frame.className = "spotlight";
-      Object.assign(frame.style, {
-        left: Math.max(2, rect.left - 5) + "px",
-        top: Math.max(2, rect.top - 5) + "px",
-        width: Math.max(12, rect.width + 10) + "px",
-        height: Math.max(12, rect.height + 10) + "px"
-      });
-      shadow.appendChild(frame);
-      activeErrorSpotlight = frame;
-      activeErrorSpotlightTimer = window.setTimeout(dismissErrorSpotlight, 6500);
-      // A análise usa apenas o texto visível e os metadados seguros da tela.
-      queueErrorDiagnosis(message, fingerprint);
-      break;
-    }
-  }
-
-  let errorScanTimer = null;
-  const errorObserver = new MutationObserver(() => {
-    clearTimeout(errorScanTimer);
-    errorScanTimer = window.setTimeout(detectVisibleErrors, 180);
-  });
-  errorObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "role", "aria-live", "data-state", "aria-invalid"] });
-  window.setTimeout(detectVisibleErrors, 1200);
-
-  function maybeStartAutomaticGuide(answer) {
     if (lastRequestKind === "document-review" || lastRequestKind === "error-diagnosis") return false;
     if (/não está habilitado|nao esta habilitado|sem permissão|sem permissao|chame o suporte|chamar o suporte|não aparece no seu perfil|nao aparece no seu perfil/i.test(answer)) {
       clearNavigationTask();
@@ -1809,7 +1637,6 @@
     const wasActive = requestInProgress || Boolean(guideState) || voiceIsSpeaking;
     activeRequestController?.abort();
     activeRequestController = null;
-    pendingErrorDiagnostic = null;
     navigationTask = "";
     clearNavigationTask();
     closeGuide();
