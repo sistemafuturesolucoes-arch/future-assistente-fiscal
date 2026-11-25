@@ -836,26 +836,26 @@
         const placeholder = el.getAttribute("placeholder") || "";
         const type = el.tagName.toLowerCase() === "input" ? (el.getAttribute("type") || "text") : el.tagName.toLowerCase();
         const flags = [el.required ? "obrigatório" : "", el.disabled ? "desabilitado" : "", el.getAttribute("aria-invalid") === "true" ? "inválido" : ""].filter(Boolean).join(", ");
-        const helpIds = (el.getAttribute("aria-describedby") || "").split(/\\s+/).filter(Boolean);
-        const help = helpIds.map(id => document.getElementById(id)?.innerText || "").join(" ").replace(/\\s+/g, " ").slice(0, 180);
+        const helpIds = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+        const help = helpIds.map(id => document.getElementById(id)?.innerText || "").join(" ").replace(/\s+/g, " ").slice(0, 180);
         return [label || aria || placeholder || el.getAttribute("name") || "Campo sem rótulo", "tipo=" + type, flags, help].filter(Boolean).join(" — ");
       });
     const buttons = [...document.querySelectorAll("button,a,[role=button],[role=menuitem],[role=tab],[data-menu-item],summary,input[type=button],input[type=submit]")]
-      .filter(isVisible).slice(0, 120).map(el => (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
+      .filter(isVisible).slice(0, 120).map(el => (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\s+/g, " ").trim()).filter(Boolean);
     const navigationRoots = [...document.querySelectorAll("nav,aside,[role=navigation],[role=menu],[role=menubar],[role=tree],.dropdown-menu,[class*=submenu i],[class*=sidebar i],[data-sidebar]")].filter(isVisible);
     const navigationSelector = "a,button,[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary";
     const rootItems = navigationRoots.flatMap(root => [...root.querySelectorAll(navigationSelector)]);
     const navigationCandidates = rootItems.length ? rootItems : [...document.querySelectorAll(navigationSelector)];
     const navigationItems = [...new Set(navigationCandidates)].filter(isVisible).slice(0, 220).map(el => {
-      const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\\s+/g, " ").trim();
+      const name = (el.innerText || el.textContent || el.getAttribute("aria-label") || el.getAttribute("title") || "").replace(/\s+/g, " ").trim();
       const disabled = el.disabled || el.getAttribute("aria-disabled") === "true" || el.classList.contains("disabled") ? " [DESABILITADO]" : "";
       const expanded = el.getAttribute("aria-expanded");
       const state = expanded === "true" ? " [ABERTO]" : expanded === "false" ? " [FECHADO]" : "";
       const parent = el.closest("li,[role=group],.dropdown,.submenu,.nav-item");
-      const parentName = parent && parent !== el ? (parent.querySelector(":scope > a,:scope > button,:scope > [role=menuitem]")?.innerText || "").replace(/\\s+/g, " ").trim() : "";
+      const parentName = parent && parent !== el ? (parent.querySelector(":scope > a,:scope > button,:scope > [role=menuitem]")?.innerText || "").replace(/\s+/g, " ").trim() : "";
       return name ? (parentName && normalize(parentName) !== normalize(name) ? parentName + " > " : "") + name.slice(0, 100) + disabled + state : "";
     }).filter(Boolean);
-    const visibleMenuText = navigationRoots.map(el => (el.innerText || el.textContent || "").replace(/\\s+/g, " ").trim()).filter(text => text.length > 0 && text.length < 2400).slice(0, 24);
+    const visibleMenuText = navigationRoots.map(el => (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).filter(text => text.length > 0 && text.length < 2400).slice(0, 24);
     const semanticErrors = [...document.querySelectorAll('[role=alert],.error,.invalid-feedback,[aria-live="assertive"]')]
       .filter(isVisible).slice(0, 15).map(el => (el.innerText || "").trim()).filter(Boolean);
     const fiscalReturns = collectVisibleFiscalReturnMessages();
@@ -869,7 +869,7 @@
       "Rota: " + route,
       "Título: " + title,
       "Títulos e rótulos visíveis (sem valores preenchidos): " + redact([...headings, ...labels, ...errors].join(" | ")).slice(0, 6500),
-      "Campo em foco (sem ler o valor digitado): " + redact(focusedLabel || "nenhum") + "\\nMetadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 6000),
+      "Campo em foco (sem ler o valor digitado): " + redact(focusedLabel || "nenhum") + "\nMetadados dos campos visíveis (nenhum valor digitado é lido): " + redact(controls.join(" | ")).slice(0, 6000),
       "Botões visíveis: " + redact(buttons.join(" | ")).slice(0, 3500),
       "MAPA COMPLETO DA NAVEGAÇÃO VISÍVEL (menus laterais, itens, submenus e estado aberto/fechado): " + redact([...new Set([...navigationItems, ...visibleMenuText])].join(" | ")).slice(0, 14000)
     ].join("\n");
