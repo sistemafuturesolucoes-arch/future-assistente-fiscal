@@ -92,6 +92,8 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
+    await cdp.send("Input.insertText", { text: "\\n" });
+    assert.equal(aiRequests, 0, "Shift+Enter não deve enviar a mensagem");
     await cdp.send("Input.insertText", { text: "Pode detalhar?" });
     const multiline = await call(textarea, "function(){ return this.value; }");
     assert.match(multiline.result.value, /\nPode detalhar\?/);
