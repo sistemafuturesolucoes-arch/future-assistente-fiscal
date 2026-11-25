@@ -1122,6 +1122,7 @@
       clearGuideProgress();
       return;
     }
+    try { guideState.driver?.destroy(); } catch {}
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
@@ -1137,6 +1138,7 @@
   function suspendGuideForNavigation() {
     if (!guideState) return;
     persistGuideProgress();
+    try { guideState.driver?.destroy(); } catch {}
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
@@ -1196,6 +1198,49 @@
   function showGuideStep(index) {
     if (!guideState) return;
     const step = guideState.steps[index];
+    // Driver.js headless acompanha o elemento real, aguarda renderizações tardias
+    // e atualiza o alvo quando o Emissor substitui um nó do menu/formulário.
+    if (guideState.driver) {
+      try { guideState.driver.destroy(); } catch {}
+      guideState.driver = null;
+    }
+    const headlessDriver = globalThis.FutureDriverHeadless?.driver;
+    if (typeof headlessDriver === "function" && step) {
+      try {
+        guideState.driver = headlessDriver({
+          steps: [{
+            element: () => step.element?.isConnected ? step.element : (findElementByName(step.title) || undefined),
+            waitForElement: 5000,
+            scrollIntoView: false,
+            advanceOn: false
+          }],
+          onWaitingForElement: () => {
+            if (guideState && guideState.index === index) {
+              guideState.card.querySelector(".guide-desc").textContent = "Aguardando este controle aparecer na tela...";
+            }
+          },
+          onHighlighted: element => {
+            if (!guideState || guideState.index !== index || !element) return;
+            step.element = element;
+            scheduleGuidePosition();
+          },
+          onElementReplaced: element => {
+            if (!guideState || guideState.index !== index || !element) return;
+            step.element = element;
+            scheduleGuidePosition();
+          },
+          onElementMissing: () => {
+            if (guideState && guideState.index === index) {
+              guideState.card.querySelector(".guide-desc").textContent = "O controle mudou ou saiu da tela. Aguarde a atualização ou feche este marcador.";
+            }
+            return false;
+          }
+        });
+        guideState.driver.drive();
+      } catch (error) {
+        console.warn("[Future Assistente] Driver.js indisponível nesta etapa:", error);
+      }
+    }
     if (!step?.element?.isConnected) {
       guideState.card.querySelector(".guide-desc").textContent = "Este elemento não está mais disponível nesta tela. Avance para o próximo passo.";
       return;
