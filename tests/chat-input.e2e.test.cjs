@@ -31,7 +31,9 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await page.route("https://sistema.emissorfiscalonline.com.br/**", route =>
       route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button>Salvar rascunho</button></body></html>" })
     );
+    const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type", "access-control-allow-methods": "POST, OPTIONS" };
     await page.route("https://itbppoailqkuxajesgys.supabase.co/functions/v1/ai-assistant", async route => {
+      if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders });
       aiRequests += 1;
       lastPayload = route.request().postDataJSON();
       const events = [
@@ -42,11 +44,12 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
         { type: "finish" },
       ];
       const body = events.map(event => "data: " + JSON.stringify(event) + "\n\n").join("") + "data: [DONE]\n\n";
-      await route.fulfill({ status: 200, headers: { "content-type": "text/event-stream", "cache-control": "no-cache" }, body });
+      await route.fulfill({ status: 200, headers: { ...corsHeaders, "content-type": "text/event-stream", "cache-control": "no-cache" }, body });
     });
-    await page.route("https://itbppoailqkuxajesgys.supabase.co/rest/v1/**", route =>
-      route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
-    );
+    await page.route("https://itbppoailqkuxajesgys.supabase.co/rest/v1/**", route => {
+      if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders });
+      return route.fulfill({ status: 200, headers: { ...corsHeaders, "content-type": "application/json" }, body: "[]" });
+    });
     await page.goto("https://sistema.emissorfiscalonline.com.br/app/notas/servico");
     await page.waitForFunction(() => Boolean(document.getElementById("future-assistente-host")));
     await page.waitForTimeout(500);
