@@ -30,7 +30,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     });
     const page = context.pages()[0] || await context.newPage();
     await page.route("https://sistema.emissorfiscalonline.com.br/**", route =>
-      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button id='cadastros'>Cadastros</button><div id='menu'></div><button>Salvar rascunho</button><script>document.getElementById('cadastros').addEventListener('click',()=>{document.getElementById('menu').innerHTML='<button id='clientes'>Clientes</button>';document.getElementById('clientes').addEventListener('click',()=>{location.hash='#/cadastros/clientes'});});</script></body></html>" })
+      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button id='cadastros'>Cadastros</button><div id='menu'></div><button>Salvar rascunho</button><script>document.getElementById('cadastros').addEventListener('click',()=>{document.getElementById('menu').innerHTML='<button id=clientes>Clientes</button>';document.getElementById('clientes').addEventListener('click',()=>{location.hash='#/cadastros/clientes'});});</script></body></html>" })
     );
     const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type, x-client-info", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS" };
     await page.route("https://itbppoailqkuxajesgys.supabase.co/functions/v1/ai-assistant", async route => {
