@@ -6,7 +6,7 @@
   const MANUAL_URL = "https://crm.futuresolucoes.com.br/manual/";
   const host = document.createElement("div");
   host.id = "future-assistente-host";
-  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:0;height:0;";
+  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;margin:0;padding:0;border:0;width:100vw;height:100vh;overflow:visible;box-sizing:border-box;";
   document.documentElement.appendChild(host);
   const shadow = host.attachShadow({ mode: "closed" });
 
@@ -158,10 +158,20 @@
     fileInput.value = "";
   });
 
-  input.addEventListener("pointerdown", () => {
-    if (!panel.classList.contains("open")) return;
+  // Keep the composer editable even when the host page intercepts pointer events.
+  input.disabled = false;
+  input.readOnly = false;
+  input.tabIndex = 0;
+  input.addEventListener("pointerdown", event => {
+    if (!panel.classList.contains("open") || input.disabled || input.readOnly) return;
+    event.stopPropagation();
     input.focus({ preventScroll: true });
-  });
+  }, true);
+  input.addEventListener("click", event => {
+    if (!panel.classList.contains("open") || input.disabled || input.readOnly) return;
+    event.stopPropagation();
+    input.focus({ preventScroll: true });
+  }, true);
 
   input.addEventListener("keydown", event => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
