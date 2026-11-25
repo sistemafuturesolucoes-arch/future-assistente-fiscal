@@ -30,17 +30,22 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     });
     const page = context.pages()[0] || await context.newPage();
     await page.route("https://sistema.emissorfiscalonline.com.br/**", route =>
-      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button>Salvar rascunho</button></body></html>" })
+      route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><html><head><title>Emissor de teste</title></head><body><h1>Emissão de serviço</h1><label for='numero'>Número</label><input id='numero'><button id='cadastros'>Cadastros</button><div id='menu'></div><button>Salvar rascunho</button><script>document.getElementById('cadastros').addEventListener('click',()=>{document.getElementById('menu').innerHTML='<button id=clientes>Clientes</button>';document.getElementById('clientes').addEventListener('click',()=>{location.hash='#/cadastros/clientes'});});</script></body></html>" })
     );
     const corsHeaders = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type, x-client-info", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS" };
     await page.route("https://itbppoailqkuxajesgys.supabase.co/functions/v1/ai-assistant", async route => {
       if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders });
       aiRequests += 1;
       lastPayload = route.request().postDataJSON();
+      const serializedMessages = JSON.stringify(lastPayload?.messages || []);
+      const answer = serializedMessages.includes("FUTURE_NAVIGATION_PLAN_REQUEST")
+        ? `Vamos seguir o caminho documentado no Manual. Primeiro, abra Cadastros.
+[[FUTURE_NAVIGATION_PLAN]][{"label":"Cadastros","description":"Abra o menu Cadastros.","path":"Cadastros > Clientes"},{"label":"Clientes","description":"Acesse Clientes para abrir a tela de cadastro.","path":"Cadastros > Clientes"}][[/FUTURE_NAVIGATION_PLAN]]`
+        : "Resposta de teste do assistente.";
       const events = [
         { type: "start", messageId: "m-test" },
         { type: "text-start", id: "t-test" },
-        { type: "text-delta", id: "t-test", delta: "Resposta de teste do assistente." },
+        { type: "text-delta", id: "t-test", delta: answer },
         { type: "text-end", id: "t-test" },
         { type: "finish" },
       ];
@@ -49,6 +54,13 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     });
     await page.route("https://itbppoailqkuxajesgys.supabase.co/rest/v1/**", route => {
       if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders });
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith("/course_modules")) {
+        return route.fulfill({ status: 200, headers: { ...corsHeaders, "content-type": "application/json" }, body: JSON.stringify([{ id: "mod-cadastros", title: "Cadastros", position: 1 }]) });
+      }
+      if (url.pathname.endsWith("/course_lessons")) {
+        return route.fulfill({ status: 200, headers: { ...corsHeaders, "content-type": "application/json" }, body: JSON.stringify([{ id: "lesson-clientes", module_id: "mod-cadastros", title: "Cadastrar cliente", summary: "Acesse Cadastros > Clientes para cadastrar um cliente.", path: "Cadastros > Clientes", content: "Abra o menu Cadastros e selecione Clientes.", position: 1 }]) });
+      }
       return route.fulfill({ status: 200, headers: { ...corsHeaders, "content-type": "application/json" }, body: "[]" });
     });
     await page.goto("https://sistema.emissorfiscalonline.com.br/app/notas/servico");
@@ -128,6 +140,44 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     assert.match(serialized, /data:image\/png;base64/);
     assert.match(serialized, /application\/xml/);
     assert.match(serialized, /documento\.xml/);
+    for (let i = 0; i < 40; i++) {
+      const stopped = await call(stopButton, "function(){ return this.disabled; }");
+      if (stopped.result.value) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    await call(textarea, "function(){ this.value = 'Quero cadastrar um cliente'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    for (let i = 0; i < 40 && aiRequests < 3; i++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(aiRequests, 3, "o pedido de navegação deve consultar a IA uma única vez para montar a rota");
+    const guideCard = await query(".guide-card");
+    const firstGuideTitle = await call(guideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
+    assert.equal(firstGuideTitle.result.value, "Cadastros");
+    await page.locator("#cadastros").click();
+    let secondGuideTitle = "";
+    for (let i = 0; i < 50; i++) {
+      secondGuideTitle = await page.evaluate(() => {
+        const host = document.getElementById("future-assistente-host");
+        return host?.shadowRoot?.querySelector(".guide-card .guide-title")?.textContent || "";
+      });
+      if (secondGuideTitle === "Clientes") break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(secondGuideTitle, "Clientes", "o JavaScript local deve avançar para o próximo item do roteiro");
+    assert.equal(aiRequests, 3, "o avanço normal após o clique não deve chamar a IA novamente");
+    await page.locator("#clientes").click();
+    let guideDisconnected = false;
+    for (let i = 0; i < 40; i++) {
+      guideDisconnected = await page.evaluate(() => {
+        const host = document.getElementById("future-assistente-host");
+        return !host?.shadowRoot?.querySelector(".guide-card");
+      });
+      if (guideDisconnected) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(guideDisconnected, true, "o guia deve encerrar ao chegar ao destino do Manual");
+    assert.equal(aiRequests, 3, "a conclusão do caminho documentado também não deve gerar uma nova chamada à IA");
   } finally {
     if (context) await context.close();
     fs.rmSync(profilePath, { recursive: true, force: true });
