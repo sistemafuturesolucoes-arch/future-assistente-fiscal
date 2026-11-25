@@ -485,11 +485,11 @@ Deno.serve(async (request: Request) => {
       });
     }
 
-    const maxBodyBytes = 15 * 1024 * 1024;
+    const maxBodyBytes = 18 * 1024 * 1024;
     const declaredLength = Number(request.headers.get("content-length") || 0);
-    if (declaredLength > maxBodyBytes) return json(413, "A mensagem e os anexos ultrapassam o limite de 15 MB.");
+    if (declaredLength > maxBodyBytes) return json(413, "A mensagem e os anexos ultrapassam o limite de 18 MB.");
     const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > maxBodyBytes) return json(413, "A mensagem e os anexos ultrapassam o limite de 15 MB.");
+    if (new TextEncoder().encode(rawBody).byteLength > maxBodyBytes) return json(413, "A mensagem e os anexos ultrapassam o limite de 18 MB.");
     let body: { messages?: unknown; knowledge?: unknown; tela?: unknown };
     try { body = JSON.parse(rawBody); } catch { return json(400, "A mensagem recebida não está em um formato válido."); }
     if (!Array.isArray(body.messages) || body.messages.length === 0) return json(400, "Nenhuma mensagem enviada.");
@@ -501,7 +501,7 @@ Deno.serve(async (request: Request) => {
     const userText = textFromMessage(lastUser);
     const explicitlyRequestsResearch = /\b(pesquise|pesquisar|busque|procure|consulte|verifique|confirme)\b.{0,90}\b(internet|web|fonte|site oficial|legislação|sefaz|receita federal|diário oficial)\b/i.test(userText);
     const asksCurrentRule = /\b(atual|atualmente|vigente|em vigor|hoje|2026|última atualização|mudança|mudou|prazo atual)\b/i.test(userText)
-      && /\b(lei|decreto|portaria|instrução normativa|nota técnica|sefaz|receita federal|cfop|ncm|cst|csosn|alíquota|imposto|simples nacional|mei|nf-e|nfc-e|nfs-e|ct-e|mdf-e)\b/i.test(userText);
+      && /\b(lei|decreto|portaria|instrução normativa|nota técnica|sefaz|receita federal|cfop|ncm|cst|csosn|alíquota|icms|iss|ipi|pis|cofins|tributação|reforma tributária|imposto|simples nacional|mei|nf-e|nfc-e|nfs-e|ct-e|mdf-e)\b/i.test(userText);
     const webSearchIntent = explicitlyRequestsResearch || asksCurrentRule;
     const xmlAnalysis = await extractXmlAttachments(lastUser);
     if (xmlAnalysis.text) {
