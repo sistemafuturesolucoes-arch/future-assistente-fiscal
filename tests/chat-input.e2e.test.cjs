@@ -99,7 +99,7 @@ test("Chrome real permite digitar, enviar e anexar print no chat da extensão", 
     await new Promise(resolve => setTimeout(resolve, 350));
     const chips = await query(".pending-files");
     const chipText = await call(chips, "function(){ return this.innerText; }");
-    assert.match(chipText.result.value, /print-teste\\.png/i, "o print deve aparecer como anexo pendente");
+    assert.match(chipText.result.value, /print-teste\.png/i, "o print deve aparecer como anexo pendente");
   } finally {
     if (context) await context.close();
     fs.rmSync(profilePath, { recursive: true, force: true });
