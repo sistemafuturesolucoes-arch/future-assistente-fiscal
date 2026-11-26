@@ -201,7 +201,7 @@ test("rotas do Manual viram um plano local e o próximo passo é resolvido no DO
   assert.match(source, /FUTURE_NAVIGATION_PLAN_REQUEST/);
   assert.match(source, /function extractNavigationPlan\(answer\)/);
   assert.match(source, /function advanceLocalNavigationPlan\(\)/);
-  assert.match(source, /findElementForPlanStep\\(next\\)/);
+  assert.match(source, /findElementForPlanStep\(next\)/);
   assert.match(source, /plan: navigationPlan, planIndex: navigationPlanIndex/);
   assert.match(source, /navigationPlanIndex = Number\.isInteger\(saved\.planIndex\)/);
 });
