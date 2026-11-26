@@ -76,3 +76,20 @@ test("gera roteiros locais de produto e serviço e deixa tarefas desconhecidas p
   assert.ok(ctx.knowledge.getLocalNavigationPlan("Preciso cadastrar um serviço").length > 0);
   assert.equal(ctx.knowledge.getLocalNavigationPlan("Quero configurar uma regra tributária específica"), null);
 });
+
+
+test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pede para cadastrar", async () => {
+  const ctx = createKnowledgeContext();
+  const text = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "Como cadastrar um condutor?"
+  });
+  assert.ok(text.includes("Cadastro de Condutores"));
+  assert.ok(text.includes("Cadastros > Condutores"));
+  assert.ok(text.includes("Novo Condutor"));
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como cadastrar um condutor?");
+  assert.ok(Array.isArray(plan));
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Condutores", "Novo Condutor", "Ativo", "CPF", "Nome", "Salvar"
+  ]);
+  assert.equal(plan.at(-1).kind, "final_action");
+});
