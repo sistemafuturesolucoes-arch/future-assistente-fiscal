@@ -157,10 +157,12 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await page.locator("#cadastros").click();
     let secondGuideTitle = "";
     for (let i = 0; i < 50; i++) {
-      secondGuideTitle = await page.evaluate(() => {
-        const host = document.getElementById("future-assistente-host");
-        return host?.shadowRoot?.querySelector(".guide-card .guide-title")?.textContent || "";
-      });
+      // O Shadow DOM da extensão é fechado; consulte-o pelo CDP, não por host.shadowRoot.
+      const found = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card .guide-title" });
+      if (found.nodeId) {
+        const title = await call(found.nodeId, "function(){ return this.textContent || ''; }");
+        secondGuideTitle = title.result.value || "";
+      }
       if (secondGuideTitle === "Clientes") break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -169,10 +171,9 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await page.locator("#clientes").click();
     let guideDisconnected = false;
     for (let i = 0; i < 40; i++) {
-      guideDisconnected = await page.evaluate(() => {
-        const host = document.getElementById("future-assistente-host");
-        return !host?.shadowRoot?.querySelector(".guide-card");
-      });
+      // Verifica o encerramento também pelo CDP, pois o root é closed.
+      const found = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
+      guideDisconnected = !found.nodeId;
       if (guideDisconnected) break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
