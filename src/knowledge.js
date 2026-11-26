@@ -446,8 +446,10 @@
         for (let si = 0; si < screenshots.length; si++) {
           const shot = screenshots[si];
           const caption = normalize(shot.caption || "");
-          const isList = /listagem|notas emitidas|painel inicial|tela inicial|menu lateral/.test(caption);
-          const isForm = /formulario|dados gerais|lancamento|secao|totais|transporte|pagamento|informacoes|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption);
+          const isList = /listagem|notas emitidas|painel inicial|tela inicial|menu lateral/.test(caption)
+            || (/^\\d+$/.test(caption) && si === 1);
+          const isForm = /formulario|dados gerais|lancamento|secao|totais|transporte|pagamento|informacoes|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)
+            || (/^\\d+$/.test(caption) && si >= 2);
           for (const h of (shot.hotspots || [])) {
             const label = String(h.title || "").trim();
             const labelNorm = normalize(label);
