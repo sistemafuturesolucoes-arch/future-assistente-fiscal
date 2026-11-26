@@ -272,7 +272,9 @@
     // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
     if (/\bcfop\b/.test(q) && /\b(grupo|grupos|tributario|tributarios)\b/.test(q)) {
       const path = "Cadastros > Grupo Tributário > grupo desejado > Regras Tributárias > Editar Regra";
-      return [
+      const inspectionOnly = /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(q)
+        && !/\b(ajustar|ajuste|alterar|altere|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
+      const plan = [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra Cadastros no menu lateral."),
         makeStep(bundleCache, "Grupo Tributário", "click", path, "Selecione Grupo Tributário. É nessa área que as regras fiscais são configuradas; não altere o CFOP diretamente no cadastro do produto."),
         makeStep(bundleCache, "Procurar", "field", path, "Pesquise pelo nome do grupo tributário vinculado ao produto e confirme que selecionou o grupo correto."),
@@ -281,6 +283,8 @@
         makeStep(bundleCache, "CFOP", "field", path, "Na identificação da regra, confira Natureza de Operação, CFOP, Tipo Destinatário e UFs Destino. Selecione o CFOP somente conforme a operação e a orientação da contabilidade."),
         makeStep(bundleCache, "Salvar", "final_action", path, "Revise os demais parâmetros tributários e clique em Salvar. Você fará a alteração e a gravação; a extensão não salva automaticamente.")
       ];
+      // Conferência é somente leitura: pare no campo CFOP e aguarde o usuário enviar a tela.
+      return inspectionOnly ? plan.slice(0, 6) : plan;
     }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
@@ -521,6 +525,14 @@
     // configuração da NFC-e com emissão de NFC-e) gera respostas longas e fora da intenção.
     const lesson = best.lesson;
     const plan = getLocalNavigationPlan(question);
+    const normalizedQuestion = normalize(question);
+    const isCfopInspection = /\bcfop\b/.test(normalizedQuestion)
+      && /\b(grupo|grupos|tributario|tributarios)\b/.test(normalizedQuestion)
+      && /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(normalizedQuestion)
+      && !/\b(ajustar|ajuste|alterar|altere|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(normalizedQuestion);
+    if (isCfopInspection) {
+      return "Claro! Vamos conferir juntos. Acesse Cadastros → Grupo Tributário, abra o grupo usado pelo produto e localize Regras Tributárias. Abra a regra correspondente à operação e confira o campo CFOP. Envie um print dessa tela para eu ajudar a analisar; não dá para afirmar se o CFOP está correto sem conhecer a operação e validar a orientação fiscal com a contabilidade.";
+    }
     if (Array.isArray(plan) && plan.length) {
       const route = plan.map(step => step.label).join(" > ");
       const finalStep = plan[plan.length - 1];
