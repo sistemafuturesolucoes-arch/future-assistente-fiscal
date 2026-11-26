@@ -154,7 +154,7 @@
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
 
     // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
