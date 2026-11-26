@@ -134,7 +134,7 @@
       ];
     }
 
-    if (/\\b(cliente|clientes)\\b/.test(q)) {
+    if (/\b(cliente|clientes)\b/.test(q)) {
       const path = "Cadastros > Clientes > Novo Cliente";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
