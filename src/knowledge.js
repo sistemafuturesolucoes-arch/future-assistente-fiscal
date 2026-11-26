@@ -148,7 +148,7 @@
       ...(Array.isArray(lesson?.screenshots) ? lesson.screenshots.flatMap(shot => shot?.hotspots || []) : [])
     ];
     const hotspot = hotspots.find(item => normalize(item?.title) === target);
-    const description = extraDescription || hotspot?.description || \`Localize \${label} na tela atual, conforme a aula \${lesson?.title || "do Manual"}.\`;
+    const description = extraDescription || hotspot?.description || ("Localize " + label + " na tela atual, conforme a aula " + (lesson?.title || "do Manual") + ".");
     return { label, kind, path, description };
   }
 
