@@ -361,4 +361,7 @@ test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar
   assert.equal(plan.at(-1).kind, "final_action");
   assert.match(plan.find(step => step.label === "Procurar").description, /digite o nome do grupo/i);
   assert.match(plan.find(step => step.label === "Botão Opções da Linha").description, /linha/i);
+  assert.equal(plan.find(step => step.label === "Botão Opções da Linha").manualMarker.title, "Botão Opções da Linha");
+  assert.equal(plan.find(step => step.label === "CFOP").manualMarker.title, "CFOP");
+  assert.ok(plan.find(step => step.label === "CFOP").manualMarker.id);
 });
