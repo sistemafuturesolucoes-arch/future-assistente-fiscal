@@ -163,7 +163,9 @@
       && !/\b(cadastrar|criar|emitir|gerar|preencher|alterar|editar|configurar|informar|salvar|carregar|instalar|renovar|exportar|cancelar)\b/.test(q);
     if (locateOnly) {
       const rankedForRoute = [...bundleCache.lessons].map(lesson => ({
-        lesson, score: relevance(lesson, location.pathname, question)
+        lesson,
+        score: relevance(lesson, location.pathname, question)
+          + (/configur|serie|parametro/.test(q) && /configuracoes|empresa/.test(normalize(lesson.module_id + " " + lesson.title + " " + lesson.path)) ? 90 : 0)
       })).sort((a, b) => b.score - a.score);
       const bestRoute = rankedForRoute[0]?.lesson;
       if (bestRoute && rankedForRoute[0].score >= 18) {
