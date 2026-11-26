@@ -2003,6 +2003,28 @@
       navigationLastCompletedRoute = "";
       persistNavigationTask();
     }
+    // Tarefas conhecidas são conduzidas pela base instalada, sem chamar a IA.
+    if (question && !isNavigationContinuation && !files.length) {
+      try {
+        await window.FutureManualKnowledge.load({ route: location.pathname, question });
+        const localPlan = window.FutureManualKnowledge.getLocalNavigationPlan?.(question);
+        if (Array.isArray(localPlan) && localPlan.length) {
+          navigationTask = question;
+          navigationLastCompletedStep = "";
+          navigationLastCompletedRoute = "";
+          navigationGuideActive = true;
+          activateNavigationPlan(localPlan);
+          addMessage("Encontrei o procedimento na base local do Manual Future. Vou guiar você etapa por etapa, sem consulta à IA. Você continuará fazendo os cliques e preenchimentos.", "bot");
+          if (advanceLocalNavigationPlan()) {
+            status.textContent = "Roteiro local carregado — " + localPlan.length + " etapas. Nenhuma chamada à IA foi feita.";
+            return;
+          }
+          clearNavigationTask();
+        }
+      } catch (error) {
+        console.warn("Não foi possível abrir a base local para navegação", error);
+      }
+    }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     const controller = new AbortController();
@@ -2013,7 +2035,7 @@
     const context = safeScreenContext();
     let knowledge = "";
     try {
-      status.textContent = "Carregando as aulas do Manual relacionadas a esta tela...";
+      status.textContent = "Abrindo a base local do Manual Future...";
       knowledge = await window.FutureManualKnowledge.load({ route: location.pathname, question });
     } catch (error) {
       console.warn("Não foi possível carregar o Manual Academy", error);
@@ -2101,8 +2123,8 @@
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
       status.textContent = diagnostic
-        ? "Manual conectado: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + "."
-        : knowledge ? "Conectado ao assistente e ao Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
+        ? "Base local instalada: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + ". A IA só é chamada quando a tarefa exige interpretação."
+        : knowledge ? "Base local do Manual Future carregada." : "Conectado à IA; a base local não carregou nesta tentativa.";
     } catch (error) {
       if (signal.aborted || error?.name === "AbortError") {
         target.textContent = "Conversa interrompida por você.";
