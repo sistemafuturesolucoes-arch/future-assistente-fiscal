@@ -2,7 +2,7 @@ name: Validar extensão
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/motor-interacao-lovable-20261126]
   pull_request:
     branches: [main]
 
