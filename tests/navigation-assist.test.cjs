@@ -4,6 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "../src/content.js"), "utf8");
+const knowledgeSource = fs.readFileSync(path.join(__dirname, "../src/knowledge.js"), "utf8");
+const manualBundle = JSON.parse(fs.readFileSync(path.join(__dirname, "../src/manual-knowledge.json"), "utf8"));
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
 
 test("botão Tour guiado inicia orientação interativa baseada no Manual", () => {
   assert.match(source, /class="tour-button"/);
@@ -228,4 +231,43 @@ test("o plano local cobre o fluxo completo, inclusive campos e botão final", ()
   assert.match(source, /Preencha este campo conforme a orientação/);
   assert.match(source, /NUNCA clique, preencha ou envie automaticamente/);
   assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+});
+
+
+test("Manual Future completo fica empacotado localmente na extensão", () => {
+  assert.equal(manualBundle.modules.length, 5);
+  assert.equal(manualBundle.lessons.length, 26);
+  assert.ok(manualBundle.lessons.some(lesson => lesson.id === "cliente-cadastro"));
+  assert.ok(manualBundle.lessons.some(lesson => lesson.id === "produto-dados"));
+  assert.ok(manualBundle.lessons.some(lesson => lesson.id === "servico-cadastro"));
+  assert.match(manualBundle.version, /^2026-11-26/);
+});
+
+test("base de conhecimento não consulta tabelas do Supabase nem baixa o Manual pela internet", () => {
+  assert.match(knowledgeSource, /chrome\.runtime\.getURL\(BUNDLE_URL\)/);
+  assert.match(knowledgeSource, /fetch\(url\)/);
+  assert.doesNotMatch(knowledgeSource, /SUPABASE_URL|PUBLISHABLE_KEY|\/rest\/v1\/course_lessons/);
+  assert.match(knowledgeSource, /getLocalNavigationPlan/);
+});
+
+test("cadastro de clientes, produtos e serviços possui roteiros locais sem IA", () => {
+  assert.match(knowledgeSource, /getLocalNavigationPlan\(question\)/);
+  assert.match(knowledgeSource, /"Novo Cliente", "click"/);
+  assert.match(knowledgeSource, /"CPF\/CNPJ", "field"/);
+  assert.match(knowledgeSource, /"Novo Produto", "click"/);
+  assert.match(knowledgeSource, /"Aba Tributação", "click"/);
+  assert.match(knowledgeSource, /"Novo Serviço", "click"/);
+  assert.match(knowledgeSource, /"Cód\. Trib\. Nacional", "field"/);
+  const localBranch = source.indexOf("Tarefas conhecidas são conduzidas pela base instalada");
+  const apiCall = source.indexOf("const requestAssistantStream = async");
+  assert.ok(localBranch > 0 && apiCall > localBranch);
+  assert.match(source.slice(localBranch, apiCall), /advanceLocalNavigationPlan\(\)/);
+  assert.match(source.slice(localBranch, apiCall), /Nenhuma chamada à IA foi feita/);
+});
+
+test("base JSON do Manual está autorizada como recurso local da extensão", () => {
+  assert.ok(manifest.web_accessible_resources.some(item =>
+    item.resources.includes("src/manual-knowledge.json") &&
+    item.matches.includes("https://sistema.emissorfiscalonline.com.br/*")
+  ));
 });
