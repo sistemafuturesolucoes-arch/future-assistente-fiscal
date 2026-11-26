@@ -1090,6 +1090,12 @@
     guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
+    const hint = guideState.card.querySelector(".guide-hint");
+    if (hint) hint.textContent = step.waitForInput
+      ? "Preencha este campo conforme a orientação e saia dele para avançar. A extensão não digita por você."
+      : step.kind === "final_action"
+        ? "Confira os dados. Quando estiver pronto, clique você mesmo neste botão; a extensão não executa a ação."
+        : "Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.";
     guideState.card.hidden = true;
     guideState.marker.hidden = false;
     const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
@@ -1153,7 +1159,8 @@
         ).map(item => ({
           label: item.label.trim().slice(0, 100),
           description: item.description.trim().slice(0, 360),
-          path: typeof item.path === "string" ? item.path.trim().slice(0, 240) : ""
+          path: typeof item.path === "string" ? item.path.trim().slice(0, 240) : "",
+          kind: item.kind === "field" ? "field" : item.kind === "final_action" ? "final_action" : "click"
         }));
         if (valid.length) plan = valid;
       } catch {}
@@ -1180,7 +1187,9 @@
     if (!element) return false;
     startVisualGuide([{
       element, title: next.label,
-      description: (next.path ? "Caminho: " + next.path + ". " : "") + next.description
+      description: (next.path ? "Caminho: " + next.path + ". " : "") + next.description,
+      waitForInput: next.kind === "field",
+      kind: next.kind
     }]);
     status.textContent = "Navegação local ativa — próximo passo " + (navigationPlanIndex + 1) + " de " + navigationPlan.length + ".";
     return true;
@@ -1326,7 +1335,7 @@
       const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
       const clicked = path.find(node => isNode(node) && (node === current.element || current.element.contains(node)));
       if (!clicked) return;
-        if (current.validationField) return;
+      if (current.validationField || current.waitForInput) return;
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
       navigationLastCompletedRoute = location.pathname;
       if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
@@ -1951,9 +1960,26 @@
       status.textContent = "Edição liberada. Confira os campos e tente novamente quando estiver pronto.";
     }
   }, true);
+  function completeNavigationInputStep(target) {
+    const current = guideState?.steps?.[guideState.index];
+    if (!navigationGuideActive || !current?.waitForInput || current.element !== target) return false;
+    const value = target.matches("[type=checkbox],[type=radio]")
+      ? (target.checked || target.getAttribute("aria-checked") === "true")
+      : String(target.value ?? "").trim();
+    if (!value) return false;
+    navigationLastCompletedStep = current.title || getElementName(target) || "campo preenchido";
+    navigationLastCompletedRoute = location.pathname;
+    navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+    persistNavigationTask();
+    closeGuide();
+    if (!advanceLocalNavigationPlan()) continueNavigationGuide();
+    return true;
+  }
+
   document.addEventListener("change", event => {
     const target = event.target;
     if (!(target instanceof Element) || host.contains(target)) return;
+    if (completeNavigationInputStep(target)) return;
     if (target.matches("input,select,textarea") && guideState?.steps?.[guideState.index]?.validationField) {
       closeGuide();
       clearNavigationTask();
@@ -2008,7 +2034,7 @@
       : "\n\nMANUAL FUTURE INDISPONÍVEL NESTA CONSULTA: não afirme que consultou o Manual, não invente procedimentos nem sequência de cliques. Explique que o conteúdo do Manual não carregou agora e peça para tentar novamente ou enviar um print; responda apenas dúvidas gerais que não dependam do procedimento específico.\n";
     const navigationIntent = /\[TOUR GUIADO\]|\b(quero|preciso|me ajude|me ajuda|como faço|como faco|cadastrar|cadastre|acesse|abrir|ir para|chegar|localizar|encontrar|criar|incluir|editar|consultar)\b/i.test(question || "");
     const navigationPlanRequest = navigationTask && navigationIntent && Boolean(knowledge) && !isNavigationContinuation && !files.length
-      ? "\n\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\nO usuário pediu para chegar a uma função/tela. Consulte o MANUAL FUTURE já carregado e planeje o caminho de menus e submenus até a tela de destino. Responda normalmente em português e, ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\"label\":\"rótulo exato do próximo menu ou controle visível\",\"description\":\"instrução curta\",\"path\":\"caminho documentado no Manual\"}]"+NAVIGATION_PLAN_CLOSE+". Inclua somente controles de navegação (menus, submenus, links e abas) que apareçam no caminho documentado; um item por clique, na ordem correta. Use rótulos exatos do Manual, não invente. Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar. Se não houver caminho confiável no Manual, não produza o bloco e explique a limitação.\n"
+      ? "\\n\\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\\nO usuário quer concluir uma tarefa, não apenas chegar a uma tela. Consulte o MANUAL FUTURE já carregado e produza um ROTEIRO COMPLETO de ponta a ponta, desde o primeiro menu até a última etapa necessária da operação. Inclua, na ordem real, menus, submenus, abas, botões que abrem formulários, campos que o usuário precisa preencher (kind=field), seleções e o botão final de salvar/concluir (kind=final_action). Não pare em CADASTROS, CLIENTES ou na primeira tela se ainda houver etapas. Cada item deve ter label exatamente igual ao texto/label acessível do controle, description com instrução clara, path com a sequência do Manual e kind (click, field ou final_action). Limite o roteiro a 30 passos. Inclua campos somente quando forem identificáveis pelo Manual ou pela tela; não invente campos nem valores. A resposta visível deve explicar que o usuário fará cada clique e preenchimento e que a extensão acompanhará até a ação final. O último passo deve destacar Salvar/Concluir quando fizer parte da tarefa, mas NUNCA clique, preencha ou envie automaticamente. Para ações fiscais irreversíveis (emitir, transmitir, autorizar, cancelar), destaque a conferência e aguarde confirmação explícita do usuário. Se não conseguir montar o caminho completo com segurança, não devolva um roteiro parcial como se estivesse completo: informe o que falta confirmar e peça um print.\n"
       : "";
     const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
