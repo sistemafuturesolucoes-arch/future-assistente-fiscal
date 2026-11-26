@@ -344,6 +344,8 @@
       const isCreate = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
       const isEdit = /\b(editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
       const isIssue = /\b(emitir|emita|gerar|gere|transmitir|transmita|finalizar|finalize)\b/.test(q);
+      const isExport = /\b(exportar|exporte|baixar|download|enviar xml)\b/.test(q);
+      const isConfigure = /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\b/.test(q);
 
       // Campos citados pelo usuário podem estar descritos em bullets ou hotspots de screenshots.
       const requestedTerms = q.split(/[^a-z0-9]+/).filter(term => term.length >= 3);
@@ -412,7 +414,7 @@
       // por etapa do Manual (listagem, formulário, seções e ações finais).
       // Isso amplia a cobertura sem inventar rótulos que não estejam documentados.
       const screenshots = Array.isArray(lesson.screenshots) ? lesson.screenshots : [];
-      if (screenshots.length && (isCreate || isEdit || isIssue || /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\b/.test(q))) {
+      if (screenshots.length && (isCreate || isEdit || isIssue || isExport || isConfigure)) {
         for (let si = 0; si < screenshots.length; si++) {
           const shot = screenshots[si];
           const caption = normalize(shot.caption || "");
