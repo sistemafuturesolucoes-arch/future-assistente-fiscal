@@ -181,12 +181,20 @@
         // A aula de Empresa contém várias abas internas; explicitar a aba solicitada.
         if (/certificado|\bpfx\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Certificado Digital"];
+        } else if (/\bcsc\b/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
         } else if (/nfc.?e|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
-        } else if (/nf.?e|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
-          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
         } else if (/nfs.?e|nota.?de.?servico/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"];
+        } else if (/ct.?e.?os/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "CT-e OS"];
+        } else if (/ct.?e/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "CT-e"];
+        } else if (/mdf.?e/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "MDF-e"];
+        } else if (/nf.?e|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
         }
         const path = routeParts.join(" > ");
         return routeParts.map((label, index) => makeLessonStep(
