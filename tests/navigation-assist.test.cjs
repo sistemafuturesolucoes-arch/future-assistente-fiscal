@@ -129,7 +129,7 @@ test("orientação de salvar verifica campos obrigatórios antes de destacar o b
 
 test("leitura de navegação aguarda transições lentas e observa menus em qualquer região", () => {
   assert.match(source, /function navigationSnapshot\(\)/);
-  assert.match(source, /waitForNavigationUpdate\\(beforeSnapshot/);
+  assert.match(source, /waitForNavigationUpdate\(beforeSnapshot/);
   assert.match(source, /timeoutMs = 3000/);
   assert.match(source, /window\.setTimeout\(check, 80\)/);
   assert.match(source, /window\.setInterval\(check, 120\)/);
@@ -208,7 +208,7 @@ test("avanço normal do roteiro local não chama a IA a cada clique", () => {
   const aiFallback = source.indexOf("const responseMessage = await ask(prompt, []);", localAdvance);
   assert.ok(localAdvance > 0, "deve tentar resolver o próximo alvo localmente primeiro");
   assert.ok(aiFallback > localAdvance, "a IA só deve ser chamada depois que o alvo local não for encontrado");
-  assert.match(source, /waitForNavigationUpdate\\(beforeSnapshot/);
+  assert.match(source, /waitForNavigationUpdate\(beforeSnapshot/);
 });
 
 test("pedidos naturais de localização e cadastro ativam navegação assistida", () => {
