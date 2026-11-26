@@ -63,7 +63,7 @@
     if (/(nfe|nota.?eletronica)/.test(q) && /nfe/.test(title + " " + path)) score += 75;
     if (/(nfce|cupom|consumidor)/.test(q) && /nfce|consumidor/.test(title + " " + path)) score += 75;
     if (/(nfse|nota.?de.?servico)/.test(q) && /nfse|servico/.test(title + " " + path)) score += 75;
-    if (/(cte|conhecimento.?transporte)/.test(q) && /cte/.test(title + " " + path)) score += 75;
+    if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 75;
     if (/(mdfe|manifesto)/.test(q) && /mdfe|manifesto/.test(title + " " + path)) score += 75;
     const matched = terms.filter(term => haystack.includes(term));
     if (terms.length && matched.length === terms.length) score += 55;
@@ -161,8 +161,8 @@
 
     // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
     // Não transformar "onde fica NFC-e?" em um roteiro de emissão ou preenchimento.
-    const locateOnly = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|localizar|localize|me mostre onde|qual caminho|qual menu)\b/.test(q)
-      && !/\b(cadastrar|criar|emitir|gerar|preencher|alterar|editar|configurar|informar|salvar|carregar|instalar|renovar|exportar|cancelar)\b/.test(q);
+    const locateOnly = /^\s*(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|qual caminho|qual menu)\b/.test(q)
+      || (/\b(localizar|localize|me mostre onde)\b/.test(q) && !createRequest);
     if (locateOnly) {
       const rankedForRoute = [...bundleCache.lessons].map(lesson => ({
         lesson,
@@ -402,7 +402,9 @@
       }
 
       if (isCreate || isIssue) {
-        const action = (lesson.hotspots || []).find(h => /^(novo|nova|emitir|adicionar|incluir)/i.test(String(h.title || "").trim()));
+        const action = (lesson.hotspots || []).find(h => isIssue
+          ? /^(emitir|gerar)/i.test(String(h.title || "").trim())
+          : /^(novo|nova|adicionar|incluir)/i.test(String(h.title || "").trim()));
         if (action) add(action.title, "click", action.description || "Abra o formulário indicado pela aula.");
         const boldActions = [...String(lesson.content || "").matchAll(/\*\*([^*]{2,60})\*\*/g)]
           .map(match => match[1].trim()).filter(label => /^(novo|nova|emitir|adicionar|incluir|gerar|finalizar)/i.test(label));
