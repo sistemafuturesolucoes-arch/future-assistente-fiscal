@@ -305,15 +305,16 @@ test("roteiro local de condutores está ligado ao caminho correto do Manual", ()
   assert.match(knowledgeSource, /"Nome", "field"/);
 });
 test("botão Parar permanece disponível enquanto a orientação visual continua após a resposta da IA", () => {
-  assert.match(source, /stopButton\\.disabled = !\\(guideState \\|\\| navigationGuideActive \\|\\| voiceIsSpeaking\\)/);
-  assert.match(source, /activeRequestController\\?\\.abort\\(\\)/);
-  assert.match(source, /clearNavigationTask\\(\\);\\s*closeGuide\\(\\)/);
+  assert.ok(source.includes("stopButton.disabled = !(guideState || navigationGuideActive || voiceIsSpeaking)"));
+  assert.ok(source.includes("activeRequestController?.abort()"));
+  assert.ok(source.includes("clearNavigationTask();"));
+  assert.ok(source.includes("closeGuide();"));
 });
 
 test("balão de pergunta abre e fecha alternadamente e o botão X encerra a orientação", () => {
-  assert.match(source, /marker\\.addEventListener\\("click", event =>/);
-  assert.match(source, /activeCard\\.hidden = !activeCard\\.hidden/);
-  assert.match(source, /marker\\.setAttribute\\("aria-expanded", String\\(!activeCard\\.hidden\\)\\)/);
-  assert.match(source, /dismiss\\.addEventListener\\("click", event =>/);
-  assert.match(source, /Indicador fechado\\. A orientação foi encerrada e não será retomada/);
+  assert.ok(source.includes('marker.addEventListener("click", event =>'));
+  assert.ok(source.includes("activeCard.hidden = !activeCard.hidden"));
+  assert.ok(source.includes('marker.setAttribute("aria-expanded", String(!activeCard.hidden))'));
+  assert.ok(source.includes('dismiss.addEventListener("click", event =>'));
+  assert.ok(source.includes("Indicador fechado. A orientação foi encerrada e não será retomada"));
 });
