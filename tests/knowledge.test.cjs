@@ -355,7 +355,7 @@ test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar
   await ctx.knowledge.load({ route: "/app/dashboard", question });
   const plan = ctx.knowledge.getLocalNavigationPlan(question);
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar Regra", "CFOP", "Salvar"
   ]);
   assert.equal(plan[0].kind, "click");
   assert.equal(plan.at(-1).kind, "final_action");
