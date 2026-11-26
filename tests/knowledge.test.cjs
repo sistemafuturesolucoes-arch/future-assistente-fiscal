@@ -188,7 +188,7 @@ test("gera roteiro local para instalar ou renovar certificado A1 sem depender da
     "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx", "Senha do certificado", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
-  assert.ok(plan.some(step => step.label === "Senha do certificado" && /diretamente no Emissor/i.test(step.description)));
+  assert.ok(plan.some(step => step.label === "Senha do certificado" && /diretamente no campo do Emissor/i.test(step.description)));
 });
 
 test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA", async () => {
