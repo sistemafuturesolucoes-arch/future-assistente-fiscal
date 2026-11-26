@@ -270,3 +270,23 @@ test("base JSON do Manual está autorizada como recurso local da extensão", () 
     "src/manual-knowledge.js", "src/knowledge.js", "src/content.js"
   ]);
 });
+
+
+test("marcadores não usam aproximação textual e exigem instrução com rótulo exato", () => {
+  const start = source.indexOf("function findGuideSteps(answer)");
+  const end = source.indexOf("function persistGuideProgress", start);
+  const locator = source.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(locator, /const actionable =/);
+  assert.match(locator, /lineNorm\.indexOf\(key\)/);
+  assert.match(locator, /byKey\.get\(match\.key\)\?\.size !== 1/);
+  assert.doesNotMatch(locator, /score >= 0\.82|tokens\.filter|answerNorm\.indexOf/);
+});
+
+test("roteiro local de condutores está ligado ao caminho correto do Manual", () => {
+  assert.match(knowledgeSource, /condutor\|condutores\|motorista\|motoristas/);
+  assert.match(knowledgeSource, /Cadastros > Condutores > Novo Condutor/);
+  assert.match(knowledgeSource, /"Novo Condutor", "click"/);
+  assert.match(knowledgeSource, /"CPF", "field"/);
+  assert.match(knowledgeSource, /"Nome", "field"/);
+});
