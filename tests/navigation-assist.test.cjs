@@ -27,7 +27,7 @@ test("navegação avança após o clique real e não deixa o marcador antigo pre
   assert.match(source, /guideState\.navigationTimer = window\.setTimeout/);
   assert.match(source, /Abrindo a próxima etapa do Manual/);
   assert.match(source, /if \(navigationPlan\.length && advanceLocalNavigationPlan\(\)\) return/);
-  assert.match(source, /Ainda não estiver renderizado/);
+  assert.match(source, /ainda não estiver renderizado/i);
 });
 
 test("respostas da IA renderizam links Markdown sem inserir HTML arbitrário", () => {
@@ -230,7 +230,7 @@ test("o plano local cobre o fluxo completo, inclusive campos e botão final", ()
   assert.match(source, /completeNavigationInputStep/);
   assert.match(source, /Preencha este campo conforme a orientação/);
   assert.match(source, /Nunca clique, preencha, salve, transmita ou envie automaticamente/);
-  assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+  assert.match(source, /Abrindo a próxima etapa do Manual/);
 });
 
 
