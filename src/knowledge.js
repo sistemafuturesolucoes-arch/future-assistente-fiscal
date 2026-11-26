@@ -201,13 +201,13 @@
     }
 
     // Consultas às listas de cadastros devem abrir a listagem, nunca o formulário de novo registro.
-    if (!createRequest && /\\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\\b/.test(q)) {
+    if (!createRequest && /\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\b/.test(q)) {
       const listingRoutes = [
-        { re: /\\b(cliente|clientes)\\b/, labels: ["Cadastros", "Clientes"] },
-        { re: /\\b(produto|produtos)\\b/, labels: ["Cadastros", "Produtos"] },
-        { re: /\\b(servico|servicos)\\b/, labels: ["Cadastros", "Serviços"] },
-        { re: /\\b(veiculo|veiculos)\\b/, labels: ["Cadastros", "Veículos"] },
-        { re: /\\b(condutor|condutores|motorista|motoristas)\\b/, labels: ["Cadastros", "Condutores"] },
+        { re: /\b(cliente|clientes)\b/, labels: ["Cadastros", "Clientes"] },
+        { re: /\b(produto|produtos)\b/, labels: ["Cadastros", "Produtos"] },
+        { re: /\b(servico|servicos)\b/, labels: ["Cadastros", "Serviços"] },
+        { re: /\b(veiculo|veiculos)\b/, labels: ["Cadastros", "Veículos"] },
+        { re: /\b(condutor|condutores|motorista|motoristas)\b/, labels: ["Cadastros", "Condutores"] },
         { re: /grupo.?tributario/, labels: ["Cadastros", "Grupo Tributário"] },
         { re: /natureza.?de.?operacao/, labels: ["Cadastros", "Natureza de Operação"] }
       ];
