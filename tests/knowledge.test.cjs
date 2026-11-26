@@ -330,7 +330,7 @@ test("conferência de CFOP no grupo tributário para no campo e não oferece sal
   await ctx.knowledge.load({ route: "/app/dashboard", question });
   const plan = ctx.knowledge.getLocalNavigationPlan(question);
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP"
   ]);
   assert.equal(plan.at(-1).kind, "field");
   assert.ok(!plan.some(step => step.kind === "final_action"));
