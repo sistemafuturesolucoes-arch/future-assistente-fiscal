@@ -1445,7 +1445,7 @@
       guideState.mutationTimer = window.setTimeout(() => {
         if (!guideState) return;
         const current = guideState.steps[guideState.index];
-        if (current?.element && (!current.element.isConnected || !isGuideNodeVisible(current.element))) {
+        if (current && (!current.element || !current.element.isConnected || !isGuideNodeVisible(current.element))) {
           const replacement = findElementByName(current.title);
           if (replacement) {
             current.element = replacement;
