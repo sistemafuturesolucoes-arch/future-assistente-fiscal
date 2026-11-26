@@ -17,25 +17,6 @@
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
-  async function loadBundle() {
-    if (!bundlePromise) {
-      bundlePromise = (async () => {
-        const url = chrome.runtime.getURL(BUNDLE_URL);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("A base local do Manual Future não pôde ser aberta.");
-        const data = await response.json();
-        if (!Array.isArray(data.modules) || !Array.isArray(data.lessons)) {
-          throw new Error("A base local do Manual Future está incompleta.");
-        }
-        return data;
-      })().catch(error => {
-        bundlePromise = null;
-        throw error;
-      });
-    }
-    return bundlePromise;
-  }
-
   function relevance(lesson, route, question) {
     const haystack = normalize([lesson.title, lesson.summary, lesson.path, lesson.content,
       ...(lesson.hotspots || []).map(h => [h.title, h.description, h.tip].join(" "))].join(" "));
