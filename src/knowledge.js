@@ -305,7 +305,7 @@
         makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar os parâmetros com a contabilidade, revise a regra e clique em Salvar. A extensão não altera nem grava os dados por você.")
       ];
       // Conferência é somente leitura: pare no campo CFOP e aguarde o usuário enviar a tela.
-      return inspectionOnly ? plan.slice(0, 6) : plan;
+      return inspectionOnly ? plan.slice(0, 7) : plan;
     }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
