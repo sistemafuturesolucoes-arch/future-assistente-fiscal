@@ -378,7 +378,7 @@
 
     // Respostas operacionais curtas para tarefas com destino conhecido.
     // O manual completo permanece como fonte local, mas não deve ser despejado no chat.
-    if (/\bcsc\b/.test(q) && /(nfce|consumidor|cupom|nota)/.test(q)) {
+    if (/\bcsc\b/.test(q)) {
       return [
         "Caminho: **Configurações > Empresa > Notas Fiscais > NFC-e**.",
         "Abra a seção NFC-e. Os campos **CSC** e **ID CSC** ficam nessa configuração; use os códigos fornecidos pela SEFAZ.",
