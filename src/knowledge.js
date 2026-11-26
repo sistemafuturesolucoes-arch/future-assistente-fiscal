@@ -142,7 +142,17 @@
   function makeStep(bundle, label, kind, path, extraDescription = "") {
     const hotspot = findHotspot(bundle, label, path);
     const description = extraDescription || hotspot?.description || `Localize ${label} na tela atual.`;
-    return { label, kind, path, description };
+    const manualMarker = hotspot ? {
+      id: hotspot.id || "",
+      title: hotspot.title || label,
+      tip: hotspot.tip || "",
+      description: hotspot.description || description,
+      x: Number.isFinite(hotspot.x) ? hotspot.x : null,
+      y: Number.isFinite(hotspot.y) ? hotspot.y : null,
+      w: Number.isFinite(hotspot.w) ? hotspot.w : null,
+      h: Number.isFinite(hotspot.h) ? hotspot.h : null
+    } : null;
+    return { label, kind, path, description, manualMarker };
   }
 
   function makeLessonStep(bundle, lesson, label, kind, path, extraDescription = "") {
@@ -153,7 +163,17 @@
     ];
     const hotspot = hotspots.find(item => normalize(item?.title) === target);
     const description = extraDescription || hotspot?.description || ("Localize " + label + " na tela atual, conforme a aula " + (lesson?.title || "do Manual") + ".");
-    return { label, kind, path, description };
+    const manualMarker = hotspot ? {
+      id: hotspot.id || "",
+      title: hotspot.title || label,
+      tip: hotspot.tip || "",
+      description: hotspot.description || description,
+      x: Number.isFinite(hotspot.x) ? hotspot.x : null,
+      y: Number.isFinite(hotspot.y) ? hotspot.y : null,
+      w: Number.isFinite(hotspot.w) ? hotspot.w : null,
+      h: Number.isFinite(hotspot.h) ? hotspot.h : null
+    } : null;
+    return { label, kind, path, description, manualMarker };
   }
 
   function getLocalNavigationPlan(question) {
