@@ -74,7 +74,7 @@ test("gera roteiros locais de produto e serviço e deixa tarefas desconhecidas p
   await ctx.knowledge.load({ route: "/app/dashboard", question: "cadastrar produto" });
   assert.ok(ctx.knowledge.getLocalNavigationPlan("Quero cadastrar um produto").length > 0);
   assert.ok(ctx.knowledge.getLocalNavigationPlan("Preciso cadastrar um serviço").length > 0);
-  assert.equal(ctx.knowledge.getLocalNavigationPlan("Quero configurar uma regra tributária específica"), null);
+  assert.ok(Array.isArray(ctx.knowledge.getLocalNavigationPlan("Quero configurar uma regra tributária específica")));
 });
 
 
@@ -108,6 +108,48 @@ test("gera roteiro local para ajustar CFOP em grupo tributário sem chamar a IA"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
   assert.equal(plan.find(step => step.label === "CFOP").kind, "field");
+});
+
+test("prioriza a aula correta para campos e siglas presentes em todos os módulos", async () => {
+  const ctx = createKnowledgeContext();
+  const company = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como configurar certificado digital A1 e série da NF-e"
+  });
+  assert.ok(company.includes("Configurando os Dados Gerais da Empresa"));
+  const product = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "onde alterar NCM e CEST do produto"
+  });
+  assert.ok(product.includes("Cadastrar produto: Dados do Produto"));
+  const service = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como preencher CNAE e NBS do serviço"
+  });
+  assert.ok(service.includes("Cadastrar serviço"));
+  const consumer = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como emitir cupom fiscal NFC-e"
+  });
+  assert.ok(consumer.includes("Emissão e Gestão de Notas do Consumidor (NFC-e)"));
+});
+
+test("gera roteiro local genérico para navegar em módulos sem roteiro fixo", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como emitir uma NFC-e"
+  });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como emitir uma NFC-e");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.length > 0);
+  assert.equal(plan[0].label, "Documentos");
+  assert.ok(plan.some(step => /NFC.?e/i.test(step.label)));
+});
+
+test("mantém as 26 aulas e os cinco módulos disponíveis na extensão", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "mostrar todo o manual" });
+  const status = ctx.knowledge.getStatus();
+  assert.equal(status.lessons, 26);
+  assert.equal(status.modules, 5);
+  assert.equal(status.source, "local");
+  assert.equal(ctx.getFetchCount(), 0);
 });
 
 test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pede para cadastrar", async () => {
