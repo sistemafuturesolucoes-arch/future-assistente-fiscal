@@ -28,14 +28,20 @@
     if (q) {
       if (/regras? fiscais?/.test(q) && /grupos? tributarios?|tributacao/.test(haystack)) score += 110;
       const title = normalize(lesson.title);
-      const summary = normalize(lesson.summary);
-      const queryTerms = q.split(/[^a-z0-9]+/).filter(t => t.length > 2);
+      const stop = new Set(["como","onde","fica","me","ajude","ajuda","por","favor","para","com","uma","um","de","do","da","dos","das","no","na","nos","nas","novo","nova","cadastrar","cadastre","cadastro","criar","crie","fazer","faco","quero","preciso"]);
+      const queryTerms = q.split(/[^a-z0-9]+/).filter(t => t.length > 2 && !stop.has(t));
+      const stem = value => value.replace(/(oes|aes|es|s)$/,"");
       if (title && q.includes(title)) score += 120;
       if (title && title.includes(q)) score += 90;
-      if (queryTerms.length >= 2 && queryTerms.every(term => title.includes(term))) score += 55;
-      if (queryTerms.length >= 2 && queryTerms.every(term => haystack.includes(term))) score += 25;
-      if (summary && queryTerms.length >= 2 && queryTerms.every(term => summary.includes(term))) score += 12;
-      for (const term of queryTerms) if (haystack.includes(term)) score += term.length > 3 ? 3 : 1;
+      if (queryTerms.some(term => ["condutor","motorista"].includes(stem(term))) && /condutor|motorista/.test(haystack)) score += 260;
+      if (queryTerms.some(term => ["veiculo","caminhao"].includes(stem(term))) && /veiculo|caminhao/.test(haystack)) score += 220;
+      if (queryTerms.some(term => ["cliente","fornecedor","transportadora"].includes(stem(term))) && /cliente|fornecedor|transportadora/.test(haystack)) score += 180;
+      if (queryTerms.some(term => ["produto","mercadoria"].includes(stem(term))) && /produto|mercadoria/.test(haystack)) score += 180;
+      if (queryTerms.some(term => stem(term) === "servico") && /servico/.test(haystack)) score += 180;
+      const matched = queryTerms.filter(term => haystack.includes(term) || haystack.includes(stem(term)));
+      if (queryTerms.length && matched.length === queryTerms.length) score += 55;
+      if (queryTerms.length && matched.length) score += matched.length * 8;
+      for (const term of queryTerms) if (haystack.includes(term) || haystack.includes(stem(term))) score += term.length > 3 ? 3 : 1;
     }
     return score;
   }
@@ -71,8 +77,8 @@
       relevance(b, route, question) - relevance(a, route, question) ||
       (a.position || 0) - (b.position || 0)
     );
-    const relevant = ranked.filter(l => relevance(l, route, question) > 0).slice(0, 4);
-    const selected = relevant.length ? relevant : ranked.slice(0, 2);
+    const relevant = ranked.filter(l => relevance(l, route, question) > 0);
+    const selected = relevant.slice(0, 6);
     const parts = [
       "BASE LOCAL DO MANUAL FUTURE. Este conteúdo já está instalado dentro da extensão; não é necessário consultar o site do Manual.",
       "Não invente regras fiscais nem valores tributários. Quando a decisão depender do regime, município ou enquadramento, explique a dúvida e recomende confirmação com a contabilidade.",
@@ -115,7 +121,20 @@
     const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
 
-    if (/\b(cliente|clientes)\b/.test(q)) {
+    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q)) {
+      const path = "Cadastros > Condutores > Novo Condutor";
+      return [
+        makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral esquerdo, abra Cadastros."),
+        makeStep(bundleCache, "Condutores", "click", path, "No submenu Cadastros, selecione Condutores."),
+        makeStep(bundleCache, "Novo Condutor", "click", path, "Na listagem, clique em Novo Condutor."),
+        makeStep(bundleCache, "Ativo", "field", path, "Deixe a chave Ativo ligada para que o condutor possa ser utilizado."),
+        makeStep(bundleCache, "CPF", "field", path, "Informe o CPF válido do motorista."),
+        makeStep(bundleCache, "Nome", "field", path, "Digite o nome completo do condutor."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar para gravar o cadastro.")
+      ];
+    }
+
+    if (/\\b(cliente|clientes)\\b/.test(q)) {
       const path = "Cadastros > Clientes > Novo Cliente";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
