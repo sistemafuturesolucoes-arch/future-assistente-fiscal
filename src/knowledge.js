@@ -299,6 +299,7 @@
         makeStep(bundleCache, "Grupo Tributário", "click", path, "Abra Grupo Tributário. Ao chegar à listagem, o guia continuará pelos marcadores desta aula do Manual."),
         makeStep(bundleCache, "Procurar", "field", path, "Marcador do Manual: digite o nome do grupo tributário utilizado pelo produto. Pressione Enter ou saia do campo para aplicar a busca; depois o guia mostrará as opções da linha correspondente."),
         { ...makeStep(bundleCache, "Botão Opções da Linha", "click", path, "Marcador do Manual: na linha do grupo encontrado, abra as opções daquela linha. Não use as opções gerais da listagem."), targetNames: ["Opções da Linha", "Opções"] },
+        makeStep(bundleCache, "Editar", "click", path, "No menu que abriu na linha do grupo selecionado, escolha Editar para abrir o painel de regras tributárias."),
         makeStep(bundleCache, "Editar Regra", "click", path, "Marcador do Manual: na área de regras tributárias, abra Editar Regra para a natureza de operação, destinatário e UF correspondentes."),
         makeStep(bundleCache, "CFOP", "field", path, "Marcador do Manual: confira o campo CFOP junto com Natureza de Operação, Tipo Destinatário e UFs Destino. A escolha fiscal deve ser validada conforme a operação e a orientação da contabilidade."),
         makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar os parâmetros com a contabilidade, revise a regra e clique em Salvar. A extensão não altera nem grava os dados por você.")
