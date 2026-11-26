@@ -969,6 +969,16 @@
       const element = findElementByName(name);
       if (element) return element;
     }
+    // O Manual chama este alvo de "Botão Opções da Linha", mas alguns layouts
+    // exibem apenas "Opções". Só aceita o botão dentro de uma linha da tabela
+    // quando houver um único candidato visível, nunca o botão geral da listagem.
+    if (normalize(step.label) === normalize("Botão Opções da Linha")) {
+      const candidates = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)]
+        .filter(isGuideNodeVisible)
+        .filter(el => el.closest("tr,[role=row]"))
+        .filter(el => getElementNames(el).some(name => /\b(opcoes|opcoes da linha)\b/.test(normalize(name))));
+      if (candidates.length === 1) return candidates[0];
+    }
     return null;
   }
 
