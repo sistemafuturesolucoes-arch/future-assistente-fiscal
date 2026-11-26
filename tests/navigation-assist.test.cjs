@@ -211,6 +211,12 @@ test("avanço normal do roteiro local não chama a IA a cada clique", () => {
   assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
 });
 
+test("pedidos naturais de localização e cadastro ativam navegação assistida", () => {
+  assert.match(source, /cadastro\|acesse\|acessar/);
+  assert.match(source, /onde fica\|onde é\|onde e\|onde encontro/);
+  assert.match(source, /me guie\|me mostre\|passo a passo/);
+});
+
 test("o plano local cobre o fluxo completo, inclusive campos e botão final", () => {
   assert.match(source, /ROTEIRO COMPLETO de ponta a ponta/);
   assert.match(source, /kind=field/);
