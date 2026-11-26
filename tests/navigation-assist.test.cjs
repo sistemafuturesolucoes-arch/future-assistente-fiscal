@@ -228,7 +228,7 @@ test("o plano local cobre o fluxo completo, inclusive campos e botão final", ()
   assert.match(source, /waitForInput: next\.kind === "field"/);
   assert.match(source, /completeNavigationInputStep/);
   assert.match(source, /Preencha este campo conforme a orientação/);
-  assert.match(source, /NUNCA clique, preencha ou envie automaticamente/);
+  assert.match(source, /Nunca clique, preencha, salve, transmita ou envie automaticamente/);
   assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
 });
 
