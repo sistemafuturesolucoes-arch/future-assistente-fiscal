@@ -1176,10 +1176,13 @@
   function advanceLocalNavigationPlan() {
     if (!navigationGuideActive || !navigationPlan.length) return false;
     if (navigationPlanIndex >= navigationPlan.length) {
+      const lastStep = navigationPlan[navigationPlan.length - 1];
+      // Depois de Salvar/Concluir, a IA confere a resposta da tela antes de declarar sucesso.
+      if (lastStep?.kind === "final_action" && navigationLastCompletedStep === lastStep.label) return false;
       clearNavigationTask();
       closeGuide();
-      status.textContent = "Chegamos ao destino indicado no Manual. A IA pode ajudar agora com os campos e a operação, sem executar nada por você.";
-      addMessage("Chegamos à tela indicada no caminho do Manual. Se quiser, posso orientar o preenchimento passo a passo.", "bot");
+      status.textContent = "Roteiro concluído. Confira a confirmação apresentada pelo sistema.";
+      addMessage("Chegamos ao fim das etapas de orientação. Confira a mensagem do Emissor para confirmar se a operação foi concluída.", "bot");
       return true;
     }
     const next = navigationPlan[navigationPlanIndex];
