@@ -2,7 +2,7 @@ name: Validar extensão
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/motor-interacao-lovable-20261126]
   pull_request:
     branches: [main]
 
@@ -27,6 +27,9 @@ jobs:
 
       - name: Verificar sintaxe do content script
         run: node --check src/content.js
+
+      - name: Verificar sintaxe da memória local do Manual
+        run: node --check src/manual-knowledge.js
 
       - name: Verificar sintaxe do carregador do Manual
         run: node --check src/knowledge.js
@@ -53,7 +56,8 @@ jobs:
       - name: Montar pacote instalável da extensão
         run: |
           mkdir -p dist
-          zip -r dist/Future-Assistente-Fiscal-Chrome.zip manifest.json src README.md docs
+          test -f icon.png
+          zip -r dist/Future-Assistente-Fiscal-Chrome.zip manifest.json icon.png src README.md docs
 
       - name: Publicar pacote para teste
         uses: actions/upload-artifact@v4

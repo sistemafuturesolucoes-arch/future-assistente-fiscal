@@ -653,13 +653,13 @@
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       return text.length >= 20 && text.length <= 1200 &&
         (/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text)) &&
-        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text);
+        /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text);
     });
     const minimal = candidates.filter(el => ![...el.children].some(child => {
       const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim();
       return t.length >= 20 && t.length <= 1200 &&
         (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) &&
-        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t);
+        /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t);
     }));
     return minimal.map(el => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 5);
   }
@@ -688,8 +688,8 @@
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       if (text.length < 20 || text.length > 1200) return false;
       if (!(/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text))) return false;
-      return /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
-        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
+      return /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
+        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
     });
     for (const node of fiscalReturnNodes) if (!errorNodes.includes(node)) errorNodes.push(node);
     for (const node of errorNodes) {
@@ -698,6 +698,13 @@
       if (!isLikelyFiscalError(node, message) && !fiscalReturn) continue;
       const target = fieldForErrorNode(node);
       add(target || node, message, target ? "erro associado ao campo" : "rejeição fiscal da prefeitura");
+      if (/\bE0160\b/i.test(message)) {
+        const simpleNationalFields = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=radio],[role=checkbox]")]
+          .filter(control => isGuideNodeVisible(control) && getElementNames(control).some(name => /simples nacional|situação.*tribut|regime.*tribut|opção.*simples/i.test(name)));
+        for (const control of simpleNationalFields.slice(0, 4)) {
+          add(control, "O retorno E0160 indica divergência entre a opção do Simples Nacional informada na DPS e a situação cadastrada para o prestador no mês de competência. Confira este campo com o cadastro oficial do Simples Nacional para a competência da nota; não altere por tentativa.", "campo relacionado à rejeição E0160");
+        }
+      }
       const normalizedMessage = normalize(message);
       if (/\bE0625\b/i.test(message) || (normalizedMessage.includes("aliquota") && normalizedMessage.includes("issqn") && normalizedMessage.includes("retencao"))) {
         const controls = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=checkbox]")].filter(isGuideNodeVisible);
@@ -772,7 +779,11 @@
     ].join("\n");
     try {
       const reviewMessage = await ask(question, []);
-      if (reviewMessage) renderReviewIssueCards(issues, reviewMessage);
+      const reviewText = String(reviewMessage?.textContent || "").trim();
+      if (!reviewText || /Não recebi uma resposta desta vez|Não consegui conectar ao assistente agora|A IA retornou HTTP/i.test(reviewText)) {
+        throw new Error("A IA não retornou uma análise válida. Os destaques visuais foram mantidos; tente novamente quando a conexão estiver normal.");
+      }
+      if (issues.length) renderReviewIssueCards(issues, reviewMessage);
       status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
     } catch (error) {
@@ -952,51 +963,53 @@
   }
 
   function findGuideSteps(answer) {
-    const answerNorm = normalize(answer);
+    // Marcadores automáticos só são permitidos para rótulos exatos em uma instrução
+    // acionável. Correspondência aproximada pode apontar para outro menu e foi removida.
     const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
-    const lines = answer.split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const lines = String(answer || "").split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const actionable = /\b(clique|clicar|selecione|selecionar|acesse|acessar|abra|abrir|localize|localizar|procure|procurar|preencha|preencher|informe|informar|escolha|escolher|vá|ir até|campo|botão)\b/i;
     const candidates = [];
-    for (const el of nodes) {
-      const names = getElementNames(el).filter(name => normalize(name).length >= 4);
-      if (!names.length) continue;
-      let best = null;
-      for (const name of names) {
-        const key = normalize(name);
-        const exactAt = answerNorm.indexOf(key);
-        let score = exactAt >= 0 ? 1 : 0;
-        if (!score) {
-          const tokens = key.split(" ").filter(token => token.length > 2);
-          if (tokens.length >= 2) {
-            const hits = tokens.filter(token => answerNorm.includes(token)).length;
-            score = hits / tokens.length;
-          }
-        }
-        if (!best || score > best.score || (score === best.score && exactAt >= 0 && best.exactAt < 0)) {
-          best = { el, name, key, exactAt, score };
+    lines.forEach((line, lineIndex) => {
+      if (!actionable.test(line)) return;
+      const lineNorm = normalize(line);
+      const lineMatches = [];
+      for (const el of nodes) {
+        const names = getElementNames(el);
+        for (const name of names) {
+          const key = normalize(name);
+          if (key.length < 2) continue;
+          const at = lineNorm.indexOf(key);
+          if (at < 0) continue;
+          const before = at === 0 ? "" : lineNorm[at - 1];
+          const after = lineNorm[at + key.length] || "";
+          if ((before && /[a-z0-9]/.test(before)) || (after && /[a-z0-9]/.test(after))) continue;
+          lineMatches.push({ element: el, title: name, key, at, lineIndex, line });
         }
       }
-      // Evita destacar controles por coincidência de uma palavra genérica.
-      if (best && (best.exactAt >= 0 || best.score >= 0.82)) candidates.push(best);
-    }
-    candidates.sort((a, b) => {
-      if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
-      if (a.exactAt >= 0) return -1;
-      if (b.exactAt >= 0) return 1;
-      return b.score - a.score;
+      // Se o mesmo texto identifica mais de um controle, não arrisca escolher um.
+      const byKey = new Map();
+      for (const match of lineMatches) {
+        if (!byKey.has(match.key)) byKey.set(match.key, new Set());
+        byKey.get(match.key).add(match.element);
+      }
+      for (const match of lineMatches) {
+        if (byKey.get(match.key)?.size !== 1) continue;
+        candidates.push(match);
+      }
     });
+    candidates.sort((a, b) => a.lineIndex - b.lineIndex || a.at - b.at);
     const steps = [];
     const seenElements = new Set();
-    const seenNames = new Set();
     for (const candidate of candidates) {
-      if (seenElements.has(candidate.el) || seenNames.has(candidate.key)) continue;
-      seenElements.add(candidate.el);
-      seenNames.add(candidate.key);
-      const line = lines.find(x => normalize(x).includes(candidate.key)) ||
-        lines.find(x => candidate.key.split(" ").filter(t => t.length > 2).length >= 2 &&
-          candidate.key.split(" ").filter(t => t.length > 2).every(t => normalize(x).includes(t))) || "";
-      const description = line.length > candidate.name.length + 8 ? line :
-        "Confira este elemento indicado pela orientação antes de fazer qualquer alteração.";
-      steps.push({ element: candidate.el, title: candidate.name.slice(0, 90), description: description.slice(0, 420) });
+      if (seenElements.has(candidate.element)) continue;
+      seenElements.add(candidate.element);
+      steps.push({
+        element: candidate.element,
+        title: candidate.title.slice(0, 90),
+        description: candidate.line.length > candidate.title.length + 8
+          ? candidate.line.slice(0, 420)
+          : "Confira este elemento indicado pela orientação antes de fazer qualquer alteração."
+      });
       if (steps.length >= 12) break;
     }
     return steps;
@@ -1025,6 +1038,11 @@
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
+    clearTimeout(guideState.waitTimer);
+    clearTimeout(guideState.navigationTimer);
+    clearTimeout(guideState.mutationTimer);
+    guideState.observer?.disconnect();
+    cancelAnimationFrame(guideState.positionFrame);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
@@ -1040,6 +1058,11 @@
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
     window.removeEventListener("resize", guideState.reposition);
+    clearTimeout(guideState.waitTimer);
+    clearTimeout(guideState.navigationTimer);
+    clearTimeout(guideState.mutationTimer);
+    guideState.observer?.disconnect();
+    cancelAnimationFrame(guideState.positionFrame);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
@@ -1069,6 +1092,12 @@
     guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
+    const hint = guideState.card.querySelector(".guide-hint");
+    if (hint) hint.textContent = step.waitForInput
+      ? "Preencha este campo conforme a orientação e saia dele para avançar. A extensão não digita por você."
+      : step.kind === "final_action"
+        ? "Confira os dados. Quando estiver pronto, clique você mesmo neste botão; a extensão não executa a ação."
+        : "Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.";
     guideState.card.hidden = true;
     guideState.marker.hidden = false;
     const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
@@ -1099,37 +1128,139 @@
   let navigationGuideActive = false;
   let navigationLastCompletedStep = "";
   let navigationLastCompletedRoute = "";
+  let navigationPlan = [];
+  let navigationPlanIndex = 0;
+  const NAVIGATION_PLAN_OPEN = "[[FUTURE_NAVIGATION_PLAN]]";
+  const NAVIGATION_PLAN_CLOSE = "[[/FUTURE_NAVIGATION_PLAN]]";
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
   function persistNavigationTask() {
     if (!navigationTask || !navigationGuideActive) return;
+    const snapshot = {
+      task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
+      lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
+      plan: navigationPlan, planIndex: navigationPlanIndex, savedAt: Date.now()
+    };
+    try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+    // O service worker mantém o mesmo roteiro associado à aba, como no motor Lovable.
     try {
-      sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({
-        task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
-        lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
-        savedAt: Date.now()
-      }));
+      chrome.runtime.sendMessage({
+        type: "FUTURE_GUIDE_SET",
+        guide: { task: snapshot.task, plan: snapshot.plan, step: snapshot.planIndex }
+      }).catch(() => {});
     } catch {}
+  }
+  function extractNavigationPlan(answer) {
+    let plan = null;
+    // Compatibilidade com versões do backend que emitiram FUTURE_NAVIGATION_PLAN_PATH
+    // e com delimitadores de uma ou duas chaves. O conteúdo nunca é texto para o usuário.
+    const marker = /\[{1,2}FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}([\s\S]*?)\[{1,2}\/FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}/gi;
+    let cleanAnswer = String(answer || "").replace(marker, (_, raw) => {
+      try {
+        const text = raw.trim();
+        const jsonStart = text.indexOf("[");
+        const jsonEnd = text.lastIndexOf("]");
+        const parsed = JSON.parse(jsonStart >= 0 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd + 1) : text);
+        if (!Array.isArray(parsed)) return "";
+        const valid = parsed.slice(0, 30).filter(item =>
+          item && typeof item.label === "string" && item.label.trim() &&
+          typeof item.description === "string" && item.description.trim()
+        ).map(item => ({
+          label: item.label.trim().slice(0, 100),
+          description: item.description.trim().slice(0, 360),
+          path: typeof item.path === "string" ? item.path.trim().slice(0, 240) : "",
+          kind: item.kind === "field" ? "field" : item.kind === "final_action" ? "final_action" : "click"
+        }));
+        if (valid.length) plan = valid;
+      } catch {}
+      return "";
+    });
+    cleanAnswer = cleanAnswer.replace(/\[{1,2}\/?FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}/gi, "").trim();
+    return { cleanAnswer, plan };
+  }
+  function activateNavigationPlan(plan) {
+    navigationPlan = Array.isArray(plan) ? plan : [];
+    navigationPlanIndex = 0;
+    persistNavigationTask();
+  }
+  function advanceLocalNavigationPlan() {
+    if (!navigationGuideActive || !navigationPlan.length) return false;
+    if (navigationPlanIndex >= navigationPlan.length) {
+      const lastStep = navigationPlan[navigationPlan.length - 1];
+      // Depois de Salvar/Concluir, a IA confere a resposta da tela antes de declarar sucesso.
+      if (lastStep?.kind === "final_action" && navigationLastCompletedStep === lastStep.label) return false;
+      clearNavigationTask();
+      closeGuide();
+      status.textContent = "Roteiro concluído. Confira a confirmação apresentada pelo sistema.";
+      addMessage("Chegamos ao fim das etapas de orientação. Confira a mensagem do Emissor para confirmar se a operação foi concluída.", "bot");
+      return true;
+    }
+    const next = navigationPlan[navigationPlanIndex];
+    const element = findElementByName(next.label);
+    if (!element) return false;
+    startVisualGuide([{
+      element, title: next.label,
+      description: (next.path ? "Caminho: " + next.path + ". " : "") + next.description,
+      waitForInput: next.kind === "field",
+      kind: next.kind
+    }]);
+    status.textContent = "Navegação local ativa — próximo passo " + (navigationPlanIndex + 1) + " de " + navigationPlan.length + ".";
+    return true;
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
+    navigationPlan = [];
+    navigationPlanIndex = 0;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
+    try { chrome.runtime.sendMessage({ type: "FUTURE_GUIDE_STOP" }).catch(() => {}); } catch {}
   }
   function navigationSnapshot() {
-    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[aria-expanded],summary,[aria-controls]";
+    // Inclui componentes customizados comuns em SPAs sem transformar qualquer div em alvo clicável.
+    const selector = "a,button,[role=button],[role=menuitem],[role=treeitem],[role=tab],[data-menu-item],[data-action],[aria-expanded],summary,[aria-controls],[tabindex]:not([tabindex='-1'])";
     const items = [...document.querySelectorAll(selector)].filter(el => {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
       const rect = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
-    const fingerprint = items.slice(0, 320).map(el => [
+    const fingerprint = items.slice(0, 420).map(el => [
       normalize(el.innerText || el.textContent || el.getAttribute("aria-label") || el.title).slice(0, 90),
       el.getAttribute("aria-expanded") || "",
       el.getAttribute("aria-controls") || "",
       el.getAttribute("data-state") || "",
       el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
     ].join(":")).join("|");
-    return [location.pathname, location.hash, fingerprint].join("::");
+    const notices = [...document.querySelectorAll('[role=alert],[aria-live],.toast,.alert,[class*=notification]')]
+      .filter(isGuideNodeVisible)
+      .map(el => normalize(el.innerText || el.textContent).slice(0, 300))
+      .filter(Boolean).join("|");
+    return [location.pathname, location.hash, fingerprint, notices].join("::");
+  }
+
+  async function waitForNavigationTarget(label, timeoutMs = 3000) {
+    return new Promise(resolve => {
+      let settled = false;
+      let pollTimer = null;
+      let observer = null;
+      const startedAt = Date.now();
+      const finish = found => {
+        if (settled) return;
+        settled = true;
+        if (observer) observer.disconnect();
+        clearInterval(pollTimer);
+        resolve(Boolean(found));
+      };
+      const check = () => {
+        if (findElementByName(label)) finish(true);
+        else if (Date.now() - startedAt >= timeoutMs) finish(false);
+      };
+      observer = new MutationObserver(check);
+      if (document.documentElement) observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["class", "aria-expanded", "aria-hidden", "aria-controls", "data-state", "hidden", "disabled"]
+      });
+      pollTimer = window.setInterval(check, 100);
+      check();
+    });
   }
 
   async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 3000) {
@@ -1166,7 +1297,10 @@
   async function continueNavigationGuide() {
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
-    status.textContent = "Você avançou. Estou lendo os menus e submenus que apareceram...";
+    if (advanceLocalNavigationPlan()) return;
+    status.textContent = "Não encontrei com segurança o próximo item do caminho do Manual. Vou pedir ajuda à IA para reavaliar esta tela...";
+    navigationPlan = [];
+    navigationPlanIndex = 0;
     const prompt = "[CONTINUAR NAVEGAÇÃO ASSISTIDA] Tarefa original: " + navigationTask +
       ". Última ação confirmada pelo usuário: " + (navigationLastCompletedStep || "ainda não confirmada") +
       ". Rota em que essa ação ocorreu: " + (navigationLastCompletedRoute || "não registrada") +
@@ -1204,32 +1338,44 @@
     card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Abra ? quando precisar reler a orientação.</div>
+      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
-      if (!guideState || card.contains(event.target) || host.contains(event.target)) return;
+      if (!guideState) return;
+      const target = event.target;
+      const isNode = value => Boolean(value && typeof value === "object" && typeof value.nodeType === "number");
+      if (isNode(target) && (card.contains(target) || host.contains(target))) return;
       const current = guideState.steps[guideState.index];
-      if (!current?.element) return;
-      const clicked = event.composedPath?.().find(node => node === current.element || current.element.contains?.(node));
+      if (!current?.element || !isNode(current.element)) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
+      const clicked = path.find(node => isNode(node) && (node === current.element || current.element.contains(node)));
       if (!clicked) return;
-        if (current.validationField) return;
+      if (current.validationField || current.waitForInput) return;
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
       navigationLastCompletedRoute = location.pathname;
+      if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
       persistNavigationTask();
+      const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
       const beforeSnapshot = navigationSnapshot();
-      const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
+      const navigationUpdate = nextPlannedLabel
+        ? waitForNavigationTarget(nextPlannedLabel, 5000)
+        : waitForNavigationUpdate(beforeSnapshot, current.kind === "final_action" ? 12000 : 5000);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
       guideState.waitingForNavigation = true;
       guideState.card.querySelector(".guide-desc").textContent = "Aguarde: estou verificando o que apareceu depois do clique.";
       status.textContent = "Lendo a nova tela ou submenu...";
       persistGuideProgress(nextIndex);
-      window.setTimeout(async () => {
+      guideState.navigationTimer = window.setTimeout(async () => {
         if (!navigationGuideActive) return;
         const changed = await navigationUpdate;
         if (!navigationGuideActive) return;
         if (!changed) {
+          if (navigationPlan.length) {
+            navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
+            persistNavigationTask();
+          }
           if (guideState) {
             guideState.waitingForNavigation = false;
             guideState.card.querySelector(".guide-desc").textContent = "Não detectei mudança na tela. Verifique se o menu abriu ou envie um print para eu localizar a opção correta. Não vou repetir o mesmo clique automaticamente.";
@@ -1237,28 +1383,101 @@
           status.textContent = "A tela não mudou; aguardando você conferir o menu.";
           return;
         }
+        // Quando o próximo alvo já está no DOM, avance diretamente no plano local.
+        // Não passe pelo bloqueio requestInProgress: ele protege chamadas à IA, mas não
+        // deve impedir uma transição visual que não faz nenhuma requisição.
+        if (navigationPlan.length && advanceLocalNavigationPlan()) return;
         continueNavigationGuide();
       }, 0);
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
+    // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
+    guideState.observer = new MutationObserver(() => {
+      if (!guideState || guideState.waitingForNavigation) return;
+      clearTimeout(guideState.mutationTimer);
+      guideState.mutationTimer = window.setTimeout(() => {
+        if (!guideState) return;
+        const current = guideState.steps[guideState.index];
+        if (current?.element && (!current.element.isConnected || !isGuideNodeVisible(current.element))) {
+          const replacement = findElementByName(current.title);
+          if (replacement) {
+            current.element = replacement;
+            showGuideStep(guideState.index);
+          } else {
+            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou ainda não está visível. Abra o menu correspondente e use “Procurar novamente”.";
+          }
+        }
+      }, 140);
+    });
+    if (document.body) guideState.observer.observe(document.body, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ["class", "hidden", "aria-expanded", "aria-hidden", "disabled"]
+    });
+    const followTarget = () => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (current?.element?.isConnected && isGuideNodeVisible(current.element)) {
+        const rect = current.element.getBoundingClientRect();
+        const pad = 5;
+        Object.assign(frame.style, {
+          left: Math.max(2, rect.left - pad) + "px",
+          top: Math.max(2, rect.top - pad) + "px",
+          width: Math.max(12, rect.width + pad * 2) + "px",
+          height: Math.max(12, rect.height + pad * 2) + "px"
+        });
+      }
+      guideState.positionFrame = requestAnimationFrame(followTarget);
+    };
+    guideState.positionFrame = requestAnimationFrame(followTarget);
     stopButton.disabled = false;
-    dismiss.addEventListener("click", () => {
+    dismiss.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!guideState) return;
       clearNavigationTask();
       closeGuide();
-      status.textContent = "Indicador fechado. Você pode continuar usando o Emissor normalmente.";
+      status.textContent = "Indicador fechado. A orientação foi encerrada e não será retomada.";
     });
-    marker.addEventListener("click", () => {
+    marker.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       if (!guideState) return;
-      const rect = guideState.card.getBoundingClientRect();
-      guideState.card.hidden = false;
-      const cardRect = guideState.card.getBoundingClientRect();
+      const activeCard = guideState.card;
+      activeCard.hidden = !activeCard.hidden;
+      marker.setAttribute("aria-expanded", String(!activeCard.hidden));
+      if (activeCard.hidden) return;
+      // Primeiro torna o balão visível; só então mede e posiciona para evitar
+      // coordenadas 0x0 quando o elemento estava hidden.
+      const cardRect = activeCard.getBoundingClientRect();
       const markerRect = marker.getBoundingClientRect();
       const left = Math.max(8, Math.min(window.innerWidth - cardRect.width - 8, markerRect.left - cardRect.width + markerRect.width));
       const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
-      guideState.card.style.left = left + "px";
-      guideState.card.style.top = top + "px";
+      activeCard.style.left = left + "px";
+      activeCard.style.top = top + "px";
+      status.textContent = "Orientação desta etapa aberta.";
+    });
+    card.querySelector(".guide-back").addEventListener("click", () => {
+      if (!navigationGuideActive || navigationPlanIndex <= 0) {
+        card.querySelector(".guide-desc").textContent = "Este é o primeiro passo disponível deste caminho.";
+        return;
+      }
+      navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
+      persistNavigationTask();
+      closeGuide();
+      if (!advanceLocalNavigationPlan()) status.textContent = "Não consegui localizar o passo anterior nesta tela. Confira o menu e tente novamente.";
+    });
+    card.querySelector(".guide-retry").addEventListener("click", () => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      const replacement = current?.title ? findElementByName(current.title) : null;
+      if (replacement) {
+        current.element = replacement;
+        showGuideStep(guideState.index);
+      } else {
+        card.querySelector(".guide-desc").textContent = "Ainda não encontrei este item com segurança. Confira se o menu correto está aberto.";
+      }
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
@@ -1307,10 +1526,24 @@
     window.setTimeout(restoreVisualGuide, 650);
   }
 
-  function restoreNavigationAfterPageLoad() {
+  async function restoreNavigationAfterPageLoad() {
     if (guideState || requestInProgress) return;
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(NAVIGATION_SESSION_KEY) || "null"); } catch {}
+    if (!saved?.task) {
+      // Recupera o progresso do service worker caso a página tenha sido recriada.
+      try {
+        const response = await chrome.runtime.sendMessage({ type: "FUTURE_GUIDE_GET" });
+        if (response?.ok && response.guide?.task && Array.isArray(response.guide.plan)) {
+          saved = {
+            task: response.guide.task,
+            plan: response.guide.plan,
+            planIndex: response.guide.step,
+            savedAt: response.guide.updatedAt || Date.now()
+          };
+        }
+      } catch {}
+    }
     if (!saved?.task || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 20 * 60 * 1000) {
       if (saved) clearNavigationTask();
       return;
@@ -1318,8 +1551,13 @@
     navigationTask = saved.task;
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
+    navigationPlan = Array.isArray(saved.plan) ? saved.plan : [];
+    navigationPlanIndex = Number.isInteger(saved.planIndex) ? Math.max(0, saved.planIndex) : 0;
     navigationGuideActive = true;
-    status.textContent = "Retomando a navegação assistida na nova tela...";
+    persistNavigationTask();
+    status.textContent = navigationPlan.length
+      ? "Retomando o caminho do Manual nesta tela..."
+      : "Retomando a navegação assistida na nova tela...";
     continueNavigationGuide();
   }
 
@@ -1370,8 +1608,26 @@
 
   function maybeStartAutomaticGuide(answer) {
     if (lastRequestKind === "document-review" || lastRequestKind === "error-diagnosis") return false;
+    const parsedPlan = extractNavigationPlan(answer);
+    if (parsedPlan.plan) {
+      activateNavigationPlan(parsedPlan.plan);
+      answer = parsedPlan.cleanAnswer;
+    }
     if (/não está habilitado|nao esta habilitado|sem permissão|sem permissao|chame o suporte|chamar o suporte|não aparece no seu perfil|nao aparece no seu perfil/i.test(answer)) {
       clearNavigationTask();
+      return false;
+    }
+    if (navigationPlan.length && navigationTask) {
+      navigationGuideActive = true;
+      if (advanceLocalNavigationPlan()) return true;
+      navigationGuideActive = false;
+      navigationPlan = [];
+      navigationPlanIndex = 0;
+    }
+    // Em pedidos de cadastro passo a passo, nunca deduza o alvo pela prosa.
+    // Sem roteiro estruturado e controle exato, não mostre marcador algum.
+    if (navigationTask && /\b(cadastrar|cadastre|cadastro|criar|crie|incluir|adicione|adicionar|novo|nova|passo a passo|me guie|como faço|como faco)\b/i.test(navigationTask)) {
+      status.textContent = "Não encontrei um controle com identificação exata para destacar. Envie um print da tela atual para eu localizar com segurança.";
       return false;
     }
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
@@ -1393,6 +1649,12 @@
       }
     }
     const steps = findGuideSteps(answer);
+    if (navigationPlan.length) {
+      if (advanceLocalNavigationPlan()) return true;
+      navigationPlan = [];
+      navigationPlanIndex = 0;
+      persistNavigationTask();
+    }
     if (!steps.length) return false;
     startVisualGuide(steps.slice(0, 1));
     status.textContent = "Navegação assistida ativa. Clique no destaque; vou ler a próxima tela e orientar o próximo passo.";
@@ -1594,40 +1856,94 @@
       const detail = await response.text().catch(() => "");
       throw new Error("A IA retornou HTTP " + response.status + (detail ? ": " + detail.slice(0, 300) : ""));
     }
-    if (!response.body?.getReader) throw new Error("A resposta da IA não disponibilizou um fluxo de leitura.");
+    if (!response.body?.getReader) {
+      const contentType = response.headers?.get?.("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json();
+        const answer = String(payload?.answer || payload?.text || payload?.content || payload?.message || "");
+        if (answer.trim()) {
+          target.textContent = initialAnswer ? initialAnswer + "\n\n" + answer : answer;
+          return { answer, completed: true };
+        }
+      }
+      throw new Error("A resposta da IA não disponibilizou um fluxo de leitura compatível.");
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let answer = "";
     let completed = false;
-    function render() {
-      target.textContent = initialAnswer ? initialAnswer + "\n\n" + answer : answer;
+    function appendText(value) {
+      if (typeof value !== "string" || !value) return;
+      answer += value;
+      const markerStart = answer.search(/\[{1,2}FUTURE_NAVIGATION_PLAN(?:_PATH)?/i);
+      let visibleAnswer = markerStart >= 0 ? answer.slice(0, markerStart) : answer;
+      const partialMarker = visibleAnswer.lastIndexOf("[[");
+      if (partialMarker >= 0 && /^\[\[FUTURE_[A-Z_]*$/i.test(visibleAnswer.slice(partialMarker))) {
+        visibleAnswer = visibleAnswer.slice(0, partialMarker);
+      }
+      target.textContent = initialAnswer ? initialAnswer + "\n\n" + visibleAnswer : visibleAnswer;
       messages.scrollTop = messages.scrollHeight;
     }
-    function consumeChunk(chunk) {
-      const dataLines = chunk.split("\n").filter(line => line.startsWith("data: "));
-      if (!dataLines.length) return;
-      const payload = dataLines.map(line => line.slice(6)).join("\n");
-      if (payload === "[DONE]") {
-        completed = true;
+    function consumePayload(payload, eventName = "") {
+      const raw = String(payload || "").trim();
+      if (!raw) return;
+      if (raw === "[DONE]") { completed = true; return; }
+      // AI SDK legado: 0:"texto"; protocolo tipado: {"type":"text-delta","delta":"..."}.
+      if (/^0:/.test(raw)) {
+        try { appendText(JSON.parse(raw.slice(2))); } catch {}
         return;
       }
       try {
-        const event = JSON.parse(payload);
-        if (event.type === "text-delta" && typeof event.delta === "string") {
-          answer += event.delta;
-          render();
+        const event = JSON.parse(raw);
+        if (typeof event === "string") { appendText(event); return; }
+        if (Array.isArray(event)) {
+          for (const item of event) consumePayload(JSON.stringify(item), eventName);
+          return;
         }
-        if (event.type === "finish" || event.type === "message-finish") completed = true;
+        const type = String(event?.type || eventName || "").toLowerCase();
+        if (type === "text-delta" || type === "text_delta" || type === "text") {
+          appendText(event.delta ?? event.text ?? event.content ?? "");
+        } else if (event?.choices?.[0]?.delta?.content != null) {
+          appendText(event.choices[0].delta.content);
+        } else if (event?.choices?.[0]?.message?.content != null) {
+          appendText(event.choices[0].message.content);
+          completed = true;
+        } else if (typeof event?.answer === "string" || typeof event?.output_text === "string") {
+          appendText(event.answer || event.output_text);
+          completed = true;
+        } else if (type === "finish" || type === "message-finish" || event?.choices?.[0]?.finish_reason) {
+          completed = true;
+        } else if (event?.error) {
+          throw new Error(String(event.error?.message || event.error));
+        }
       } catch (error) {
-        console.warn("Evento SSE ignorado por formato inválido.", error);
+        if (error instanceof SyntaxError) {
+          // Alguns gateways enviam texto puro em eventos SSE.
+          if (!raw.startsWith("{") && !raw.startsWith("[")) appendText(raw);
+          else console.warn("Evento SSE ignorado por formato inválido.", error);
+        } else {
+          throw error;
+        }
       }
     }
     function consumeBuffer(final = false) {
       const chunks = buffer.split("\n\n");
       buffer = final ? "" : (chunks.pop() || "");
-      for (const chunk of chunks) if (chunk.trim()) consumeChunk(chunk);
-      if (final && buffer.trim()) consumeChunk(buffer);
+      for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+        const lines = chunk.split("\n");
+        const eventName = lines.find(line => line.startsWith("event:"))?.slice(6).trim() || "";
+        const dataLines = lines.filter(line => line.startsWith("data:")).map(line => line.replace(/^data:\s?/, ""));
+        if (dataLines.length) consumePayload(dataLines.join("\n"), eventName);
+      }
+      if (final && buffer.trim()) {
+        const lines = buffer.split("\n");
+        const eventName = lines.find(line => line.startsWith("event:"))?.slice(6).trim() || "";
+        const dataLines = lines.filter(line => line.startsWith("data:")).map(line => line.replace(/^data:\s?/, ""));
+        if (dataLines.length) consumePayload(dataLines.join("\n"), eventName);
+        else consumePayload(buffer, eventName);
+      }
     }
     let stalled = false;
     while (true) {
@@ -1682,9 +1998,26 @@
       status.textContent = "Edição liberada. Confira os campos e tente novamente quando estiver pronto.";
     }
   }, true);
+  function completeNavigationInputStep(target) {
+    const current = guideState?.steps?.[guideState.index];
+    if (!navigationGuideActive || !current?.waitForInput || current.element !== target) return false;
+    const value = target.matches("[type=checkbox],[type=radio]")
+      ? (target.checked || target.getAttribute("aria-checked") === "true")
+      : String(target.value ?? "").trim();
+    if (!value) return false;
+    navigationLastCompletedStep = current.title || getElementName(target) || "campo preenchido";
+    navigationLastCompletedRoute = location.pathname;
+    navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+    persistNavigationTask();
+    closeGuide();
+    if (!advanceLocalNavigationPlan()) continueNavigationGuide();
+    return true;
+  }
+
   document.addEventListener("change", event => {
     const target = event.target;
     if (!(target instanceof Element) || host.contains(target)) return;
+    if (completeNavigationInputStep(target)) return;
     if (target.matches("input,select,textarea") && guideState?.steps?.[guideState.index]?.validationField) {
       closeGuide();
       clearNavigationTask();
@@ -1701,6 +2034,28 @@
       navigationLastCompletedRoute = "";
       persistNavigationTask();
     }
+    // Tarefas conhecidas são conduzidas pela base instalada, sem chamar a IA.
+    if (question && !isNavigationContinuation && !files.length) {
+      try {
+        await window.FutureManualKnowledge.load({ route: location.pathname, question });
+        const localPlan = window.FutureManualKnowledge.getLocalNavigationPlan?.(question);
+        if (Array.isArray(localPlan) && localPlan.length) {
+          navigationTask = question;
+          navigationLastCompletedStep = "";
+          navigationLastCompletedRoute = "";
+          navigationGuideActive = true;
+          activateNavigationPlan(localPlan);
+          addMessage("Encontrei o procedimento na base local do Manual Future. Vou guiar você etapa por etapa, sem consulta à IA. Você continuará fazendo os cliques e preenchimentos.", "bot");
+          if (advanceLocalNavigationPlan()) {
+            status.textContent = "Roteiro local carregado — " + localPlan.length + " etapas. Nenhuma chamada à IA foi feita.";
+            return;
+          }
+          clearNavigationTask();
+        }
+      } catch (error) {
+        console.warn("Não foi possível abrir a base local para navegação", error);
+      }
+    }
     lastRequestKind = (question || "").includes("Faça uma revisão orientativa do documento") ? "document-review" : /mensagem de possível erro|erro no Emissor Fiscal/i.test(question || "") ? "error-diagnosis" : isNavigationContinuation ? "navigation-guide" : "chat";
     requestInProgress = true;
     const controller = new AbortController();
@@ -1711,7 +2066,7 @@
     const context = safeScreenContext();
     let knowledge = "";
     try {
-      status.textContent = "Carregando as aulas do Manual relacionadas a esta tela...";
+      status.textContent = "Abrindo a base local do Manual Future...";
       knowledge = await window.FutureManualKnowledge.load({ route: location.pathname, question });
     } catch (error) {
       console.warn("Não foi possível carregar o Manual Academy", error);
@@ -1735,9 +2090,13 @@
       ? "\n\nREVISÃO DE DOCUMENTO — FORMATO OBRIGATÓRIO: Para CADA erro ou campo que você identificar com base nos sinais fornecidos e no Manual, explique o problema e o que o usuário deve conferir. Quando houver base segura e suficiente para um valor específico, acrescente ao final um bloco isolado [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato e visível do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]] com uma entrada por campo (máximo 8). Esse bloco é obrigatório sempre que houver ao menos uma sugestão de valor realmente fundamentada. Nunca invente valores fiscais nem use dados pessoais/sensíveis. Se não houver base para preencher com segurança, não invente: explique isso e ainda assim indique o campo e a ação manual de conferência. Não omita os erros identificados. A extensão mostrará cartões de revisão e botões para destacar cada item; o preenchimento continua sujeito à confirmação explícita. Nunca recomende emissão, transmissão, autorização ou encerramento automáticos."
       : "\n\nRECURSO OPCIONAL DE SUGESTÃO DE PREENCHIMENTO: Se, e somente se, você tiver base suficiente no Manual e na conversa para sugerir valores concretos para campos visíveis da tela atual, acrescente ao final um bloco isolado exatamente neste formato: [[FUTURE_FIELD_PROPOSAL]][{\"field\":\"rótulo exato do campo\",\"value\":\"valor sugerido\"}][[/FUTURE_FIELD_PROPOSAL]]. Use JSON válido, no máximo 8 itens, strings simples. O campo deve ser identificado pelo rótulo visível exato; não invente campos. Não inclua CPF, CNPJ, e-mail, telefone, senha, PIN, token ou dados de certificado. Se não houver certeza, não inclua bloco. Antes do bloco, explique a origem e a incerteza de cada sugestão. A extensão só apresentará botão para confirmação explícita; jamais sugira clicar em emitir, transmitir, autorizar ou encerrar.";
     const manualPolicy = knowledge
-      ? "\n\nREGRA OBRIGATÓRIA DE CONSULTA AO MANUAL FUTURE: use primeiro o conteúdo publicado fornecido em BASE DE CONHECIMENTO DO MANUAL FUTURE. Cruze a tarefa com o caminho, aula, resumo, conteúdo e referências visuais. Não responda com procedimento genérico se houver orientação no Manual. Se a tela atual divergir do Manual, descreva a diferença e peça confirmação/print; nunca invente rótulos ou cliques. Informe o título da aula usada e inclua o link da aula quando disponível.\n"
+      ? "\n\nREGRA OBRIGATÓRIA DE CONSULTA AO MANUAL FUTURE: use primeiro o conteúdo publicado fornecido em BASE LOCAL DO MANUAL FUTURE. Cruze a tarefa com o caminho, aula, resumo, conteúdo e referências visuais. Não responda com procedimento genérico se houver orientação no Manual. Se a tela atual divergir do Manual, descreva a diferença e peça confirmação/print; nunca invente rótulos ou cliques. Informe o título da aula usada e inclua o link da aula quando disponível.\n"
       : "\n\nMANUAL FUTURE INDISPONÍVEL NESTA CONSULTA: não afirme que consultou o Manual, não invente procedimentos nem sequência de cliques. Explique que o conteúdo do Manual não carregou agora e peça para tentar novamente ou enviar um print; responda apenas dúvidas gerais que não dependam do procedimento específico.\n";
-    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
+    const navigationIntent = /\[TOUR GUIADO\]|\b(quero|preciso|me ajude|me ajuda|como faço|como faco|cadastrar|cadastre|cadastro|acesse|acessar|abrir|ir para|chegar|localizar|encontrar|criar|incluir|adicionar|editar|alterar|consultar|registrar|lançar|lancar|emitir|cancelar|configurar|excluir|remover|salvar|concluir|orientar|me guie|me mostre|passo a passo|onde fica|onde é|onde e|onde encontro|onde cadastro)\b/i.test(question || "");
+    const navigationPlanRequest = navigationTask && navigationIntent && Boolean(knowledge) && !isNavigationContinuation && !files.length
+      ? "\n\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\nO usuário quer concluir uma tarefa, não apenas chegar a uma tela. Consulte o MANUAL FUTURE já carregado e produza um ROTEIRO COMPLETO de ponta a ponta, desde o primeiro menu até a última etapa necessária da operação. Inclua, na ordem real, menus, submenus, abas, botões que abrem formulários, campos que o usuário precisa preencher (kind=field), seleções e o botão final de salvar/concluir (kind=final_action). Não pare em CADASTROS, CLIENTES ou na primeira tela se ainda houver etapas. Cada item deve ter label exatamente igual ao texto/label acessível do controle, description com instrução clara, path com a sequência do Manual e kind (click, field ou final_action). Limite o roteiro a 30 passos. Inclua campos somente quando forem identificáveis pelo Manual ou pela tela; não invente campos nem valores. Ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\"label\":\"rótulo exato do próximo controle\",\"description\":\"instrução para o usuário\",\"path\":\"caminho documentado\",\"kind\":\"click|field|final_action\"}]"+NAVIGATION_PLAN_CLOSE+". A resposta visível deve explicar que o usuário fará cada clique e preenchimento e que a extensão acompanhará até a ação final. O último passo deve destacar Salvar/Concluir quando fizer parte da tarefa, mas NUNCA clique, preencha ou envie automaticamente. Para ações fiscais irreversíveis (emitir, transmitir, autorizar, cancelar), destaque a conferência e aguarde confirmação explícita do usuário. Se não conseguir montar o caminho completo com segurança, não devolva um roteiro parcial como se estivesse completo: informe o que falta confirmar e peça um print.\n"
+      : "";
+    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
@@ -1786,15 +2145,17 @@
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
-        const safeAnswer = renderFieldProposals(answer, target);
+        const navigationResult = extractNavigationPlan(answer);
+        if (navigationResult.plan) activateNavigationPlan(navigationResult.plan);
+        const safeAnswer = renderFieldProposals(navigationResult.cleanAnswer, target);
         conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: safeAnswer }] });
         maybeStartAutomaticGuide(safeAnswer);
         if (voiceModeActive) await speakAssistantReply(safeAnswer);
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
       status.textContent = diagnostic
-        ? "Manual conectado: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + "."
-        : knowledge ? "Conectado ao assistente e ao Manual Future." : "Conectado à IA; o Manual não carregou nesta tentativa.";
+        ? "Base local instalada: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + ". A IA só é chamada quando a tarefa exige interpretação."
+        : knowledge ? "Base local do Manual Future carregada." : "Conectado à IA; a base local não carregou nesta tentativa.";
     } catch (error) {
       if (signal.aborted || error?.name === "AbortError") {
         target.textContent = "Conversa interrompida por você.";
@@ -1807,7 +2168,9 @@
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
-      stopButton.disabled = true;
+      // A resposta da IA pode terminar enquanto o roteiro visual continua ativo.
+      // Parar permanece disponível enquanto houver guia, conversa ou voz em execução.
+      stopButton.disabled = !(guideState || navigationGuideActive || voiceIsSpeaking);
       if (voiceModeActive) scheduleVoiceRecognition();
       input.focus();
     }

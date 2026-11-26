@@ -9,27 +9,31 @@
     "storage"
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": "icon.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background.js"
   },
   "icons": {
     "48": "icon.png",
     "128": "icon.png"
   },
-  "web_accessible_resources": [
+  "web_accessible_resources": [],
+  "host_permissions": [
+    "https://sistema.emissorfiscalonline.com.br/*",
+    "https://itbppoailqkuxajesgys.supabase.co/*"
+  ],
+  "content_scripts": [
     {
-      "resources": [
-        "flows.js"
-      ],
       "matches": [
         "https://sistema.emissorfiscalonline.com.br/*"
-      ]
+      ],
+      "js": [
+        "src/manual-knowledge.js",
+        "src/knowledge.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
     }
-  ],
-  "host_permissions": [
-    "https://sistema.emissorfiscalonline.com.br/*"
   ]
 }
