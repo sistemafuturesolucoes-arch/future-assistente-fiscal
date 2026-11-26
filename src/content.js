@@ -962,6 +962,16 @@
     return exact.length === 1 ? exact[0] : null;
   }
 
+  function findElementForPlanStep(step) {
+    if (!step) return null;
+    const names = [step.label, ...(Array.isArray(step.targetNames) ? step.targetNames : [])].filter(Boolean);
+    for (const name of names) {
+      const element = findElementByName(name);
+      if (element) return element;
+    }
+    return null;
+  }
+
   function findGuideSteps(answer) {
     // Marcadores automáticos só são permitidos para rótulos exatos em uma instrução
     // acionável. Correspondência aproximada pode apontar para outro menu e foi removida.
@@ -1229,7 +1239,7 @@
       return true;
     }
     const next = navigationPlan[navigationPlanIndex];
-    const element = findElementByName(next.label);
+    const element = findElementForPlanStep(next);
     const pathDescription = (next.path ? "Caminho completo: " + next.path + ". " : "") + next.description;
     // Preserve o roteiro mesmo quando o menu está fechado ou o controle ainda não existe no DOM.
     startVisualGuide([{
@@ -1273,6 +1283,10 @@
   }
 
   async function waitForNavigationTarget(label, timeoutMs = 3000) {
+    return waitForNavigationStep({ label }, timeoutMs);
+  }
+
+  async function waitForNavigationStep(step, timeoutMs = 3000) {
     return new Promise(resolve => {
       let settled = false;
       let pollTimer = null;
@@ -1286,7 +1300,7 @@
         resolve(Boolean(found));
       };
       const check = () => {
-        if (findElementByName(label)) finish(true);
+        if (findElementForPlanStep(step)) finish(true);
         else if (Date.now() - startedAt >= timeoutMs) finish(false);
       };
       observer = new MutationObserver(check);
@@ -1417,7 +1431,7 @@
       const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
       const beforeSnapshot = navigationSnapshot();
       const navigationUpdate = nextPlannedLabel
-        ? waitForNavigationTarget(nextPlannedLabel, 5000)
+        ? waitForNavigationStep(navigationPlan[navigationPlanIndex], 5000)
         : waitForNavigationUpdate(beforeSnapshot, current.kind === "final_action" ? 12000 : 5000);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
