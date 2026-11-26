@@ -111,7 +111,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     const missingTargetCard = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
     assert.ok(missingTargetCard.nodeId, "o caminho local deve permanecer visível quando o primeiro menu não está na tela");
     const missingTargetText = await call(missingTargetCard.nodeId, "function(){ return this.innerText; }");
-    assert.match(missingTargetText.result.value, /Configurações > Empresa > Certificado Digital > Opções/);
+    assert.match(missingTargetText.result.value, /Configurações > Empresa > Certificado Digital/);
     assert.match(missingTargetText.result.value, /Já abri — avançar/);
     const manualNext = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-manual-next" });
     assert.ok(manualNext.nodeId, "deve permitir confirmar manualmente a abertura do menu");
