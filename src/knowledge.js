@@ -157,30 +157,28 @@
     const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
 
-    // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
-    // A extensão não lê, armazena ou preenche a senha do certificado.
+    // Certificado A1: conduzir até a aba correta e só então explicar a importação.
+    // A senha é digitada exclusivamente pelo usuário no próprio Emissor.
     if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
-      const path = "Configurações > Empresa > Certificado Digital > Opções";
+      const path = "Configurações > Empresa > Certificado Digital";
       return [
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
-        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital e confira os dados do A1 atual."),
-        makeStep(bundleCache, "Opções", "click", path, "No quadro do Certificado Digital A1, abra Opções para enviar ou renovar o arquivo .pfx."),
-        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo .pfx somente na janela oficial do Emissor. A senha deve ser digitada diretamente no sistema; nunca a envie ao assistente.")
+        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital."),
+        makeStep(bundleCache, "Importar novo certificado A1", "field", path, "Você chegou à tela correta. No quadro Certificado Digital A1, clique em Opções, selecione o novo arquivo .pfx, digite a senha diretamente no Emissor e confirme/salve a importação. Não envie o arquivo nem a senha pelo chat.")
       ];
     }
 
-    // CSC e ID CSC pertencem aos parâmetros da NFC-e dentro das configurações da empresa.
+    // Para localizar CSC/ID CSC, o objetivo é chegar à subaba NFC-e;
+    // não despejar todos os campos e parâmetros da aula.
     if (/\bcsc\b/.test(q)) {
       const path = "Configurações > Empresa > Notas Fiscais > NFC-e";
       return [
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
         makeStep(bundleCache, "Notas Fiscais", "click", path, "Abra a aba Notas Fiscais."),
-        makeStep(bundleCache, "NFC-e", "click", path, "Localize a seção ou subaba NFC-e nos parâmetros por tipo de documento."),
-        makeStep(bundleCache, "CSC", "field", path, "Informe o Código de Segurança do Contribuinte fornecido pela SEFAZ. Não compartilhe o código no chat."),
-        makeStep(bundleCache, "ID CSC", "field", path, "Informe o identificador correspondente ao CSC, também fornecido pela SEFAZ."),
-        makeStep(bundleCache, "Salvar Configurações", "final_action", path, "Revise os parâmetros da NFC-e e clique em Salvar Configurações quando estiver pronto.")
+        makeStep(bundleCache, "NFC-e", "click", path, "Abra a seção ou subaba NFC-e."),
+        makeStep(bundleCache, "Campos CSC e ID CSC", "field", path, "Você chegou ao local correto. Na configuração da NFC-e, localize os campos CSC e ID CSC. Eles são fornecidos pela SEFAZ; preencha-os diretamente no Emissor e salve as configurações quando necessário. Não compartilhe esses códigos no chat.")
       ];
     }
 
@@ -376,6 +374,25 @@
 
   function getLocalAnswer(question) {
     if (!bundleCache || !String(question || "").trim()) return "";
+    const q = normalize(question);
+
+    // Respostas operacionais curtas para tarefas com destino conhecido.
+    // O manual completo permanece como fonte local, mas não deve ser despejado no chat.
+    if (/\bcsc\b/.test(q) && /(nfce|consumidor|cupom|nota)/.test(q)) {
+      return [
+        "Caminho: **Configurações > Empresa > Notas Fiscais > NFC-e**.",
+        "Abra a seção NFC-e. Os campos **CSC** e **ID CSC** ficam nessa configuração; use os códigos fornecidos pela SEFAZ.",
+        "Preencha diretamente no Emissor e salve as configurações. Não envie os códigos pelo chat."
+      ].join("\n");
+    }
+    if (/\b(certificado|pfx)\b/.test(q) && /(carregar|novo|renovar|atualizar|instalar|anexar|enviar)/.test(q)) {
+      return [
+        "Caminho: **Configurações > Empresa > Certificado Digital**.",
+        "Nesta aba, no quadro Certificado Digital A1, clique em **Opções**, importe o novo arquivo **.pfx**, digite a senha diretamente no Emissor e confirme/salve.",
+        "Não envie o arquivo nem a senha pelo chat."
+      ].join("\n");
+    }
+
     const ranked = [...bundleCache.lessons].map(lesson => ({
       lesson, score: relevance(lesson, location.pathname, question)
     })).sort((a, b) => b.score - a.score);
@@ -383,11 +400,11 @@
     if (!best?.lesson || best.score < 8) return "";
     const related = ranked.filter(item => item.score >= Math.max(8, best.score * 0.42)).slice(0, 2);
     const parts = [
-      "Encontrei esta orientação na base local do Manual Future:",
-      ...related.map(({ lesson }) => lessonText(lesson, true)),
-      "Se a tela estiver diferente, envie um print para eu localizar o controle exato. A extensão não preenche nem salva dados automaticamente."
+      "Encontrei uma orientação na base local do Manual Future:",
+      ...related.map(({ lesson }) => lessonText(lesson, false)),
+      "Se precisar, posso detalhar somente a etapa em que você está. A extensão não preenche nem salva dados automaticamente."
     ];
-    return parts.join("\n\n").slice(0, 22000);
+    return parts.join("\n\n").slice(0, 9000);
   }
 
   let bundleCache = null;
