@@ -174,7 +174,7 @@
           + (/configur|serie|parametro/.test(q) && /configuracoes|empresa/.test(normalize(lesson.module_id + " " + lesson.title + " " + lesson.path)) ? 90 : 0)
       })).sort((a, b) => b.score - a.score);
       const settingsRequested = /(configur|serie|parametro|csc)/.test(q)
-        && /(nf.?e|nfc.?e|nfs.?e|ct.?e|mdf.?e|certificado|\\bcsc\\b)/.test(q);
+        && /(nf.?e|nfc.?e|nfs.?e|ct.?e|mdf.?e|certificado|csc)/.test(q);
       const companySettingsLesson = bundleCache.lessons.find(lesson =>
         /configurando os dados gerais da empresa/i.test(lesson.title || "")
       );
