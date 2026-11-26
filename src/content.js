@@ -1110,12 +1110,18 @@
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
   function persistNavigationTask() {
     if (!navigationTask || !navigationGuideActive) return;
+    const snapshot = {
+      task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
+      lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
+      plan: navigationPlan, planIndex: navigationPlanIndex, savedAt: Date.now()
+    };
+    try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
+    // O service worker mantém o mesmo roteiro associado à aba, como no motor Lovable.
     try {
-      sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify({
-        task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
-        lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
-        plan: navigationPlan, planIndex: navigationPlanIndex, savedAt: Date.now()
-      }));
+      chrome.runtime.sendMessage({
+        type: "FUTURE_GUIDE_SET",
+        guide: { task: snapshot.task, plan: snapshot.plan, step: snapshot.planIndex }
+      }).catch(() => {});
     } catch {}
   }
   function extractNavigationPlan(answer) {
@@ -1167,6 +1173,7 @@
     navigationPlan = [];
     navigationPlanIndex = 0;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
+    try { chrome.runtime.sendMessage({ type: "FUTURE_GUIDE_STOP" }).catch(() => {}); } catch {}
   }
   function navigationSnapshot() {
     // Inclui componentes customizados comuns em SPAs sem transformar qualquer div em alvo clicável.
@@ -1374,10 +1381,24 @@
     window.setTimeout(restoreVisualGuide, 650);
   }
 
-  function restoreNavigationAfterPageLoad() {
+  async function restoreNavigationAfterPageLoad() {
     if (guideState || requestInProgress) return;
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(NAVIGATION_SESSION_KEY) || "null"); } catch {}
+    if (!saved?.task) {
+      // Recupera o progresso do service worker caso a página tenha sido recriada.
+      try {
+        const response = await chrome.runtime.sendMessage({ type: "FUTURE_GUIDE_GET" });
+        if (response?.ok && response.guide?.task && Array.isArray(response.guide.plan)) {
+          saved = {
+            task: response.guide.task,
+            plan: response.guide.plan,
+            planIndex: response.guide.step,
+            savedAt: response.guide.updatedAt || Date.now()
+          };
+        }
+      } catch {}
+    }
     if (!saved?.task || !Number.isFinite(saved.savedAt) || Date.now() - saved.savedAt > 20 * 60 * 1000) {
       if (saved) clearNavigationTask();
       return;
@@ -1388,6 +1409,7 @@
     navigationPlan = Array.isArray(saved.plan) ? saved.plan : [];
     navigationPlanIndex = Number.isInteger(saved.planIndex) ? Math.max(0, saved.planIndex) : 0;
     navigationGuideActive = true;
+    persistNavigationTask();
     status.textContent = navigationPlan.length
       ? "Retomando o caminho do Manual nesta tela..."
       : "Retomando a navegação assistida na nova tela...";
