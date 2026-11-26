@@ -317,3 +317,20 @@ test("balão de pergunta abre e fecha alternadamente e o botão X encerra a orie
   assert.ok(source.includes('dismiss.addEventListener("click", event =>'));
   assert.ok(source.includes("Indicador fechado. A orientação foi encerrada e não será retomada"));
 });
+
+
+test("guia bloqueia cliques fora do alvo e permite fechar ou sair com Esc", () => {
+  assert.match(source, /const onOutsideClick = event =>/);
+  assert.match(source, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/);
+  assert.match(source, /path\.some\(node => node === host/);
+  assert.match(source, /event\.key === "Escape"/);
+  assert.match(source, /document\.removeEventListener\("click", guideState\.onOutsideClick, true\)/);
+  assert.match(source, /document\.removeEventListener\("keydown", guideState\.onGuideKeyDown, true\)/);
+});
+
+test("marcador Pergunta e botão Fechar acompanham o alvo e não deixam destaque antigo", () => {
+  assert.match(source, /Pergunta: ver orientação deste item/);
+  assert.match(source, /marker\.style\.left = markerLeft \+ "px"/);
+  assert.match(source, /dismiss\.style\.left = Math\.min\(window\.innerWidth - 22, markerLeft \+ 26\)/);
+  assert.match(source, /current\.element = null;\s*frame\.hidden = true;\s*marker\.hidden = true;\s*dismiss\.hidden = true/);
+});
