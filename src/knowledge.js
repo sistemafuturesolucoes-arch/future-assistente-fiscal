@@ -156,6 +156,8 @@
     const q = normalize(question);
     const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
+    const createRequest = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
+
 
     // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
     // Não transformar "onde fica NFC-e?" em um roteiro de emissão ou preenchimento.
@@ -239,7 +241,7 @@
       ];
     }
 
-    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q)) {
+    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
       const path = "Cadastros > Condutores > Novo Condutor";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral esquerdo, abra Cadastros."),
@@ -252,7 +254,7 @@
       ];
     }
 
-    if (/\b(veiculo|veiculos)\b/.test(q)) {
+    if (/\b(veiculo|veiculos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Veículos > Novo Veículo";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros na barra lateral."),
@@ -267,7 +269,7 @@
       ];
     }
 
-    if (/\b(cliente|clientes)\b/.test(q)) {
+    if (/\b(cliente|clientes)\b/.test(q) && createRequest) {
       const path = "Cadastros > Clientes > Novo Cliente";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -283,7 +285,7 @@
       ];
     }
 
-    if (/\b(produto|produtos)\b/.test(q)) {
+    if (/\b(produto|produtos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Produtos > Novo Produto";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -300,7 +302,7 @@
       ];
     }
 
-    if (/\b(servico|servicos)\b/.test(q)) {
+    if (/\b(servico|servicos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Serviços > Novo Serviço";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -423,7 +425,16 @@
           for (const h of (shot.hotspots || [])) {
             const label = String(h.title || "").trim();
             const labelNorm = normalize(label);
-            if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) continue;
+            if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) {
+              if (isIssue || isExport) {
+                const actions = [...String(h.description || "").matchAll(/(?:^|\\n)\\s*[•-]?\\s*(Salvar(?: rascunho)?|Pré-visualizar|Gerar [A-ZÀ-Ú -]+|Emitir [A-ZÀ-Ú -]+|Enviar)\\s*:/gi)];
+                for (const action of actions) {
+                  const actionLabel = action[1].trim();
+                  add(actionLabel, /gerar|emitir|enviar/i.test(actionLabel) ? "final_action" : "click", "Ação descrita nesta etapa do Manual. Confira todos os dados antes de confirmar.");
+                }
+              }
+              continue;
+            }
             if (isIssue && isList && !/emitir|novo|gerar|adicionar/i.test(label)) continue;
             if (isIssue && si > 0 && !isForm && !/formulario|dados|secao|totais|transporte|pagamento|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)) continue;
             if (isEdit && isList && !/procurar|busca|opcoes|editar/i.test(label)) continue;
