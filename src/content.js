@@ -966,8 +966,8 @@
     // Marcadores automáticos só são permitidos para rótulos exatos em uma instrução
     // acionável. Correspondência aproximada pode apontar para outro menu e foi removida.
     const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
-    const lines = String(answer || "").split(/\\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
-    const actionable = /\\b(clique|clicar|selecione|selecionar|acesse|acessar|abra|abrir|localize|localizar|procure|procurar|preencha|preencher|informe|informar|escolha|escolher|vá|ir até|campo|botão)\\b/i;
+    const lines = String(answer || "").split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const actionable = /\b(clique|clicar|selecione|selecionar|acesse|acessar|abra|abrir|localize|localizar|procure|procurar|preencha|preencher|informe|informar|escolha|escolher|vá|ir até|campo|botão)\b/i;
     const candidates = [];
     lines.forEach((line, lineIndex) => {
       if (!actionable.test(line)) return;
