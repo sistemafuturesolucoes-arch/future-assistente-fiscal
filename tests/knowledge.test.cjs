@@ -201,3 +201,12 @@ test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA"
   assert.equal(plan.at(-1).kind, "final_action");
   assert.ok(plan.some(step => step.label === "ID CSC" && step.kind === "field"));
 });
+
+test("extrai campos descritos em listas e hotspots de configuração para a navegação local", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como alterar a série da NFC-e" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como alterar a série da NFC-e");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Série.*NFC-e/i.test(step.label) && step.kind === "field"));
+  assert.ok(plan.some(step => /NFC-e/i.test(step.label)));
+});
