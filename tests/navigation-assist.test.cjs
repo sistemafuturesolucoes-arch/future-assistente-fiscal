@@ -221,7 +221,7 @@ test("pedidos naturais de localização e cadastro ativam navegação assistida"
 });
 
 test("o plano local cobre o fluxo completo, inclusive campos e botão final", () => {
-  assert.match(source, /ROTEIRO COMPLETO de ponta a ponta/);
+  assert.match(source, /LOCALIZAR\/ACESSAR uma tela/);
   assert.match(source, /kind=field/);
   assert.match(source, /kind=final_action/);
   assert.match(source, /navigationPlanRequest/);
