@@ -257,3 +257,34 @@ test("exportação de XML aproveita os passos e hotspots da aula em vez de parar
   assert.ok(plan.some(step => /Exportar XML/i.test(step.label)));
   assert.ok(plan.some(step => /Período/i.test(step.label) || /Ambiente/i.test(step.label) || /Enviar/i.test(step.label)));
 });
+
+
+test("emissão de NFS-e não é confundida com cadastro de serviço", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como emitir uma NFS-e?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como emitir uma NFS-e?");
+  assert.ok(Array.isArray(plan));
+  assert.equal(plan[0].label, "Documentos");
+  assert.ok(plan.some(step => /Tomador|Cliente/i.test(step.label)));
+  assert.ok(plan.some(step => /Descrição Serviço/i.test(step.label)));
+  assert.ok(plan.some(step => /Gerar/i.test(step.label) && step.kind === "final_action"));
+  assert.ok(!plan.some(step => step.label === "Novo Serviço"));
+});
+
+test("fluxos de CT-e, CT-e OS, MDF-e e CIOT usam as aulas de transporte do Manual", async () => {
+  const ctx = createKnowledgeContext();
+  const cases = [
+    ["como emitir um CT-e", /CT-e/i, /Tomador|Remetente|Destinatário/i],
+    ["como emitir um CT-e OS", /CTe OS|CT-e OS/i, /Tomador/i],
+    ["como emitir um MDF-e", /MDFe|MDF-e/i, /Municípios|Veículo|Condutor/i],
+    ["como emitir um CIOT", /CIOT/i, /Pagamento|Contratante|Emitente/i]
+  ];
+  for (const [question, routePattern, fieldPattern] of cases) {
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(Array.isArray(plan), question + " deve gerar roteiro local");
+    assert.equal(plan[0].label, "Documentos", question + " deve começar no menu Documentos");
+    assert.ok(plan.some(step => routePattern.test(step.label)), question + " deve apontar para o módulo correto");
+    assert.ok(plan.some(step => fieldPattern.test(step.label)), question + " deve usar campos/hotspots da aula");
+  }
+});
