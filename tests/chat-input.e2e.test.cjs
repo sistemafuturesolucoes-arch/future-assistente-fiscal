@@ -149,21 +149,24 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await call(textarea, "function(){ this.value = 'Quero localizar um campo específico de serviço'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
-    for (let i = 0; i < 40 && aiRequests < 3; i++) await new Promise(resolve => setTimeout(resolve, 100));
-    assert.equal(aiRequests, 3, "a dúvida sobre um campo específico sem roteiro local deve consultar a IA uma única vez");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    assert.equal(aiRequests, 2, "o roteiro conhecido de serviço deve começar pela base local sem chamar a IA");
     let guideCard = 0;
     for (let i = 0; i < 50 && !guideCard; i++) {
       const found = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
       guideCard = found.nodeId || 0;
       if (!guideCard) await new Promise(resolve => setTimeout(resolve, 100));
     }
-    assert.ok(guideCard, "o roteiro deve aparecer após a resposta da IA");
+    assert.ok(guideCard, "o roteiro local deve aparecer imediatamente");
     const firstGuideTitle = await call(guideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
     assert.equal(firstGuideTitle.result.value, "Cadastros");
     await page.locator("#cadastros").click();
+    // O fixture não possui o submenu Serviços; nesse caso a extensão pede à IA
+    // somente para reavaliar o DOM atual, sem inventar um destaque.
+    for (let i = 0; i < 50 && aiRequests < 3; i++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(aiRequests, 3, "a IA só deve ser consultada quando o próximo controle do roteiro local não existe no DOM de teste");
     let secondGuideTitle = "";
     for (let i = 0; i < 50; i++) {
-      // O Shadow DOM da extensão é fechado; consulte-o pelo CDP, não por host.shadowRoot.
       const found = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card .guide-title" });
       if (found.nodeId) {
         const title = await call(found.nodeId, "function(){ return this.textContent || ''; }");
@@ -172,8 +175,8 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
       if (secondGuideTitle === "Clientes") break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    assert.equal(secondGuideTitle, "Clientes", "o JavaScript local deve avançar para o próximo item do roteiro");
-    assert.equal(aiRequests, 3, "o avanço normal após o clique não deve chamar a IA novamente");
+    assert.equal(secondGuideTitle, "Clientes", "a reavaliação deve usar o rótulo exato visível na tela");
+    assert.equal(aiRequests, 3, "o avanço normal após a reavaliação não deve chamar a IA novamente");
     await page.locator("#clientes").click();
     let guideDisconnected = false;
     for (let i = 0; i < 40; i++) {
