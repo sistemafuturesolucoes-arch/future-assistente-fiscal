@@ -152,6 +152,18 @@ test("mantém as 26 aulas e os cinco módulos disponíveis na extensão", async 
   assert.equal(ctx.getFetchCount(), 0);
 });
 
+test("fornece resposta local completa quando a IA não retorna conteúdo", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como ajustar CFOP no grupo tributário"
+  });
+  const answer = ctx.knowledge.getLocalAnswer("como ajustar CFOP no grupo tributário");
+  assert.ok(answer.includes("Gerenciamento e Edição de Grupos Tributários"));
+  assert.ok(answer.includes("Cadastros → Grupo Tributário"));
+  assert.ok(answer.includes("CFOP"));
+  assert.ok(answer.includes("contabilidade"));
+});
+
 test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pede para cadastrar", async () => {
   const ctx = createKnowledgeContext();
   const text = await ctx.knowledge.load({
