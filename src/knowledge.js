@@ -141,6 +141,17 @@
     return { label, kind, path, description };
   }
 
+  function makeLessonStep(bundle, lesson, label, kind, path, extraDescription = "") {
+    const target = normalize(label);
+    const hotspots = [
+      ...(Array.isArray(lesson?.hotspots) ? lesson.hotspots : []),
+      ...(Array.isArray(lesson?.screenshots) ? lesson.screenshots.flatMap(shot => shot?.hotspots || []) : [])
+    ];
+    const hotspot = hotspots.find(item => normalize(item?.title) === target);
+    const description = extraDescription || hotspot?.description || \`Localize \${label} na tela atual, conforme a aula \${lesson?.title || "do Manual"}.\`;
+    return { label, kind, path, description };
+  }
+
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
     const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|me guie|passo a passo|como faco|como fazer)\b/;
@@ -254,7 +265,7 @@
         const key = normalize(label);
         if (!label || !key || seen.has(key) || plan.length >= 24) return;
         seen.add(key);
-        plan.push(makeStep(bundleCache, label, kind, path, description || ""));
+        plan.push(makeLessonStep(bundleCache, lesson, label, kind, path, description || ""));
       };
 
       const routeParts = String(lesson.path || "").split(/\s*>\s*/).map(part => part.trim())
