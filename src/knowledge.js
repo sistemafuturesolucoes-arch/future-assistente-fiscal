@@ -328,7 +328,7 @@
       const seen = new Set();
       const add = (label, kind, description) => {
         const key = normalize(label);
-        if (!label || !key || seen.has(key) || plan.length >= 24) return;
+        if (!label || !key || seen.has(key) || plan.length >= 30) return;
         seen.add(key);
         plan.push(makeLessonStep(bundleCache, lesson, label, kind, path, description || ""));
       };
@@ -431,7 +431,7 @@
         }
       }
 
-      if (plan.length) return plan.slice(0, 24);
+      if (plan.length) return plan.slice(0, 30);
     }
 
     return null;
