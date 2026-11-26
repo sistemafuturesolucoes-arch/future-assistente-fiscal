@@ -653,13 +653,13 @@
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       return text.length >= 20 && text.length <= 1200 &&
         (/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text)) &&
-        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text);
+        /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text);
     });
     const minimal = candidates.filter(el => ![...el.children].some(child => {
       const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim();
       return t.length >= 20 && t.length <= 1200 &&
         (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) &&
-        /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t);
+        /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t);
     }));
     return minimal.map(el => String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 5);
   }
@@ -688,8 +688,8 @@
       const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
       if (text.length < 20 || text.length > 1200) return false;
       if (!(/\bE\d{4,5}\b/i.test(text) || /retorno\s+(?:da\s+)?prefeitura/i.test(text))) return false;
-      return /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
-        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
+      return /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(text) &&
+        ![...el.children].some(child => { const t = String(child.innerText || child.textContent || "").replace(/\s+/g, " ").trim(); return t.length >= 20 && t.length <= 1200 && (/\bE\d{4,5}\b/i.test(t) || /retorno\s+(?:da\s+)?prefeitura/i.test(t)) && /(não é permitido|nao e permitido|não está de acordo|nao esta de acordo|divergência|divergencia|Simples Nacional|rejeitad[oa]|alíquota|aliquota|ISSQN|falha|erro)/i.test(t); });
     });
     for (const node of fiscalReturnNodes) if (!errorNodes.includes(node)) errorNodes.push(node);
     for (const node of errorNodes) {
@@ -698,6 +698,13 @@
       if (!isLikelyFiscalError(node, message) && !fiscalReturn) continue;
       const target = fieldForErrorNode(node);
       add(target || node, message, target ? "erro associado ao campo" : "rejeição fiscal da prefeitura");
+      if (/\\bE0160\\b/i.test(message)) {
+        const simpleNationalFields = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=radio],[role=checkbox]")]
+          .filter(control => isGuideNodeVisible(control) && getElementNames(control).some(name => /simples nacional|situação.*tribut|regime.*tribut|opção.*simples/i.test(name)));
+        for (const control of simpleNationalFields.slice(0, 4)) {
+          add(control, "O retorno E0160 indica divergência entre a opção do Simples Nacional informada na DPS e a situação cadastrada para o prestador no mês de competência. Confira este campo com o cadastro oficial do Simples Nacional para a competência da nota; não altere por tentativa.", "campo relacionado à rejeição E0160");
+        }
+      }
       const normalizedMessage = normalize(message);
       if (/\bE0625\b/i.test(message) || (normalizedMessage.includes("aliquota") && normalizedMessage.includes("issqn") && normalizedMessage.includes("retencao"))) {
         const controls = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=checkbox]")].filter(isGuideNodeVisible);
@@ -772,7 +779,11 @@
     ].join("\n");
     try {
       const reviewMessage = await ask(question, []);
-      if (reviewMessage) renderReviewIssueCards(issues, reviewMessage);
+      const reviewText = String(reviewMessage?.textContent || "").trim();
+      if (!reviewText || /Não recebi uma resposta desta vez|Não consegui conectar ao assistente agora|A IA retornou HTTP/i.test(reviewText)) {
+        throw new Error("A IA não retornou uma análise válida. Os destaques visuais foram mantidos; tente novamente quando a conexão estiver normal.");
+      }
+      if (issues.length) renderReviewIssueCards(issues, reviewMessage);
       status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
     } catch (error) {
@@ -1804,40 +1815,88 @@
       const detail = await response.text().catch(() => "");
       throw new Error("A IA retornou HTTP " + response.status + (detail ? ": " + detail.slice(0, 300) : ""));
     }
-    if (!response.body?.getReader) throw new Error("A resposta da IA não disponibilizou um fluxo de leitura.");
+    if (!response.body?.getReader) {
+      const contentType = response.headers?.get?.("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await response.json();
+        const answer = String(payload?.answer || payload?.text || payload?.content || payload?.message || "");
+        if (answer.trim()) {
+          target.textContent = initialAnswer ? initialAnswer + "\n\n" + answer : answer;
+          return { answer, completed: true };
+        }
+      }
+      throw new Error("A resposta da IA não disponibilizou um fluxo de leitura compatível.");
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     let answer = "";
     let completed = false;
-    function render() {
+    function appendText(value) {
+      if (typeof value !== "string" || !value) return;
+      answer += value;
       target.textContent = initialAnswer ? initialAnswer + "\n\n" + answer : answer;
       messages.scrollTop = messages.scrollHeight;
     }
-    function consumeChunk(chunk) {
-      const dataLines = chunk.split("\n").filter(line => line.startsWith("data: "));
-      if (!dataLines.length) return;
-      const payload = dataLines.map(line => line.slice(6)).join("\n");
-      if (payload === "[DONE]") {
-        completed = true;
+    function consumePayload(payload, eventName = "") {
+      const raw = String(payload || "").trim();
+      if (!raw) return;
+      if (raw === "[DONE]") { completed = true; return; }
+      // AI SDK legado: 0:"texto"; protocolo tipado: {"type":"text-delta","delta":"..."}.
+      if (/^0:/.test(raw)) {
+        try { appendText(JSON.parse(raw.slice(2))); } catch {}
         return;
       }
       try {
-        const event = JSON.parse(payload);
-        if (event.type === "text-delta" && typeof event.delta === "string") {
-          answer += event.delta;
-          render();
+        const event = JSON.parse(raw);
+        if (typeof event === "string") { appendText(event); return; }
+        if (Array.isArray(event)) {
+          for (const item of event) consumePayload(JSON.stringify(item), eventName);
+          return;
         }
-        if (event.type === "finish" || event.type === "message-finish") completed = true;
+        const type = String(event?.type || eventName || "").toLowerCase();
+        if (type === "text-delta" || type === "text_delta" || type === "text") {
+          appendText(event.delta ?? event.text ?? event.content ?? "");
+        } else if (event?.choices?.[0]?.delta?.content != null) {
+          appendText(event.choices[0].delta.content);
+        } else if (event?.choices?.[0]?.message?.content != null) {
+          appendText(event.choices[0].message.content);
+          completed = true;
+        } else if (typeof event?.answer === "string" || typeof event?.output_text === "string") {
+          appendText(event.answer || event.output_text);
+          completed = true;
+        } else if (type === "finish" || type === "message-finish" || event?.choices?.[0]?.finish_reason) {
+          completed = true;
+        } else if (event?.error) {
+          throw new Error(String(event.error?.message || event.error));
+        }
       } catch (error) {
-        console.warn("Evento SSE ignorado por formato inválido.", error);
+        if (error instanceof SyntaxError) {
+          // Alguns gateways enviam texto puro em eventos SSE.
+          if (!raw.startsWith("{") && !raw.startsWith("[")) appendText(raw);
+          else console.warn("Evento SSE ignorado por formato inválido.", error);
+        } else {
+          throw error;
+        }
       }
     }
     function consumeBuffer(final = false) {
       const chunks = buffer.split("\n\n");
       buffer = final ? "" : (chunks.pop() || "");
-      for (const chunk of chunks) if (chunk.trim()) consumeChunk(chunk);
-      if (final && buffer.trim()) consumeChunk(buffer);
+      for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+        const lines = chunk.split("\n");
+        const eventName = lines.find(line => line.startsWith("event:"))?.slice(6).trim() || "";
+        const dataLines = lines.filter(line => line.startsWith("data:")).map(line => line.replace(/^data:\s?/, ""));
+        if (dataLines.length) consumePayload(dataLines.join("\n"), eventName);
+      }
+      if (final && buffer.trim()) {
+        const lines = buffer.split("\n");
+        const eventName = lines.find(line => line.startsWith("event:"))?.slice(6).trim() || "";
+        const dataLines = lines.filter(line => line.startsWith("data:")).map(line => line.replace(/^data:\s?/, ""));
+        if (dataLines.length) consumePayload(dataLines.join("\n"), eventName);
+        else consumePayload(buffer, eventName);
+      }
     }
     let stalled = false;
     while (true) {
