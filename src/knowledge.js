@@ -18,33 +18,56 @@
   }
 
   function relevance(lesson, route, question) {
-    const haystack = normalize([lesson.title, lesson.summary, lesson.path, lesson.content,
-      ...(lesson.hotspots || []).map(h => [h.title, h.description, h.tip].join(" "))].join(" "));
+    const title = normalize(lesson.title);
+    const summary = normalize(lesson.summary);
+    const path = normalize(lesson.path);
+    const content = normalize(lesson.content);
+    const hotspotTitles = normalize((lesson.hotspots || []).map(h => h.title).join(" "));
+    const hotspotText = normalize((lesson.hotspots || []).map(h => [h.title, h.description, h.tip].join(" ")).join(" "));
+    const haystack = [title, summary, path, content, hotspotText].join(" ");
     const r = normalize(route);
     const q = normalize(question);
     let score = 0;
-    if (/nfse|nota.?de.?servico|servico/.test(r) && /nfse|nota.?fiscal.?de.?servico/.test(haystack)) score += 100;
-    if (/notas\/servico|notas\/servico\/emitir/.test(r) && /nfse|servico/.test(haystack)) score += 80;
-    if (q) {
-      if (/regras? fiscais?/.test(q) && /grupos? tributarios?|tributacao/.test(haystack)) score += 110;
-      const title = normalize(lesson.title);
-      const stop = new Set(["como","onde","fica","me","ajude","ajuda","por","favor","para","com","uma","um","de","do","da","dos","das","no","na","nos","nas","novo","nova","cadastrar","cadastre","cadastro","criar","crie","fazer","faco","quero","preciso"]);
-      const queryTerms = q.split(/[^a-z0-9]+/).filter(t => t.length > 2 && !stop.has(t));
-      const stem = value => value.replace(/(oes|aes|es|s)$/,"");
-      if (title && q.includes(title)) score += 120;
-      if (title && title.includes(q)) score += 90;
-      if (queryTerms.some(term => ["condutor","motorista"].includes(stem(term))) && /condutor|motorista/.test(haystack)) score += 260;
-      if (queryTerms.some(term => ["veiculo","caminhao"].includes(stem(term))) && /veiculo|caminhao/.test(haystack)) {
-        score += title.includes("veiculo") ? 320 : 220;
-      }
-      if (queryTerms.some(term => ["cliente","fornecedor","transportadora"].includes(stem(term))) && /cliente|fornecedor|transportadora/.test(haystack)) score += 180;
-      if (queryTerms.some(term => ["produto","mercadoria"].includes(stem(term))) && /produto|mercadoria/.test(haystack)) score += 180;
-      if (queryTerms.some(term => stem(term) === "servico") && /servico/.test(haystack)) score += 180;
-      const matched = queryTerms.filter(term => haystack.includes(term) || haystack.includes(stem(term)));
-      if (queryTerms.length && matched.length === queryTerms.length) score += 55;
-      if (queryTerms.length && matched.length) score += matched.length * 8;
-      for (const term of queryTerms) if (haystack.includes(term) || haystack.includes(stem(term))) score += term.length > 3 ? 3 : 1;
+
+    if (/nfse|nota.?de.?servico|servico/.test(r) && /nfse|nota.?fiscal.?de.?servico/.test(haystack)) score += 70;
+    if (/notas\/servico|notas\/servico\/emitir/.test(r) && /nfse|servico/.test(haystack)) score += 50;
+    if (!q) return score;
+
+    const stop = new Set([
+      "como","onde","fica","me","ajude","ajuda","ajudar","por","favor","para","com","uma","um","de","do","da","dos","das",
+      "no","na","nos","nas","o","a","os","as","e","ou","que","qual","quais","meu","minha","meus","minhas",
+      "novo","nova","cadastrar","cadastre","cadastro","criar","crie","fazer","faco","quero","preciso","ajustar","ajuste",
+      "editar","edite","alterar","altere","corrigir","corrija","configurar","configure","preencher","preencha","informar",
+      "informe","campo","campos","sistema","emissor","passo","passos","guia","guiar"
+    ]);
+    const stem = value => value.replace(/(oes|aes|ais|eis|es|s)$/,"");
+    const terms = [...new Set(q.split(/[^a-z0-9]+/).filter(t => t.length > 1 && !stop.has(t)).map(stem))];
+
+    if (title && q.includes(title)) score += 180;
+    if (title && title.includes(q)) score += 130;
+    for (const term of terms) {
+      if (title.includes(term)) score += 24;
+      if (path.includes(term)) score += 17;
+      if (summary.includes(term)) score += 11;
+      if (hotspotTitles.includes(term)) score += 10;
+      if (content.includes(term)) score += 4;
     }
+    if (/cfop/.test(q) && /grupo.?tributario/.test(title + " " + path)) score += 115;
+    if (/cfop/.test(q) && /cfop/.test(content)) score += 45;
+    if (/(cst|csosn|icms|pis|cofins|ipi)/.test(q) && /grupo.?tributario|tributacao/.test(title + " " + path)) score += 85;
+    if (/(ncm|cest|ean|gtin|origem)/.test(q) && /produto/.test(title + " " + path)) score += 85;
+    if (/(cnae|nbs|issqn|item.?lista.?servico)/.test(q) && /servico/.test(title + " " + path)) score += 85;
+    if (/(csc|id.?csc|serie|numeracao|certificado|pfx|regime.?tributario)/.test(q) && /empresa|configur/.test(title + " " + path)) score += 85;
+    if (/(motorista|condutor)/.test(q) && /condutor/.test(title + " " + path)) score += 90;
+    if (/(placa|reboque|renavam|veiculo)/.test(q) && /veiculo/.test(title + " " + path)) score += 90;
+    if (/(nfe|nota.?eletronica)/.test(q) && /nfe/.test(title + " " + path)) score += 75;
+    if (/(nfce|cupom|consumidor)/.test(q) && /nfce|consumidor/.test(title + " " + path)) score += 75;
+    if (/(nfse|nota.?de.?servico)/.test(q) && /nfse|servico/.test(title + " " + path)) score += 75;
+    if (/(cte|conhecimento.?transporte)/.test(q) && /cte/.test(title + " " + path)) score += 75;
+    if (/(mdfe|manifesto)/.test(q) && /mdfe|manifesto/.test(title + " " + path)) score += 75;
+    const matched = terms.filter(term => haystack.includes(term));
+    if (terms.length && matched.length === terms.length) score += 55;
+    if (terms.length && matched.length) score += matched.length * 7;
     return score;
   }
 
@@ -80,7 +103,7 @@
       (a.position || 0) - (b.position || 0)
     );
     const relevant = ranked.filter(l => relevance(l, route, question) > 0);
-    const selected = relevant.slice(0, 6);
+    const selected = relevant.slice(0, 9);
     const parts = [
       "BASE LOCAL DO MANUAL FUTURE. Este conteúdo já está instalado dentro da extensão; não é necessário consultar o site do Manual.",
       "Não invente regras fiscais nem valores tributários. Quando a decisão depender do regime, município ou enquadramento, explique a dúvida e recomende confirmação com a contabilidade.",
@@ -91,7 +114,7 @@
       parts.push(`# Módulo: ${mod?.title || "Manual"}`);
       parts.push(lessonText(lesson, true));
     }
-    return parts.join("\n\n").slice(0, 26000);
+    return parts.join("\n\n").slice(0, 42000);
   }
 
   function findHotspot(bundle, label, path = "") {
@@ -216,6 +239,68 @@
         makeStep(bundleCache, "Salvar", "final_action", path, "Revise os códigos fiscais com a contabilidade e clique em Salvar.")
       ];
     }
+    // Roteiro genérico orientado pelo conteúdo real da aula. Funciona para os demais
+    // módulos sem criar rótulos fictícios: o content script só destaca controles com nome acessível exato.
+    const rankedLessons = [...bundleCache.lessons].map(lesson => ({
+      lesson, score: relevance(lesson, location.pathname, question)
+    })).sort((a, b) => b.score - a.score);
+    const best = rankedLessons[0];
+    if (best?.lesson && best.score >= 18) {
+      const lesson = best.lesson;
+      const path = lesson.path || lesson.title;
+      const plan = [];
+      const seen = new Set();
+      const add = (label, kind, description) => {
+        const key = normalize(label);
+        if (!label || !key || seen.has(key) || plan.length >= 24) return;
+        seen.add(key);
+        plan.push(makeStep(bundleCache, label, kind, path, description || ""));
+      };
+
+      const routeParts = String(lesson.path || "").split(/\s*>\s*/).map(part => part.trim())
+        .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+      for (const part of routeParts) {
+        add(part, "click", "Siga o caminho documentado no Manual e abra esta opção no sistema.");
+      }
+
+      const isCreate = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
+      const isEdit = /\b(editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
+      const isIssue = /\b(emitir|emita|gerar|gere|transmitir|transmita|finalizar|finalize)\b/.test(q);
+
+      if (isCreate || isIssue) {
+        const action = (lesson.hotspots || []).find(h => /^(novo|nova|emitir|adicionar|incluir)/i.test(String(h.title || "").trim()));
+        if (action) add(action.title, "click", action.description || "Abra o formulário indicado pela aula.");
+        const boldActions = [...String(lesson.content || "").matchAll(/\*\*([^*]{2,60})\*\*/g)]
+          .map(match => match[1].trim()).filter(label => /^(novo|nova|emitir|adicionar|incluir|gerar|finalizar)/i.test(label));
+        for (const label of boldActions.slice(0, 3)) add(label, /^(gerar|emitir|finalizar)/i.test(label) ? "final_action" : "click");
+      } else if (isEdit) {
+        for (const h of (lesson.hotspots || [])) {
+          if (/procurar|pesquisa|opções|opcoes|editar/i.test(h.title || "")) {
+            add(h.title, "click", h.description || "Use este controle para localizar e editar o registro desejado.");
+          }
+        }
+        for (const label of ["Procurar", "Opções", "Editar"]) {
+          if (new RegExp(label, "i").test(lesson.content || "")) add(label, "click");
+        }
+      }
+
+      const content = String(lesson.content || "");
+      const fieldLabels = [];
+      for (const match of content.matchAll(/\*\*([^*]{2,55})\*\*/g)) {
+        const label = match[1].trim().replace(/\s+/g, " ");
+        const at = match.index || 0;
+        const context = content.slice(Math.max(0, at - 140), Math.min(content.length, at + match[0].length + 180));
+        if (/^(passo|passo a passo|introdução|introducao|objetivo|print \d+|o que fazer|importante|dica)$/i.test(label)) continue;
+        if (!/campo|preench|informe|digite|selecione|escolha|confira|seção|secao|aba|clique|marque|ative|defina/i.test(context)) continue;
+        fieldLabels.push(label);
+      }
+      for (const label of fieldLabels) {
+        const finalAction = /^(salvar|salvar configurações|salvar configuracoes|gerar|emitir|finalizar venda|concluir)$/i.test(label);
+        add(label, finalAction ? "final_action" : "field");
+      }
+      if (plan.length) return plan.slice(0, 24);
+    }
+
     return null;
   }
 
