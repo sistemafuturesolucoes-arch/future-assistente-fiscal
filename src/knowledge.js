@@ -319,6 +319,29 @@
         }
       }
 
+      for (const hotspot of hotspotPool) {
+        const description = String(hotspot.description || "");
+        for (const line of description.split(/\\n+/)) {
+          const match = line.match(/^\\s*(?:[-•*]\\s*)?(?:\\*\\*)?([^:\\n]{2,70}?)(?:\\*\\*)?\\s*:\\s*(.+)$/);
+          if (!match) continue;
+          const fieldLabel = match[1].replace(/^[\\s•*\\d.]+/, "").replace(/\\*\\*/g, "").trim();
+          const fieldText = match[2].replace(/\\*\\*/g, "").trim();
+          const fieldNorm = normalize(fieldLabel);
+          if (!fieldLabel || !requestedTerms.some(term => fieldNorm.includes(term))) continue;
+          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
+        }
+      }
+      for (const line of String(lesson.content || "").split(/\\n+/)) {
+        const match = line.match(/^\\s*(?:[-•*]\\s*)?(?:\\*\\*)?([^:\\n]{2,70}?)(?:\\*\\*)?\\s*:\\s*(.+)$/);
+        if (!match) continue;
+        const fieldLabel = match[1].replace(/^[\\s•*\\d.]+/, "").replace(/\\*\\*/g, "").trim();
+        const fieldText = match[2].replace(/\\*\\*/g, "").trim();
+        const fieldNorm = normalize(fieldLabel);
+        if (fieldLabel && requestedTerms.some(term => fieldNorm.includes(term))) {
+          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
+        }
+      }
+
       if (isCreate || isIssue) {
         const action = (lesson.hotspots || []).find(h => /^(novo|nova|emitir|adicionar|incluir)/i.test(String(h.title || "").trim()));
         if (action) add(action.title, "click", action.description || "Abra o formulário indicado pela aula.");
