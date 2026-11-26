@@ -120,8 +120,23 @@
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
+
+    // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
+    // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
+    if (/\bcfop\b/.test(q) && /\b(grupo|grupos|tributario|tributarios)\b/.test(q)) {
+      const path = "Cadastros > Grupo Tributário > grupo desejado > Regras Tributárias > Editar Regra";
+      return [
+        makeStep(bundleCache, "Cadastros", "click", path, "Abra Cadastros no menu lateral."),
+        makeStep(bundleCache, "Grupo Tributário", "click", path, "Selecione Grupo Tributário. É nessa área que as regras fiscais são configuradas; não altere o CFOP diretamente no cadastro do produto."),
+        makeStep(bundleCache, "Procurar", "field", path, "Pesquise pelo nome do grupo tributário vinculado ao produto e confirme que selecionou o grupo correto."),
+        makeStep(bundleCache, "Opções", "click", path, "Na linha do grupo correto, abra o menu de opções e escolha Editar."),
+        makeStep(bundleCache, "Editar Regra", "click", path, "Na seção Regras Tributárias, localize a regra correspondente à Natureza de Operação, destinatário e UF. Clique em Editar Regra. Se a regra ainda não existir, use Adicionar Regra em vez de duplicar uma regra existente."),
+        makeStep(bundleCache, "CFOP", "field", path, "Na identificação da regra, confira Natureza de Operação, CFOP, Tipo Destinatário e UFs Destino. Selecione o CFOP somente conforme a operação e a orientação da contabilidade."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os demais parâmetros tributários e clique em Salvar. Você fará a alteração e a gravação; a extensão não salva automaticamente.")
+      ];
+    }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q)) {
       const path = "Cadastros > Condutores > Novo Condutor";
