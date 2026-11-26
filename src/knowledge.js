@@ -60,10 +60,11 @@
     if (/(csc|id.?csc|serie|numeracao|certificado|pfx|regime.?tributario)/.test(q) && /empresa|configur/.test(title + " " + path)) score += 85;
     if (/(motorista|condutor)/.test(q) && /condutor/.test(title + " " + path)) score += 90;
     if (/(placa|reboque|renavam|veiculo)/.test(q) && /veiculo/.test(title + " " + path)) score += 90;
-    if (/(nfe|nota.?eletronica)/.test(q) && /nfe/.test(title + " " + path)) score += 75;
-    if (/(nfce|cupom|consumidor)/.test(q) && /nfce|consumidor/.test(title + " " + path)) score += 75;
-    if (/(nfse|nota.?de.?servico)/.test(q) && /nfse|servico/.test(title + " " + path)) score += 75;
+    if (/(nf.?e|nota.?eletronica)/.test(q) && /nf.?e/.test(title + " " + path)) score += 75;
+    if (/(nfc.?e|cupom|consumidor)/.test(q) && /nfc.?e|consumidor/.test(title + " " + path)) score += 75;
+    if (/(nfs.?e|nota.?de.?servico)/.test(q) && /nfs.?e|servico/.test(title + " " + path)) score += 75;
     if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 75;
+    if (/ct.?e.?os/.test(q) && /ct.?e.?os/.test(title + " " + path)) score += 120;
     if (/(mdfe|manifesto)/.test(q) && /mdfe|manifesto/.test(title + " " + path)) score += 75;
     const matched = terms.filter(term => haystack.includes(term));
     if (terms.length && matched.length === terms.length) score += 55;
@@ -182,9 +183,9 @@
           routeParts = ["Configurações", "Empresa", "Certificado Digital"];
         } else if (/nfc.?e|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
-        } else if (/nfe|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+        } else if (/nf.?e|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
-        } else if (/nfse|nota.?de.?servico/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+        } else if (/nfs.?e|nota.?de.?servico/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"];
         }
         const path = routeParts.join(" > ");
