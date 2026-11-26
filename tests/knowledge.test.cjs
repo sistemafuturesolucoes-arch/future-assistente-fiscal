@@ -185,10 +185,10 @@ test("gera roteiro local para instalar ou renovar certificado A1 sem depender da
   await ctx.knowledge.load({ route: "/app/dashboard", question: "como carregar um novo arquivo do certificado digital A1" });
   const plan = ctx.knowledge.getLocalNavigationPlan("como carregar um novo arquivo do certificado digital A1");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx"
+    "Configurações", "Empresa", "Certificado Digital", "Importar novo certificado A1"
   ]);
   assert.equal(plan.at(-1).kind, "field");
-  assert.match(plan.at(-1).description, /senha.*diretamente no sistema/i);
+  assert.match(plan.at(-1).description, /Opções.*\.pfx.*senha.*diretamente no Emissor/i);
 });
 
 test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA", async () => {
@@ -196,10 +196,10 @@ test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA"
   await ctx.knowledge.load({ route: "/app/dashboard", question: "onde informar o código CSC da nota de cupom" });
   const plan = ctx.knowledge.getLocalNavigationPlan("onde informar o código CSC da nota de cupom");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Notas Fiscais", "NFC-e", "CSC", "ID CSC", "Salvar Configurações"
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e", "Campos CSC e ID CSC"
   ]);
-  assert.equal(plan.at(-1).kind, "final_action");
-  assert.ok(plan.some(step => step.label === "ID CSC" && step.kind === "field"));
+  assert.equal(plan.at(-1).kind, "field");
+  assert.match(plan.at(-1).description, /campos CSC e ID CSC/i);
 });
 
 test("extrai campos descritos em listas e hotspots de configuração para a navegação local", async () => {
@@ -209,4 +209,24 @@ test("extrai campos descritos em listas e hotspots de configuração para a nave
   assert.ok(Array.isArray(plan));
   assert.ok(plan.some(step => /Série.*NFC-e/i.test(step.label) && step.kind === "field"));
   assert.ok(plan.some(step => /NFC-e/i.test(step.label)));
+});
+
+
+test("respostas locais de certificado e CSC são curtas e mostram o destino completo", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "Como carregar um novo certificado digital?" });
+  const certificate = ctx.knowledge.getLocalAnswer("Como carregar um novo certificado digital?");
+  assert.match(certificate, /Configurações > Empresa > Certificado Digital/);
+  assert.match(certificate, /Opções/);
+  assert.match(certificate, /\.pfx/);
+  assert.match(certificate, /senha diretamente no Emissor/);
+  assert.ok(certificate.length < 700);
+  assert.doesNotMatch(certificate, /Dados da Empresa|Tributação|CT-e OS|MDF-e/);
+
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "Onde informar o CSC e o ID CSC da NFC-e?" });
+  const csc = ctx.knowledge.getLocalAnswer("Onde informar o CSC e o ID CSC da NFC-e?");
+  assert.match(csc, /Configurações > Empresa > Notas Fiscais > NFC-e/);
+  assert.match(csc, /campos \*\*CSC\*\* e \*\*ID CSC\*\*/);
+  assert.ok(csc.length < 500);
+  assert.doesNotMatch(csc, /Série|Contingência|DANFE|NFS-e|CT-e/);
 });
