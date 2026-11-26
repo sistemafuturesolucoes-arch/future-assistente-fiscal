@@ -63,8 +63,11 @@
     if (/(nf.?e|nota.?eletronica)/.test(q) && /nf.?e/.test(title + " " + path)) score += 75;
     if (/(nfc.?e|cupom|consumidor)/.test(q) && /nfc.?e|consumidor/.test(title + " " + path)) score += 75;
     if (/(nfs.?e|nota.?de.?servico)/.test(q) && /nfs.?e|servico/.test(title + " " + path)) score += 75;
-    if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 75;
-    if (/ct.?e.?os/.test(q) && /ct.?e.?os/.test(title + " " + path)) score += 120;
+    const cteOsQuery = /ct.?e.?os/.test(q);
+    const cteOsLesson = /ct.?e.?os/.test(title + " " + path);
+    if (cteOsQuery && cteOsLesson) score += 150;
+    else if (!cteOsQuery && cteOsLesson) score -= 60;
+    else if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 100;
     if (/mdf.?e|manifesto/.test(q) && /mdf.?e|manifesto/.test(title + " " + path)) score += 75;
     const matched = terms.filter(term => haystack.includes(term));
     if (terms.length && matched.length === terms.length) score += 55;
@@ -170,7 +173,14 @@
         score: relevance(lesson, location.pathname, question)
           + (/configur|serie|parametro/.test(q) && /configuracoes|empresa/.test(normalize(lesson.module_id + " " + lesson.title + " " + lesson.path)) ? 90 : 0)
       })).sort((a, b) => b.score - a.score);
-      const bestRoute = rankedForRoute[0]?.lesson;
+      const settingsRequested = /(configur|serie|parametro|csc)/.test(q)
+        && /(nf.?e|nfc.?e|nfs.?e|ct.?e|mdf.?e|certificado|\\bcsc\\b)/.test(q);
+      const companySettingsLesson = bundleCache.lessons.find(lesson =>
+        /configurando os dados gerais da empresa/i.test(lesson.title || "")
+      );
+      const bestRoute = settingsRequested && companySettingsLesson
+        ? companySettingsLesson
+        : rankedForRoute[0]?.lesson;
       if (bestRoute && rankedForRoute[0].score >= 18) {
         let routeParts = String(bestRoute.path || "").split(/\s*>\s*/)
           .map(part => part.trim()).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
