@@ -101,6 +101,28 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     const textarea = await query(".composer textarea");
     const focused = await call(textarea, "function(){ this.focus(); return this.getRootNode().activeElement === this; }");
     assert.equal(focused.result.value, true, "o campo precisa receber foco");
+    // Mesmo sem o menu Configurações no DOM, a extensão deve manter o caminho local
+    // visível, sem chamar a IA e sem destacar um controle incorreto.
+    await call(textarea, "function(){ this.value = 'como carregar um novo arquivo do certificado digital A1'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+    await new Promise(resolve => setTimeout(resolve, 500));
+    assert.equal(aiRequests, 0, "a orientação do certificado deve usar o roteiro local sem chamar a IA");
+    const missingTargetCard = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
+    assert.ok(missingTargetCard.nodeId, "o caminho local deve permanecer visível quando o primeiro menu não está na tela");
+    const missingTargetText = await call(missingTargetCard.nodeId, "function(){ return this.innerText; }");
+    assert.match(missingTargetText.result.value, /Configurações > Empresa > Certificado Digital > Opções/);
+    assert.match(missingTargetText.result.value, /Já abri — avançar/);
+    const manualNext = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-manual-next" });
+    assert.ok(manualNext.nodeId, "deve permitir confirmar manualmente a abertura do menu");
+    const manualNextHidden = await call(manualNext.nodeId, "function(){ return this.hidden; }");
+    assert.equal(manualNextHidden.result.value, false);
+    assert.equal(aiRequests, 0, "a falta do alvo visual não deve descartar o roteiro nem consultar a IA");
+    const endLocalGuide = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-end" });
+    assert.ok(endLocalGuide.nodeId);
+    await call(endLocalGuide.nodeId, "function(){ this.click(); return true; }");
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
@@ -184,23 +206,7 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     assert.equal(guideDisconnected, true, "o guia deve encerrar ao chegar ao destino do Manual");
     assert.equal(aiRequests, 2, "a conclusão do caminho documentado também não deve gerar chamada à IA");
 
-    // Mesmo sem o menu Configurações no DOM, a extensão deve manter o caminho local
-    // visível, sem chamar a IA e sem destacar um controle incorreto.
-    await call(textarea, "function(){ this.value = 'como carregar um novo arquivo do certificado digital A1'; this.dispatchEvent(new Event('input', {bubbles:true})); }");
-    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
-    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    assert.equal(aiRequests, 2, "a orientação do certificado deve usar o roteiro local sem chamar a IA");
-    const missingTargetCard = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
-    assert.ok(missingTargetCard.nodeId, "o caminho local deve permanecer visível quando o primeiro menu não está na tela");
-    const missingTargetText = await call(missingTargetCard.nodeId, "function(){ return this.innerText; }");
-    assert.match(missingTargetText.result.value, /Configurações > Empresa > Certificado Digital > Opções/);
-    assert.match(missingTargetText.result.value, /Já abri — avançar/);
-    const manualNext = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-manual-next" });
-    assert.ok(manualNext.nodeId, "deve permitir confirmar manualmente a abertura do menu");
-    const manualNextHidden = await call(manualNext.nodeId, "function(){ return this.hidden; }");
-    assert.equal(manualNextHidden.result.value, false);
-    assert.equal(aiRequests, 2, "a falta do alvo visual não deve descartar o roteiro nem consultar a IA");
+
 
   } finally {
     if (context) await context.close();
