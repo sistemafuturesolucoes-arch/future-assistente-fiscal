@@ -304,3 +304,21 @@ test("todas as aulas navegáveis do Manual geram o caminho local correspondente"
     assert.deepEqual(Array.from(plan, step => step.label), expected, "rota divergente para: " + lesson.title);
   }
 });
+
+
+test("configurações dos modelos fiscais levam à aba interna correta da Empresa", async () => {
+  const ctx = createKnowledgeContext();
+  const cases = [
+    ["onde fica o CSC?", ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"]],
+    ["onde fica a série da NF-e?", ["Configurações", "Empresa", "Notas Fiscais", "NF-e"]],
+    ["onde fica a série da NFS-e?", ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"]],
+    ["onde fica a série do CT-e?", ["Configurações", "Empresa", "Notas Fiscais", "CT-e"]],
+    ["onde fica a série do CT-e OS?", ["Configurações", "Empresa", "Notas Fiscais", "CT-e OS"]],
+    ["onde fica a configuração do MDF-e?", ["Configurações", "Empresa", "Notas Fiscais", "MDF-e"]]
+  ];
+  for (const [question, expected] of cases) {
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.deepEqual(Array.from(plan, step => step.label), expected, question);
+  }
+});
