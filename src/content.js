@@ -29,7 +29,7 @@
     .guide-card .guide-controls{display:flex;gap:6px;margin-top:12px;justify-content:flex-end}
     .guide-card button{border:1px solid #9d73c8;border-radius:8px;background:#48216e;color:#fff;padding:7px 9px;font:600 11px system-ui;cursor:pointer}
     .guide-card .guide-end{background:#fff;color:#35105f}.guide-card .guide-hint{font-size:10px;color:#d7baff;margin-top:8px}
-    .guide-question{position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-dismiss{position:fixed;z-index:2147483647;width:19px;height:19px;border:1px solid #fff;border-radius:50%;background:#b4234c;color:#fff;font:800 13px/1 system-ui;box-shadow:0 2px 8px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+    .guide-question{pointer-events:auto;position:fixed;z-index:2147483646;width:34px;height:34px;border:2px solid #fff;border-radius:50%;background:#54218a;color:#fff;font:800 18px/1 system-ui;box-shadow:0 3px 14px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.guide-dismiss{pointer-events:auto;position:fixed;z-index:2147483647;width:19px;height:19px;border:1px solid #fff;border-radius:50%;background:#b4234c;color:#fff;font:800 13px/1 system-ui;box-shadow:0 2px 8px #160d2877;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
     .guide-card[hidden],.guide-question[hidden]{display:none!important}
     .proposal-card{margin-top:9px;padding:10px;border:1px solid #d8c5ef;border-radius:11px;background:#fbf8ff;color:#30213e;font-size:12px}.proposal-title{font-weight:750;margin-bottom:5px}.proposal-field{font-weight:700;margin-top:7px}.proposal-value{padding:7px;margin:4px 0 8px;background:#fff;border:1px solid #e7deef;border-radius:7px;white-space:pre-wrap;overflow-wrap:anywhere}.proposal-actions{display:flex;gap:7px}.proposal-actions button{border:0;border-radius:8px;padding:7px 10px;font:650 11px system-ui;cursor:pointer}.proposal-confirm{background:#54218a;color:#fff}.proposal-cancel{background:#eee8f4;color:#4d3b5c}.proposal-note{font-size:10px;color:#756782;margin-top:7px}
     @media(max-width:520px){.panel{right:8px;left:8px;top:8px;bottom:8px;width:auto;height:auto;max-height:none;min-height:0;border-radius:14px}.head{padding:10px 11px;gap:8px}.head-tools{gap:5px}.head-tools button{font-size:10px;padding:6px 7px;min-height:30px}.close{width:34px;height:34px;flex-basis:34px}.launcher{right:14px;bottom:14px}.messages{min-height:0}.notice{padding-bottom:7px}}
@@ -962,6 +962,33 @@
     return exact.length === 1 ? exact[0] : null;
   }
 
+  function findElementForPlanStep(step) {
+    if (!step) return null;
+    const names = [step.label, ...(Array.isArray(step.targetNames) ? step.targetNames : [])].filter(Boolean);
+    const visibleNodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
+    for (const name of names) {
+      const wanted = normalize(name);
+      const exact = visibleNodes.filter(el => getElementNames(el).some(label => normalize(label) === wanted));
+      if (exact.length === 1) return exact[0];
+      if (exact.length > 1) {
+        // Quando o mesmo nome aparece em um cartão e no submenu, prefira o item
+        // da navegação lateral indicado pelo caminho do Manual.
+        const navCandidates = exact.filter(el => el.closest("aside,[role=navigation],nav,[class*=sidebar],[class*=menu]"));
+        if (navCandidates.length === 1) return navCandidates[0];
+      }
+    }
+    // O Manual chama este alvo de "Botão Opções da Linha", mas alguns layouts
+    // exibem apenas "Opções". Só aceita o botão dentro de uma linha da tabela
+    // quando houver um único candidato visível, nunca o botão geral da listagem.
+    if (normalize(step.label) === normalize("Botão Opções da Linha")) {
+      const candidates = visibleNodes
+        .filter(el => el.closest("tr,[role=row]"))
+        .filter(el => getElementNames(el).some(name => /\b(opcoes|opcoes da linha)\b/.test(normalize(name))));
+      if (candidates.length === 1) return candidates[0];
+    }
+    return null;
+  }
+
   function findGuideSteps(answer) {
     // Marcadores automáticos só são permitidos para rótulos exatos em uma instrução
     // acionável. Correspondência aproximada pode apontar para outro menu e foi removida.
@@ -1037,6 +1064,12 @@
     }
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
+    document.removeEventListener("click", guideState.onOutsideClick, true);
+    document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
+    document.removeEventListener("keydown", guideState.onGuideFieldKeyDown, true);
+    document.removeEventListener("input", guideState.onGuideInput, true);
+    document.removeEventListener("change", guideState.onGuideFieldChange, true);
+    document.removeEventListener("focusout", guideState.onGuideFieldBlur, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1057,6 +1090,12 @@
     persistGuideProgress();
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
+    document.removeEventListener("click", guideState.onOutsideClick, true);
+    document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
+    document.removeEventListener("keydown", guideState.onGuideFieldKeyDown, true);
+    document.removeEventListener("input", guideState.onGuideInput, true);
+    document.removeEventListener("change", guideState.onGuideFieldChange, true);
+    document.removeEventListener("focusout", guideState.onGuideFieldBlur, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1076,15 +1115,27 @@
     if (step?.element && !step.element.isConnected) step.element = findElementByName(step.title);
     guideState.index = index;
     guideState.pendingIndex = null;
+    guideState.fieldChanged = false;
+    guideState.fieldCommitPending = false;
     persistGuideProgress(index);
     const manualNext = guideState.card.querySelector(".guide-manual-next");
     if (!step.element || !isGuideNodeVisible(step.element)) {
+      step.element = null;
       guideState.frame.hidden = true;
       guideState.marker.hidden = true;
-      guideState.dismiss.hidden = true;
+      // Mesmo sem localizar o alvo, mantenha Fechar acessível para liberar a tela.
       guideState.card.hidden = false;
       guideState.card.style.left = Math.max(8, (window.innerWidth - 330) / 2) + "px";
       guideState.card.style.top = "88px";
+      // Pergunta e Fechar continuam visíveis mesmo quando o controle da página
+      // ainda não foi encontrado; assim o usuário nunca fica preso no guia.
+      const fallbackLeft = Math.max(8, (window.innerWidth - 330) / 2);
+      guideState.marker.hidden = false;
+      guideState.marker.style.left = Math.min(window.innerWidth - 42, fallbackLeft + 286) + "px";
+      guideState.marker.style.top = "70px";
+      guideState.dismiss.hidden = false;
+      guideState.dismiss.style.left = Math.min(window.innerWidth - 22, fallbackLeft + 312) + "px";
+      guideState.dismiss.style.top = "64px";
       guideState.card.querySelector(".guide-kicker").textContent = "CAMINHO DO MANUAL · PASSO " + (index + 1) + " DE " + navigationPlan.length;
       guideState.card.querySelector(".guide-title").textContent = step.title;
       guideState.card.querySelector(".guide-desc").textContent = step.description;
@@ -1211,7 +1262,7 @@
       return true;
     }
     const next = navigationPlan[navigationPlanIndex];
-    const element = findElementByName(next.label);
+    const element = findElementForPlanStep(next);
     const pathDescription = (next.path ? "Caminho completo: " + next.path + ". " : "") + next.description;
     // Preserve o roteiro mesmo quando o menu está fechado ou o controle ainda não existe no DOM.
     startVisualGuide([{
@@ -1255,6 +1306,10 @@
   }
 
   async function waitForNavigationTarget(label, timeoutMs = 3000) {
+    return waitForNavigationStep({ label }, timeoutMs);
+  }
+
+  async function waitForNavigationStep(step, timeoutMs = 3000) {
     return new Promise(resolve => {
       let settled = false;
       let pollTimer = null;
@@ -1268,7 +1323,7 @@
         resolve(Boolean(found));
       };
       const check = () => {
-        if (findElementByName(label)) finish(true);
+        if (findElementForPlanStep(step)) finish(true);
         else if (Date.now() - startedAt >= timeoutMs) finish(false);
       };
       observer = new MutationObserver(check);
@@ -1343,8 +1398,8 @@
     marker.className = "guide-question";
     marker.type = "button";
     marker.textContent = "?";
-    marker.title = "Ver orientação deste item";
-    marker.setAttribute("aria-label", "Ver orientação deste item");
+    marker.title = "Pergunta: ver orientação deste item";
+    marker.setAttribute("aria-label", "Pergunta: ver orientação deste item");
     const dismiss = document.createElement("button");
     dismiss.className = "guide-dismiss";
     dismiss.type = "button";
@@ -1359,58 +1414,59 @@
       <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
+    const onOutsideClick = event => {
+      if (!guideState || !navigationGuideActive) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+      if (path.includes(host) || path.some(node => node instanceof Node && host.contains(node))) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.element || !isGuideNodeVisible(current.element)) return;
+      const insideTarget = path.some(node => node instanceof Node &&
+        (node === current.element || current.element.contains(node)));
+      if (insideTarget) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      status.textContent = "Para evitar sair do roteiro, clique no item destacado. Use Pergunta para rever a orientação ou Fechar para liberar a tela.";
+    };
+    const onGuideKeyDown = event => {
+      if (event.key === "Escape" && guideState) {
+        event.preventDefault();
+        clearNavigationTask();
+        closeGuide();
+        status.textContent = "Guia encerrado pelo atalho Esc. A tela está liberada.";
+      }
+    };
     const onTargetClick = event => {
       if (!guideState) return;
       const target = event.target;
       const isNode = value => Boolean(value && typeof value === "object" && typeof value.nodeType === "number");
-      if (isNode(target) && (card.contains(target) || host.contains(target))) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
+      if (path.includes(host) || path.some(node => isNode(node) && (card.contains(node) || host.contains(node)))) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element || !isNode(current.element)) return;
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
       const clicked = path.find(node => isNode(node) && (node === current.element || current.element.contains(node)));
-      if (!clicked) return;
-      if (current.validationField || current.waitForInput) return;
+      if (!clicked || current.validationField || current.waitForInput) return;
+
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
       navigationLastCompletedRoute = location.pathname;
       if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
       persistNavigationTask();
-      const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
-      const beforeSnapshot = navigationSnapshot();
-      const navigationUpdate = nextPlannedLabel
-        ? waitForNavigationTarget(nextPlannedLabel, 5000)
-        : waitForNavigationUpdate(beforeSnapshot, current.kind === "final_action" ? 12000 : 5000);
-      const nextIndex = guideState.index + 1;
-      guideState.pendingIndex = nextIndex;
+      guideState.pendingIndex = guideState.index + 1;
       guideState.waitingForNavigation = true;
-      guideState.card.querySelector(".guide-desc").textContent = "Aguarde: estou verificando o que apareceu depois do clique.";
-      status.textContent = "Lendo a nova tela ou submenu...";
-      persistGuideProgress(nextIndex);
-      guideState.navigationTimer = window.setTimeout(async () => {
+      status.textContent = "Abrindo a próxima etapa do Manual...";
+      // Avança depois do clique real do sistema (bubble handlers/React). Se o alvo
+      // ainda não estiver renderizado, o próximo cartão informa o caminho e permite
+      // procurar novamente, sem manter o marcador antigo preso na tela.
+      guideState.navigationTimer = window.setTimeout(() => {
         if (!navigationGuideActive) return;
-        const changed = await navigationUpdate;
-        if (!navigationGuideActive) return;
-        if (!changed) {
-          if (navigationPlan.length) {
-            navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
-            persistNavigationTask();
-          }
-          if (guideState) {
-            guideState.waitingForNavigation = false;
-            guideState.card.querySelector(".guide-desc").textContent = "Não detectei mudança na tela. Verifique se o menu abriu ou envie um print para eu localizar a opção correta. Não vou repetir o mesmo clique automaticamente.";
-          }
-          status.textContent = "A tela não mudou; aguardando você conferir o menu.";
-          return;
-        }
-        // Quando o próximo alvo já está no DOM, avance diretamente no plano local.
-        // Não passe pelo bloqueio requestInProgress: ele protege chamadas à IA, mas não
-        // deve impedir uma transição visual que não faz nenhuma requisição.
+        if (guideState) guideState.waitingForNavigation = false;
         if (navigationPlan.length && advanceLocalNavigationPlan()) return;
         continueNavigationGuide();
-      }, 0);
+      }, 80);
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, fieldChanged: false, fieldCommitPending: false, reposition: () => showGuideStep(guideState?.index || 0) };
     // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
     guideState.observer = new MutationObserver(() => {
       if (!guideState || guideState.waitingForNavigation) return;
@@ -1418,13 +1474,18 @@
       guideState.mutationTimer = window.setTimeout(() => {
         if (!guideState) return;
         const current = guideState.steps[guideState.index];
-        if (current?.element && (!current.element.isConnected || !isGuideNodeVisible(current.element))) {
+        if (current && (!current.element || !current.element.isConnected || !isGuideNodeVisible(current.element))) {
           const replacement = findElementByName(current.title);
           if (replacement) {
             current.element = replacement;
             showGuideStep(guideState.index);
           } else {
-            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou ainda não está visível. Abra o menu correspondente e use “Procurar novamente”.";
+            current.element = null;
+            guideState.frame.hidden = true;
+            guideState.marker.hidden = true;
+            guideState.dismiss.hidden = true;
+            guideState.card.hidden = false;
+            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou não está mais visível. Abra o menu correspondente e use “Procurar novamente”. O destaque antigo foi removido.";
           }
         }
       }, 140);
@@ -1439,12 +1500,25 @@
       if (current?.element?.isConnected && isGuideNodeVisible(current.element)) {
         const rect = current.element.getBoundingClientRect();
         const pad = 5;
+        const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
+        const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
         Object.assign(frame.style, {
           left: Math.max(2, rect.left - pad) + "px",
           top: Math.max(2, rect.top - pad) + "px",
           width: Math.max(12, rect.width + pad * 2) + "px",
           height: Math.max(12, rect.height + pad * 2) + "px"
         });
+        marker.style.left = markerLeft + "px";
+        marker.style.top = markerTop + "px";
+        dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
+        dismiss.style.top = Math.max(4, markerTop - 7) + "px";
+      } else if (current?.element) {
+        current.element = null;
+        frame.hidden = true;
+        marker.hidden = true;
+        dismiss.hidden = true;
+        card.hidden = false;
+        card.querySelector(".guide-desc").textContent = "O item destacado mudou ou saiu da tela. Abra o menu correto e use “Procurar novamente”. Nenhum destaque antigo será mantido.";
       }
       guideState.positionFrame = requestAnimationFrame(followTarget);
     };
@@ -1452,6 +1526,7 @@
     stopButton.disabled = false;
     dismiss.addEventListener("click", event => {
       event.preventDefault();
+      event.stopImmediatePropagation();
       event.stopPropagation();
       if (!guideState) return;
       clearNavigationTask();
@@ -1460,6 +1535,7 @@
     });
     marker.addEventListener("click", event => {
       event.preventDefault();
+      event.stopImmediatePropagation();
       event.stopPropagation();
       if (!guideState) return;
       const activeCard = guideState.card;
@@ -1505,8 +1581,54 @@
       if (!advanceLocalNavigationPlan()) continueNavigationGuide();
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
+    // Campos (ex.: Procurar) só avançam depois de uma alteração real e confirmação
+    // por Enter, change ou saída do campo. Um simples clique não deixa o roteiro travado.
+    const commitCurrentField = () => {
+      if (!guideState || !navigationGuideActive) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !guideState.fieldChanged || guideState.fieldCommitPending) return;
+      guideState.fieldCommitPending = true;
+      window.setTimeout(() => {
+        if (!guideState || !navigationGuideActive) return;
+        navigationLastCompletedStep = current.title || "campo";
+        navigationLastCompletedRoute = location.pathname;
+        if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+        persistNavigationTask();
+        closeGuide();
+        if (!advanceLocalNavigationPlan()) continueNavigationGuide();
+      }, 120);
+    };
+    const onGuideInput = event => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !current.element) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+      if (path.some(node => node instanceof Node && (node === current.element || current.element.contains(node)))) {
+        guideState.fieldChanged = true;
+      }
+    };
+    const onGuideFieldChange = event => {
+      onGuideInput(event);
+      commitCurrentField();
+    };
+    const onGuideFieldKeyDown = event => {
+      if (event.key === "Enter") commitCurrentField();
+    };
+    const onGuideFieldBlur = event => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !current.element) return;
+      if (event.target === current.element || current.element.contains(event.target)) commitCurrentField();
+    };
+    Object.assign(guideState, { onGuideInput, onGuideFieldChange, onGuideFieldKeyDown, onGuideFieldBlur });
+    document.addEventListener("input", onGuideInput, true);
+    document.addEventListener("change", onGuideFieldChange, true);
+    document.addEventListener("keydown", onGuideFieldKeyDown, true);
+    document.addEventListener("focusout", onGuideFieldBlur, true);
     document.addEventListener("scroll", guideState.reposition, true);
+    document.addEventListener("click", onOutsideClick, true);
     document.addEventListener("click", onTargetClick, true);
+    document.addEventListener("keydown", onGuideKeyDown, true);
     window.addEventListener("resize", guideState.reposition);
     showGuideStep(Math.max(0, Math.min(initialIndex, steps.length - 1)));
   }
@@ -1592,10 +1714,12 @@
   window.addEventListener("popstate", () => {
     suspendGuideForNavigation();
     scheduleGuideRestore();
+    window.setTimeout(restoreNavigationAfterPageLoad, 300);
   });
   window.addEventListener("hashchange", () => {
     suspendGuideForNavigation();
     scheduleGuideRestore();
+    window.setTimeout(restoreNavigationAfterPageLoad, 300);
   });
 
   for (const method of ["pushState", "replaceState"]) {
@@ -1606,6 +1730,7 @@
       if (location.pathname !== previousPath) {
         suspendGuideForNavigation();
         scheduleGuideRestore();
+        window.setTimeout(restoreNavigationAfterPageLoad, 300);
       }
       return result;
     };
@@ -2122,7 +2247,8 @@
     const navigationPlanRequest = navigationTask && navigationIntent && Boolean(knowledge) && !isNavigationContinuation && !files.length
       ? "\n\n[[FUTURE_NAVIGATION_PLAN_REQUEST]]\nPrimeiro classifique a intenção do usuário: (A) LOCALIZAR/ACESSAR uma tela ou campo; (B) EXECUTAR uma configuração/cadastro completo; (C) EMITIR/TRANSMITIR/CANCELAR documento. Para (A), gere o menor caminho possível desde o menu inicial até a tela/aba/campo solicitado e PARE ali. Não acrescente campos, passos de preenchimento, salvamento, emissão ou aulas relacionadas que o usuário não pediu. Ao chegar ao destino, explique em uma frase curta o que o usuário encontrará nessa tela. Para (B), só gere o procedimento completo se o usuário pedir explicitamente passo a passo ou como concluir a alteração; inclua apenas campos e botão de salvar documentados. Para (C), oriente a conferência e aguarde confirmação explícita antes de qualquer ação irreversível. Em todos os casos use somente caminhos e rótulos sustentados pelo Manual ou pela tela atual; nunca invente controles. Cada item deve ter label exatamente igual ao texto/label acessível do controle, description clara, path documentado e kind (click, field ou final_action). Limite a 20 passos. Ao final, acrescente exatamente um bloco " + NAVIGATION_PLAN_OPEN + "[{\"label\":\"rótulo exato do próximo controle\",\"description\":\"instrução para o usuário\",\"path\":\"caminho documentado\",\"kind\":\"click|field|final_action\"}]"+NAVIGATION_PLAN_CLOSE+". Nunca clique, preencha, salve, transmita ou envie automaticamente. Se não conseguir confirmar o destino com segurança, informe o que falta e peça um print em vez de inventar um roteiro.\n"
       : "";
-    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
+    const conciseResponsePolicy = "\n\nESTILO DE RESPOSTA OBRIGATÓRIO: Seja direto e natural. Para uma dúvida objetiva, responda em no máximo 3 a 5 frases. Não despeje a aula inteira nem copie o Manual. Quando o usuário pedir ajuda para executar, conferir ou localizar algo, oriente somente o próximo passo e aguarde o clique, confirmação ou print antes de avançar. Só apresente a aula completa quando o usuário pedir explicitamente para aprender tudo, ler a aula ou ver o procedimento completo. Em conferências fiscais (incluindo CFOP), não declare que um código está correto ou incorreto sem conhecer os dados da operação; indique o que conferir e peça a tela/contexto necessário. Nunca invente valores fiscais.\n";
+    const parts = [{ type: "text", text: (question || (files.length ? "Analise o anexo enviado e me ajude." : "")) + navigationPlanRequest + manualPolicy + conciseResponsePolicy + attachmentContext + proposalProtocol + "\n\nCONTEXTO ATUAL DA TELA:\n" + context }];
     for (const file of files) parts.push({ type: "file", mediaType: file.mediaType, filename: file.name, url: file.url });
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);

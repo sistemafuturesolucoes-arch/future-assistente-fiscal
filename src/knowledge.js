@@ -142,7 +142,17 @@
   function makeStep(bundle, label, kind, path, extraDescription = "") {
     const hotspot = findHotspot(bundle, label, path);
     const description = extraDescription || hotspot?.description || `Localize ${label} na tela atual.`;
-    return { label, kind, path, description };
+    const manualMarker = hotspot ? {
+      id: hotspot.id || "",
+      title: hotspot.title || label,
+      tip: hotspot.tip || "",
+      description: hotspot.description || description,
+      x: Number.isFinite(hotspot.x) ? hotspot.x : null,
+      y: Number.isFinite(hotspot.y) ? hotspot.y : null,
+      w: Number.isFinite(hotspot.w) ? hotspot.w : null,
+      h: Number.isFinite(hotspot.h) ? hotspot.h : null
+    } : null;
+    return { label, kind, path, description, manualMarker };
   }
 
   function makeLessonStep(bundle, lesson, label, kind, path, extraDescription = "") {
@@ -153,12 +163,22 @@
     ];
     const hotspot = hotspots.find(item => normalize(item?.title) === target);
     const description = extraDescription || hotspot?.description || ("Localize " + label + " na tela atual, conforme a aula " + (lesson?.title || "do Manual") + ".");
-    return { label, kind, path, description };
+    const manualMarker = hotspot ? {
+      id: hotspot.id || "",
+      title: hotspot.title || label,
+      tip: hotspot.tip || "",
+      description: hotspot.description || description,
+      x: Number.isFinite(hotspot.x) ? hotspot.x : null,
+      y: Number.isFinite(hotspot.y) ? hotspot.y : null,
+      w: Number.isFinite(hotspot.w) ? hotspot.w : null,
+      h: Number.isFinite(hotspot.h) ? hotspot.h : null
+    } : null;
+    return { label, kind, path, description, manualMarker };
   }
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajust\w*|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|altero|conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque|me ajude|me ajuda|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
     const createRequest = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
 
@@ -270,17 +290,22 @@
 
     // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
     // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
-    if (/\bcfop\b/.test(q) && /\b(grupo|grupos|tributario|tributarios)\b/.test(q)) {
+    if (/\bcfop\b/.test(q)) {
       const path = "Cadastros > Grupo Tributário > grupo desejado > Regras Tributárias > Editar Regra";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra Cadastros no menu lateral."),
-        makeStep(bundleCache, "Grupo Tributário", "click", path, "Selecione Grupo Tributário. É nessa área que as regras fiscais são configuradas; não altere o CFOP diretamente no cadastro do produto."),
-        makeStep(bundleCache, "Procurar", "field", path, "Pesquise pelo nome do grupo tributário vinculado ao produto e confirme que selecionou o grupo correto."),
-        makeStep(bundleCache, "Opções", "click", path, "Na linha do grupo correto, abra o menu de opções e escolha Editar."),
-        makeStep(bundleCache, "Editar Regra", "click", path, "Na seção Regras Tributárias, localize a regra correspondente à Natureza de Operação, destinatário e UF. Clique em Editar Regra. Se a regra ainda não existir, use Adicionar Regra em vez de duplicar uma regra existente."),
-        makeStep(bundleCache, "CFOP", "field", path, "Na identificação da regra, confira Natureza de Operação, CFOP, Tipo Destinatário e UFs Destino. Selecione o CFOP somente conforme a operação e a orientação da contabilidade."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os demais parâmetros tributários e clique em Salvar. Você fará a alteração e a gravação; a extensão não salva automaticamente.")
+      const inspectionOnly = /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(q)
+        && !/\b(ajustar|ajuste|alterar|altere|altero|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
+      const plan = [
+        makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral, abra Cadastros."),
+        makeStep(bundleCache, "Grupo Tributário", "click", path, "Abra Grupo Tributário. Ao chegar à listagem, o guia continuará pelos marcadores desta aula do Manual."),
+        makeStep(bundleCache, "Procurar", "field", path, "Marcador do Manual: digite o nome do grupo tributário utilizado pelo produto. Pressione Enter ou saia do campo para aplicar a busca; depois o guia mostrará as opções da linha correspondente."),
+        { ...makeStep(bundleCache, "Botão Opções da Linha", "click", path, "Marcador do Manual: na linha do grupo encontrado, abra as opções daquela linha. Não use as opções gerais da listagem."), targetNames: ["Opções da Linha", "Opções"] },
+        makeStep(bundleCache, "Editar", "click", path, "No menu que abriu na linha do grupo selecionado, escolha Editar para abrir o painel de regras tributárias."),
+        makeStep(bundleCache, "Editar Regra", "click", path, "Marcador do Manual: na área de regras tributárias, abra Editar Regra para a natureza de operação, destinatário e UF correspondentes."),
+        makeStep(bundleCache, "CFOP", "field", path, "Marcador do Manual: confira o campo CFOP junto com Natureza de Operação, Tipo Destinatário e UFs Destino. A escolha fiscal deve ser validada conforme a operação e a orientação da contabilidade."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar os parâmetros com a contabilidade, revise a regra e clique em Salvar. A extensão não altera nem grava os dados por você.")
       ];
+      // Conferência é somente leitura: pare no campo CFOP e aguarde o usuário enviar a tela.
+      return inspectionOnly ? plan.slice(0, 7) : plan;
     }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
@@ -521,6 +546,14 @@
     // configuração da NFC-e com emissão de NFC-e) gera respostas longas e fora da intenção.
     const lesson = best.lesson;
     const plan = getLocalNavigationPlan(question);
+    const normalizedQuestion = normalize(question);
+    const isCfopInspection = /\bcfop\b/.test(normalizedQuestion)
+      && /\b(grupo|grupos|tributario|tributarios)\b/.test(normalizedQuestion)
+      && /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(normalizedQuestion)
+      && !/\b(ajustar|ajuste|alterar|altere|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(normalizedQuestion);
+    if (isCfopInspection) {
+      return "Claro! Vamos conferir juntos. Acesse Cadastros → Grupo Tributário, abra o grupo usado pelo produto e localize Regras Tributárias. Abra a regra correspondente à operação e confira o campo CFOP. Envie um print dessa tela para eu ajudar a analisar; não dá para afirmar se o CFOP está correto sem conhecer a operação e validar a orientação fiscal com a contabilidade.";
+    }
     if (Array.isArray(plan) && plan.length) {
       const route = plan.map(step => step.label).join(" > ");
       const finalStep = plan[plan.length - 1];

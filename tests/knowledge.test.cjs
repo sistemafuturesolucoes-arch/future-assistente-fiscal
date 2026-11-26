@@ -104,7 +104,7 @@ test("gera roteiro local para ajustar CFOP em grupo tributário sem chamar a IA"
   const plan = ctx.knowledge.getLocalNavigationPlan("como ajustar o cfop no grupo tributario");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
   assert.equal(plan.find(step => step.label === "CFOP").kind, "field");
@@ -320,5 +320,63 @@ test("configurações dos modelos fiscais levam à aba interna correta da Empres
     await ctx.knowledge.load({ route: "/app/dashboard", question });
     const plan = ctx.knowledge.getLocalNavigationPlan(question);
     assert.deepEqual(Array.from(plan, step => step.label), expected, question);
+  }
+});
+
+
+test("conferência de CFOP no grupo tributário para no campo e não oferece salvar", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "me ajude a conferir o cfop no grupo tributaria nas regras";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP"
+  ]);
+  assert.equal(plan.at(-1).kind, "field");
+  assert.ok(!plan.some(step => step.kind === "final_action"));
+});
+
+test("resposta local de conferência de CFOP é curta e não afirma validade sem contexto", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "me ajude a conferir o cfop no grupo tributaria nas regras";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const answer = ctx.knowledge.getLocalAnswer(question);
+  assert.ok(answer.length < 600);
+  assert.match(answer, /Cadastros.*Grupo Tributário/);
+  assert.match(answer, /envie um print/i);
+  assert.match(answer, /não dá para afirmar se o CFOP está correto/i);
+  assert.doesNotMatch(answer, /Aula:|Salvar/);
+});
+
+
+test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar grupo tributário", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "Como altero o CFOP?";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+  ]);
+  assert.equal(plan[0].kind, "click");
+  assert.equal(plan.at(-1).kind, "final_action");
+  assert.match(plan.find(step => step.label === "Procurar").description, /digite o nome do grupo/i);
+  assert.match(plan.find(step => step.label === "Botão Opções da Linha").description, /linha/i);
+  assert.equal(plan.find(step => step.label === "Botão Opções da Linha").manualMarker.title, "Botão Opções da Linha");
+  assert.equal(plan.find(step => step.label === "CFOP").manualMarker.title, "CFOP");
+  assert.ok(plan.find(step => step.label === "CFOP").manualMarker.id);
+});
+
+test("variação 'Como ajusto o CFOP?' inicia o guia visual local com marcadores", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "Como ajusto o CFOP?";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.ok(Array.isArray(plan), "a pergunta deve gerar um plano visual local, não cair na resposta textual de fallback");
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+  ]);
+  for (const label of ["Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar Regra", "CFOP"]) {
+    const step = plan.find(item => item.label === label);
+    assert.ok(step?.manualMarker?.id, `o passo ${label} deve carregar o marcador do Manual Future`);
   }
 });

@@ -23,10 +23,11 @@ test("contexto seguro da tela inclui menus e submenus visíveis", () => {
   assert.match(source, /\[role=treeitem\]/);
 });
 
-test("navegação aguarda mudança real da interface antes de pedir o próximo passo", () => {
-  assert.match(source, /async function waitForNavigationUpdate/);
-  assert.match(source, /const changed = await navigationUpdate/);
-  assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+test("navegação avança após o clique real e não deixa o marcador antigo preso", () => {
+  assert.match(source, /guideState\.navigationTimer = window\.setTimeout/);
+  assert.match(source, /Abrindo a próxima etapa do Manual/);
+  assert.match(source, /if \(navigationPlan\.length && advanceLocalNavigationPlan\(\)\) return/);
+  assert.match(source, /ainda não estiver renderizado/i);
 });
 
 test("respostas da IA renderizam links Markdown sem inserir HTML arbitrário", () => {
@@ -201,7 +202,7 @@ test("rotas do Manual viram um plano local e o próximo passo é resolvido no DO
   assert.match(source, /FUTURE_NAVIGATION_PLAN_REQUEST/);
   assert.match(source, /function extractNavigationPlan\(answer\)/);
   assert.match(source, /function advanceLocalNavigationPlan\(\)/);
-  assert.match(source, /findElementByName\(next\.label\)/);
+  assert.match(source, /findElementForPlanStep\(next\)/);
   assert.match(source, /plan: navigationPlan, planIndex: navigationPlanIndex/);
   assert.match(source, /navigationPlanIndex = Number\.isInteger\(saved\.planIndex\)/);
 });
@@ -229,7 +230,7 @@ test("o plano local cobre o fluxo completo, inclusive campos e botão final", ()
   assert.match(source, /completeNavigationInputStep/);
   assert.match(source, /Preencha este campo conforme a orientação/);
   assert.match(source, /Nunca clique, preencha, salve, transmita ou envie automaticamente/);
-  assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+  assert.match(source, /Abrindo a próxima etapa do Manual/);
 });
 
 
@@ -316,4 +317,56 @@ test("balão de pergunta abre e fecha alternadamente e o botão X encerra a orie
   assert.ok(source.includes('marker.setAttribute("aria-expanded", String(!activeCard.hidden))'));
   assert.ok(source.includes('dismiss.addEventListener("click", event =>'));
   assert.ok(source.includes("Indicador fechado. A orientação foi encerrada e não será retomada"));
+});
+
+
+test("guia bloqueia cliques fora do alvo e permite fechar ou sair com Esc", () => {
+  assert.match(source, /const onOutsideClick = event =>/);
+  assert.match(source, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/);
+  assert.match(source, /path\.includes\(host\)/);
+  assert.match(source, /event\.key === "Escape"/);
+  assert.match(source, /document\.removeEventListener\("click", guideState\.onOutsideClick, true\)/);
+  assert.match(source, /document\.removeEventListener\("keydown", guideState\.onGuideKeyDown, true\)/);
+});
+
+test("marcador Pergunta e botão Fechar acompanham o alvo e não deixam destaque antigo", () => {
+  assert.match(source, /Pergunta: ver orientação deste item/);
+  assert.match(source, /marker\.style\.left = markerLeft \+ "px"/);
+  assert.match(source, /dismiss\.style\.left = Math\.min\(window\.innerWidth - 22, markerLeft \+ 26\)/);
+  assert.match(source, /current\.element = null;\s*frame\.hidden = true;\s*marker\.hidden = true;\s*dismiss\.hidden = true/);
+});
+
+test("botões Pergunta e Fechar recebem eventos apesar do host usar pointer-events none", () => {
+  assert.match(source, /\.guide-question\{pointer-events:auto;/);
+  assert.match(source, /\.guide-dismiss\{pointer-events:auto;/);
+  assert.match(source, /marker\.addEventListener\("click"/);
+  assert.match(source, /dismiss\.addEventListener\("click"/);
+});
+
+test("campos de pesquisa avançam somente após digitação e confirmação", () => {
+  assert.match(source, /const commitCurrentField = \(\) =>/);
+  assert.match(source, /document\.addEventListener\("input", onGuideInput, true\)/);
+  assert.match(source, /document\.addEventListener\("change", onGuideFieldChange, true\)/);
+  assert.match(source, /document\.addEventListener\("focusout", onGuideFieldBlur, true\)/);
+  assert.match(source, /guideState\.fieldChanged/);
+  assert.match(source, /navigationPlanIndex = Math\.min\(navigationPlan\.length, navigationPlanIndex \+ 1\)/);
+});
+
+test("guia mantém Pergunta e Fechar acessíveis mesmo sem localizar o controle", () => {
+  assert.match(source, /Mesmo sem localizar o alvo, mantenha Fechar acessível/);
+  assert.match(source, /guideState\.marker\.hidden = false/);
+  assert.match(source, /guideState\.dismiss\.hidden = false/);
+});
+
+test("base local preserva os marcadores de todas as aulas e capturas do Manual", () => {
+  const markers = new Set();
+  for (const lesson of manualBundle.lessons) {
+    for (const marker of [...(lesson.hotspots || []), ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])]) {
+      assert.ok(marker.title, "marcador sem título na aula " + lesson.title);
+      assert.ok(marker.description, "marcador sem orientação na aula " + lesson.title);
+      markers.add(lesson.id + ":" + (marker.id || marker.title));
+    }
+  }
+  assert.ok(manualBundle.lessons.every(lesson => Array.isArray(lesson.screenshots)));
+  assert.ok(markers.size >= 370, "a extensão deve carregar os marcadores do Manual, não só os títulos das aulas");
 });

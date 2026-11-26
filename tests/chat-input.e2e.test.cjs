@@ -118,10 +118,25 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     const manualNextHidden = await call(manualNext.nodeId, "function(){ return this.hidden; }");
     assert.equal(manualNextHidden.result.value, false);
     assert.equal(aiRequests, 0, "a falta do alvo visual não deve descartar o roteiro nem consultar a IA");
-    const endLocalGuide = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-end" });
-    assert.ok(endLocalGuide.nodeId);
-    await call(endLocalGuide.nodeId, "function(){ this.click(); return true; }");
+    const questionMarker = await query(".guide-question");
+    const questionPointerEvents = await call(questionMarker, "function(){ return getComputedStyle(this).pointerEvents; }");
+    assert.equal(questionPointerEvents.result.value, "auto", "Pergunta precisa receber cliques mesmo com o host em pointer-events none");
+    const cardBeforeQuestion = await call(missingTargetCard.nodeId, "function(){ return this.hidden; }");
+    assert.equal(cardBeforeQuestion.result.value, false);
+    await call(questionMarker, "function(){ this.click(); return true; }");
+    const cardAfterQuestion = await call(missingTargetCard.nodeId, "function(){ return this.hidden; }");
+    assert.equal(cardAfterQuestion.result.value, true, "Pergunta deve recolher a orientação");
+    await call(questionMarker, "function(){ this.click(); return true; }");
+    const cardReopened = await call(missingTargetCard.nodeId, "function(){ return this.hidden; }");
+    assert.equal(cardReopened.result.value, false, "Pergunta deve reabrir a orientação");
+
+    const closeMarker = await query(".guide-dismiss");
+    const closePointerEvents = await call(closeMarker, "function(){ return getComputedStyle(this).pointerEvents; }");
+    assert.equal(closePointerEvents.result.value, "auto", "Fechar precisa receber cliques");
+    await call(closeMarker, "function(){ this.click(); return true; }");
     await new Promise(resolve => setTimeout(resolve, 150));
+    const closedGuide = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
+    assert.equal(closedGuide.nodeId || 0, 0, "Fechar deve remover o guia visual e liberar a tela");
 
     await cdp.send("Input.insertText", { text: "Como localizo o campo de serviço?" });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, modifiers: 8 });
