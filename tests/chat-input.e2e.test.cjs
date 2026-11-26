@@ -151,7 +151,13 @@ test("Chrome real permite digitar, usar Shift+Enter, enviar e anexar print/XML",
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     for (let i = 0; i < 40 && aiRequests < 3; i++) await new Promise(resolve => setTimeout(resolve, 100));
     assert.equal(aiRequests, 3, "a dúvida sobre um campo específico sem roteiro local deve consultar a IA uma única vez");
-    const guideCard = await query(".guide-card");
+    let guideCard = 0;
+    for (let i = 0; i < 50 && !guideCard; i++) {
+      const found = await cdp.send("DOM.querySelector", { nodeId: shadowRootId, selector: ".guide-card" });
+      guideCard = found.nodeId || 0;
+      if (!guideCard) await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.ok(guideCard, "o roteiro deve aparecer após a resposta da IA");
     const firstGuideTitle = await call(guideCard, "function(){ return this.querySelector('.guide-title')?.textContent || ''; }");
     assert.equal(firstGuideTitle.result.value, "Cadastros");
     await page.locator("#cadastros").click();
