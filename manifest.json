@@ -18,16 +18,7 @@
     "48": "icon.png",
     "128": "icon.png"
   },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/manual-knowledge.json"
-      ],
-      "matches": [
-        "https://sistema.emissorfiscalonline.com.br/*"
-      ]
-    }
-  ],
+  "web_accessible_resources": [],
   "host_permissions": [
     "https://sistema.emissorfiscalonline.com.br/*",
     "https://itbppoailqkuxajesgys.supabase.co/*"
@@ -38,6 +29,7 @@
         "https://sistema.emissorfiscalonline.com.br/*"
       ],
       "js": [
+        "src/manual-knowledge.js",
         "src/knowledge.js",
         "src/content.js"
       ],
