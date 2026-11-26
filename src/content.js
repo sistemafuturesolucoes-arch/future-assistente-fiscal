@@ -1027,6 +1027,9 @@
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
+    clearTimeout(guideState.mutationTimer);
+    guideState.observer?.disconnect();
+    cancelAnimationFrame(guideState.positionFrame);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
@@ -1044,6 +1047,9 @@
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
+    clearTimeout(guideState.mutationTimer);
+    guideState.observer?.disconnect();
+    cancelAnimationFrame(guideState.positionFrame);
     guideState.frame.remove();
     guideState.marker?.remove();
     guideState.dismiss?.remove();
@@ -1269,7 +1275,7 @@
     card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Abra ? quando precisar reler a orientação.</div>
+      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
@@ -1316,7 +1322,45 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
+    // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
+    guideState.observer = new MutationObserver(() => {
+      if (!guideState || guideState.waitingForNavigation) return;
+      clearTimeout(guideState.mutationTimer);
+      guideState.mutationTimer = window.setTimeout(() => {
+        if (!guideState) return;
+        const current = guideState.steps[guideState.index];
+        if (current?.element && (!current.element.isConnected || !isGuideNodeVisible(current.element))) {
+          const replacement = findElementByName(current.title);
+          if (replacement) {
+            current.element = replacement;
+            showGuideStep(guideState.index);
+          } else {
+            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou ainda não está visível. Abra o menu correspondente e use “Procurar novamente”.";
+          }
+        }
+      }, 140);
+    });
+    if (document.body) guideState.observer.observe(document.body, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ["class", "hidden", "aria-expanded", "aria-hidden", "disabled"]
+    });
+    const followTarget = () => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (current?.element?.isConnected && isGuideNodeVisible(current.element)) {
+        const rect = current.element.getBoundingClientRect();
+        const pad = 5;
+        Object.assign(frame.style, {
+          left: Math.max(2, rect.left - pad) + "px",
+          top: Math.max(2, rect.top - pad) + "px",
+          width: Math.max(12, rect.width + pad * 2) + "px",
+          height: Math.max(12, rect.height + pad * 2) + "px"
+        });
+      }
+      guideState.positionFrame = requestAnimationFrame(followTarget);
+    };
+    guideState.positionFrame = requestAnimationFrame(followTarget);
     stopButton.disabled = false;
     dismiss.addEventListener("click", () => {
       clearNavigationTask();
@@ -1333,6 +1377,27 @@
       const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
       guideState.card.style.left = left + "px";
       guideState.card.style.top = top + "px";
+    });
+    card.querySelector(".guide-back").addEventListener("click", () => {
+      if (!navigationGuideActive || navigationPlanIndex <= 0) {
+        card.querySelector(".guide-desc").textContent = "Este é o primeiro passo disponível deste caminho.";
+        return;
+      }
+      navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
+      persistNavigationTask();
+      closeGuide();
+      if (!advanceLocalNavigationPlan()) status.textContent = "Não consegui localizar o passo anterior nesta tela. Confira o menu e tente novamente.";
+    });
+    card.querySelector(".guide-retry").addEventListener("click", () => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      const replacement = current?.title ? findElementByName(current.title) : null;
+      if (replacement) {
+        current.element = replacement;
+        showGuideStep(guideState.index);
+      } else {
+        card.querySelector(".guide-desc").textContent = "Ainda não encontrei este item com segurança. Confira se o menu correto está aberto.";
+      }
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
