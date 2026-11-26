@@ -185,10 +185,10 @@ test("gera roteiro local para instalar ou renovar certificado A1 sem depender da
   await ctx.knowledge.load({ route: "/app/dashboard", question: "como carregar um novo arquivo do certificado digital A1" });
   const plan = ctx.knowledge.getLocalNavigationPlan("como carregar um novo arquivo do certificado digital A1");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx"
+    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx", "Senha do certificado", "Salvar"
   ]);
-  assert.equal(plan.at(-1).kind, "field");
-  assert.match(plan.at(-1).description, /senha.*diretamente no sistema/i);
+  assert.equal(plan.at(-1).kind, "final_action");
+  assert.ok(plan.some(step => step.label === "Senha do certificado" && /diretamente no Emissor/i.test(step.description)));
 });
 
 test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA", async () => {
@@ -196,10 +196,9 @@ test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA"
   await ctx.knowledge.load({ route: "/app/dashboard", question: "onde informar o código CSC da nota de cupom" });
   const plan = ctx.knowledge.getLocalNavigationPlan("onde informar o código CSC da nota de cupom");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Notas Fiscais", "NFC-e", "CSC", "ID CSC", "Salvar Configurações"
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e"
   ]);
-  assert.equal(plan.at(-1).kind, "final_action");
-  assert.ok(plan.some(step => step.label === "ID CSC" && step.kind === "field"));
+  assert.match(plan.at(-1).description, /CSC e ID CSC/i);
 });
 
 test("extrai campos descritos em listas e hotspots de configuração para a navegação local", async () => {
