@@ -18,7 +18,7 @@
     "48": "icon.png",
     "128": "icon.png"
   },
-  "web_accessible_resources": [],
+  "web_accessible_resources": [\n    {\n      "resources": [\n        "src/manual-knowledge.json"\n      ],\n      "matches": [\n        "https://sistema.emissorfiscalonline.com.br/*"\n      ]\n    }\n  ],
   "host_permissions": [
     "https://sistema.emissorfiscalonline.com.br/*",
     "https://itbppoailqkuxajesgys.supabase.co/*"
