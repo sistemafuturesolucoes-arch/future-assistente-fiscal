@@ -1,7 +1,17 @@
 (() => {
-  const BUNDLE_URL = "src/manual-knowledge.json";
   let bundlePromise = null;
   let lastStatus = null;
+
+  async function loadBundle() {
+    if (!bundlePromise) {
+      const data = window.FutureManualBundle;
+      if (!Array.isArray(data?.modules) || !Array.isArray(data?.lessons)) {
+        throw new Error("A base local do Manual Future não foi carregada pela extensão.");
+      }
+      bundlePromise = Promise.resolve(data);
+    }
+    return bundlePromise;
+  }
 
   function normalize(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
