@@ -305,9 +305,12 @@
         if (!/campo|preench|informe|digite|selecione|escolha|confira|seção|secao|aba|clique|marque|ative|defina/i.test(context)) continue;
         fieldLabels.push(label);
       }
-      for (const label of fieldLabels) {
-        const finalAction = /^(salvar|salvar configurações|salvar configuracoes|gerar|emitir|finalizar venda|concluir)$/i.test(label);
-        add(label, finalAction ? "final_action" : "field");
+      const needsFieldSteps = isCreate || isEdit || isIssue || /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija|campo|campos)\b/.test(q);
+      if (needsFieldSteps) {
+        for (const label of fieldLabels) {
+          const finalAction = /^(salvar|salvar configurações|salvar configuracoes|gerar|emitir|finalizar venda|concluir)$/i.test(label);
+          add(label, finalAction ? "final_action" : "field");
+        }
       }
       if (plan.length) return plan.slice(0, 24);
     }
