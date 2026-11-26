@@ -1480,7 +1480,7 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, onGuideInput, onGuideFieldChange, onGuideFieldKeyDown, onGuideFieldBlur, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, fieldChanged: false, fieldCommitPending: false, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, fieldChanged: false, fieldCommitPending: false, reposition: () => showGuideStep(guideState?.index || 0) };
     // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
     guideState.observer = new MutationObserver(() => {
       if (!guideState || guideState.waitingForNavigation) return;
@@ -1634,6 +1634,7 @@
       if (!current?.waitForInput || !current.element) return;
       if (event.target === current.element || current.element.contains(event.target)) commitCurrentField();
     };
+    Object.assign(guideState, { onGuideInput, onGuideFieldChange, onGuideFieldKeyDown, onGuideFieldBlur });
     document.addEventListener("input", onGuideInput, true);
     document.addEventListener("change", onGuideFieldChange, true);
     document.addEventListener("keydown", onGuideFieldKeyDown, true);
