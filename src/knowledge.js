@@ -315,6 +315,22 @@
     return null;
   }
 
+  function getLocalAnswer(question) {
+    if (!bundleCache || !String(question || "").trim()) return "";
+    const ranked = [...bundleCache.lessons].map(lesson => ({
+      lesson, score: relevance(lesson, location.pathname, question)
+    })).sort((a, b) => b.score - a.score);
+    const best = ranked[0];
+    if (!best?.lesson || best.score < 8) return "";
+    const related = ranked.filter(item => item.score >= Math.max(8, best.score * 0.42)).slice(0, 2);
+    const parts = [
+      "Encontrei esta orientação na base local do Manual Future:",
+      ...related.map(({ lesson }) => lessonText(lesson, true)),
+      "Se a tela estiver diferente, envie um print para eu localizar o controle exato. A extensão não preenche nem salva dados automaticamente."
+    ];
+    return parts.join("\n\n").slice(0, 22000);
+  }
+
   let bundleCache = null;
   let lastModulesCount = 0;
   let lastLessonsCount = 0;
@@ -344,6 +360,7 @@
   window.FutureManualKnowledge = {
     load,
     getLocalNavigationPlan: question => bundleCache ? getLocalNavigationPlan(question) : null,
+    getLocalAnswer,
     getStatus: () => lastStatus
   };
 })();
