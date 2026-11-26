@@ -23,10 +23,11 @@ test("contexto seguro da tela inclui menus e submenus visíveis", () => {
   assert.match(source, /\[role=treeitem\]/);
 });
 
-test("navegação aguarda mudança real da interface antes de pedir o próximo passo", () => {
-  assert.match(source, /async function waitForNavigationUpdate/);
-  assert.match(source, /const changed = await navigationUpdate/);
-  assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
+test("navegação avança após o clique real e não deixa o marcador antigo preso", () => {
+  assert.match(source, /guideState\.navigationTimer = window\.setTimeout/);
+  assert.match(source, /Abrindo a próxima etapa do Manual/);
+  assert.match(source, /if \(navigationPlan\.length && advanceLocalNavigationPlan\(\)\) return/);
+  assert.match(source, /Ainda não estiver renderizado/);
 });
 
 test("respostas da IA renderizam links Markdown sem inserir HTML arbitrário", () => {
