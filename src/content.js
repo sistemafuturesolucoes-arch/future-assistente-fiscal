@@ -2101,6 +2101,17 @@
     const userMessage = { id: crypto.randomUUID(), role: "user", parts };
     conversationMessages.push(userMessage);
     const target = addMessage("", "bot");
+    let usedLocalFallback = false;
+    const useLocalFallback = () => {
+      if (files.length) return false;
+      const fallback = window.FutureManualKnowledge.getLocalAnswer?.(question);
+      if (!fallback) return false;
+      target.textContent = fallback;
+      conversationMessages.push({ id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: fallback }] });
+      usedLocalFallback = true;
+      if (voiceModeActive) speakAssistantReply(fallback);
+      return true;
+    };
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
       const requestAssistantStream = async (initialAnswer = "") => {
@@ -2141,7 +2152,9 @@
       }
       if (signal.aborted) {
         target.textContent = "Conversa interrompida por você.";
-      } else if (!answer.trim()) target.textContent = "Não recebi uma resposta desta vez. Tente novamente.";
+      } else if (!answer.trim()) {
+        if (!useLocalFallback()) target.textContent = "Não recebi uma resposta desta vez. O Manual local também não encontrou uma orientação segura para esta pergunta.";
+      }
       else if (!streamResult.completed) {
         target.textContent = answer + "\n\n⚠️ A conexão foi interrompida e não consegui concluir a resposta automaticamente. Você não precisa repetir a pergunta: envie apenas “continue” para retomar daqui.";
       } else {
@@ -2153,16 +2166,20 @@
         if (voiceModeActive) await speakAssistantReply(safeAnswer);
       }
       const diagnostic = window.FutureManualKnowledge.getStatus?.();
-      status.textContent = diagnostic
-        ? "Base local instalada: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + ". A IA só é chamada quando a tarefa exige interpretação."
-        : knowledge ? "Base local do Manual Future carregada." : "Conectado à IA; a base local não carregou nesta tentativa.";
+      status.textContent = usedLocalFallback
+        ? "A IA não respondeu; orientação recuperada pela base local do Manual Future."
+        : diagnostic
+          ? "Base local instalada: " + diagnostic.lessons + " aulas. Prioridade: " + (diagnostic.prioritized.join(", ") || "conteúdo geral") + ". A IA só é chamada quando a tarefa exige interpretação."
+          : knowledge ? "Base local do Manual Future carregada." : "Conectado à IA; a base local não carregou nesta tentativa.";
     } catch (error) {
       if (signal.aborted || error?.name === "AbortError") {
         target.textContent = "Conversa interrompida por você.";
         status.textContent = "Conversa interrompida. Você pode editar a tela ou enviar outra pergunta.";
-      } else {
+      } else if (!useLocalFallback()) {
         target.textContent = "Não consegui conectar ao assistente agora. " + (error?.message || "Tente novamente.");
         status.textContent = "Falha de conexão.";
+      } else {
+        status.textContent = "Sem conexão com a IA; usei a orientação do Manual Future que já está instalada nesta extensão.";
       }
     } finally {
       requestInProgress = false;
