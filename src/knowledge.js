@@ -427,7 +427,7 @@
             const labelNorm = normalize(label);
             if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) {
               if (isIssue || isExport) {
-                const actions = [...String(h.description || "").matchAll(/(?:^|\\n)\\s*[•-]?\\s*(Salvar(?: rascunho)?|Pré-visualizar|Gerar [A-ZÀ-Ú -]+|Emitir [A-ZÀ-Ú -]+|Enviar)\\s*:/gi)];
+                const actions = [...String(h.description || "").matchAll(/(?:^|\n)\s*[•-]?\s*(Salvar(?: rascunho)?|Pré-visualizar|Gerar [A-ZÀ-Ú -]+|Emitir [A-ZÀ-Ú -]+|Enviar)\\s*:/gi)];
                 for (const action of actions) {
                   const actionLabel = action[1].trim();
                   add(actionLabel, /gerar|emitir|enviar/i.test(actionLabel) ? "final_action" : "click", "Ação descrita nesta etapa do Manual. Confira todos os dados antes de confirmar.");
