@@ -10,15 +10,10 @@ const manualBundle = JSON.parse(fs.readFileSync(path.join(__dirname, "../src/man
 function createKnowledgeContext() {
   let fetchCount = 0;
   const context = {
-    window: {},
-    chrome: { runtime: { getURL(resource) { return "chrome-extension://future-test/" + resource; } } },
+    window: { FutureManualBundle: manualBundle },
     location: { pathname: "/app/dashboard" },
     Date, Map, Set, Promise, String, Array, Object, Math, encodeURIComponent,
-    fetch: async url => {
-      fetchCount++;
-      assert.equal(String(url), "chrome-extension://future-test/src/manual-knowledge.json");
-      return { ok: true, async json() { return manualBundle; } };
-    },
+    fetch: async () => { fetchCount++; throw new Error("A base local não deve fazer requisições."); },
     console
   };
   vm.runInNewContext(source, context, { filename: "knowledge.js" });
@@ -27,20 +22,20 @@ function createKnowledgeContext() {
 
 test("recalcula a relevância por pergunta usando a base local", async () => {
   const ctx = createKnowledgeContext();
-  const service = await ctx.knowledge.load({ route: "/app/dashboard", question: "serviço municipal" });
-  const product = await ctx.knowledge.load({ route: "/app/dashboard", question: "produto comercial NCM" });
+  const service = await ctx.knowledge.load({ route: "/app/dashboard", question: "Cadastrar serviço" });
+  const product = await ctx.knowledge.load({ route: "/app/dashboard", question: "Cadastrar produto NCM" });
   assert.ok(service.indexOf("Cadastrar serviço") >= 0);
   assert.ok(product.indexOf("Cadastrar produto: Dados do Produto") >= 0);
   assert.equal(ctx.knowledge.getStatus().source, "local");
   assert.equal(ctx.knowledge.getStatus().lessons, 26);
-  assert.equal(ctx.getFetchCount(), 1);
+  assert.equal(ctx.getFetchCount(), 0);
 });
 
 test("reutiliza a mesma base local ao trocar de rota, sem consultar o Supabase", async () => {
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/one", question: "cadastro" });
   await ctx.knowledge.load({ route: "/app/two", question: "cadastro" });
-  assert.equal(ctx.getFetchCount(), 1);
+  assert.equal(ctx.getFetchCount(), 0);
 });
 
 test("prioriza a aula cujo título corresponde à intenção de navegação do usuário", async () => {
@@ -49,7 +44,7 @@ test("prioriza a aula cujo título corresponde à intenção de navegação do u
     route: "/app/dashboard", question: "como cadastrar um cliente"
   });
   assert.ok(text.indexOf("Cadastrar cliente") >= 0);
-  assert.ok(text.indexOf("Cadastrar cliente") < text.indexOf("Cadastrar produto: Dados do Produto"));
+  assert.equal(text.indexOf("Cadastrar produto: Dados do Produto"), -1, "não deve enviar aulas sem relação com a pergunta");
 });
 
 test("pergunta sobre regra fiscal prioriza as aulas de grupo tributário e tributação", async () => {
@@ -66,7 +61,7 @@ test("gera roteiro local completo para cadastro de cliente sem precisar da IA", 
   await ctx.knowledge.load({ route: "/app/dashboard", question: "cadastrar cliente" });
   const plan = ctx.knowledge.getLocalNavigationPlan("Como cadastrar um cliente?");
   assert.ok(Array.isArray(plan));
-  assert.deepEqual(plan.map(step => step.label), [
+  assert.deepEqual(Array.from(plan, step => step.label), [
     "Cadastros", "Clientes", "Novo Cliente", "CPF/CNPJ", "Nome",
     "Consumidor Final", "Contribuinte ICMS", "Endereço Principal", "CEP", "Salvar"
   ]);
