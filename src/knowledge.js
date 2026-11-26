@@ -34,7 +34,9 @@
       if (title && q.includes(title)) score += 120;
       if (title && title.includes(q)) score += 90;
       if (queryTerms.some(term => ["condutor","motorista"].includes(stem(term))) && /condutor|motorista/.test(haystack)) score += 260;
-      if (queryTerms.some(term => ["veiculo","caminhao"].includes(stem(term))) && /veiculo|caminhao/.test(haystack)) score += 220;
+      if (queryTerms.some(term => ["veiculo","caminhao"].includes(stem(term))) && /veiculo|caminhao/.test(haystack)) {
+        score += title.includes("veiculo") ? 320 : 220;
+      }
       if (queryTerms.some(term => ["cliente","fornecedor","transportadora"].includes(stem(term))) && /cliente|fornecedor|transportadora/.test(haystack)) score += 180;
       if (queryTerms.some(term => ["produto","mercadoria"].includes(stem(term))) && /produto|mercadoria/.test(haystack)) score += 180;
       if (queryTerms.some(term => stem(term) === "servico") && /servico/.test(haystack)) score += 180;
