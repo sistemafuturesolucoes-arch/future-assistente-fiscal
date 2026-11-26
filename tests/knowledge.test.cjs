@@ -322,3 +322,28 @@ test("configurações dos modelos fiscais levam à aba interna correta da Empres
     assert.deepEqual(Array.from(plan, step => step.label), expected, question);
   }
 });
+
+
+test("conferência de CFOP no grupo tributário para no campo e não oferece salvar", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "me ajude a conferir o cfop no grupo tributaria nas regras";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP"
+  ]);
+  assert.equal(plan.at(-1).kind, "field");
+  assert.ok(!plan.some(step => step.kind === "final_action"));
+});
+
+test("resposta local de conferência de CFOP é curta e não afirma validade sem contexto", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "me ajude a conferir o cfop no grupo tributaria nas regras";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const answer = ctx.knowledge.getLocalAnswer(question);
+  assert.ok(answer.length < 600);
+  assert.match(answer, /Cadastros.*Grupo Tributário/);
+  assert.match(answer, /envie um print/i);
+  assert.match(answer, /não dá para afirmar se o CFOP está correto/i);
+  assert.doesNotMatch(answer, /Aula:|Salvar/);
+});
