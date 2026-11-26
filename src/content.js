@@ -1432,21 +1432,31 @@
     };
     guideState.positionFrame = requestAnimationFrame(followTarget);
     stopButton.disabled = false;
-    dismiss.addEventListener("click", () => {
+    dismiss.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!guideState) return;
       clearNavigationTask();
       closeGuide();
-      status.textContent = "Indicador fechado. Você pode continuar usando o Emissor normalmente.";
+      status.textContent = "Indicador fechado. A orientação foi encerrada e não será retomada.";
     });
-    marker.addEventListener("click", () => {
+    marker.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       if (!guideState) return;
-      const rect = guideState.card.getBoundingClientRect();
-      guideState.card.hidden = false;
-      const cardRect = guideState.card.getBoundingClientRect();
+      const activeCard = guideState.card;
+      activeCard.hidden = !activeCard.hidden;
+      marker.setAttribute("aria-expanded", String(!activeCard.hidden));
+      if (activeCard.hidden) return;
+      // Primeiro torna o balão visível; só então mede e posiciona para evitar
+      // coordenadas 0x0 quando o elemento estava hidden.
+      const cardRect = activeCard.getBoundingClientRect();
       const markerRect = marker.getBoundingClientRect();
       const left = Math.max(8, Math.min(window.innerWidth - cardRect.width - 8, markerRect.left - cardRect.width + markerRect.width));
       const top = markerRect.bottom + cardRect.height + 12 < window.innerHeight ? markerRect.bottom + 8 : Math.max(8, markerRect.top - cardRect.height - 8);
-      guideState.card.style.left = left + "px";
-      guideState.card.style.top = top + "px";
+      activeCard.style.left = left + "px";
+      activeCard.style.top = top + "px";
+      status.textContent = "Orientação desta etapa aberta.";
     });
     card.querySelector(".guide-back").addEventListener("click", () => {
       if (!navigationGuideActive || navigationPlanIndex <= 0) {
@@ -2158,7 +2168,9 @@
       requestInProgress = false;
       if (activeRequestController === controller) activeRequestController = null;
       send.disabled = false;
-      stopButton.disabled = true;
+      // A resposta da IA pode terminar enquanto o roteiro visual continua ativo.
+      // Parar permanece disponível enquanto houver guia, conversa ou voz em execução.
+      stopButton.disabled = !(guideState || navigationGuideActive || voiceIsSpeaking);
       if (voiceModeActive) scheduleVoiceRecognition();
       input.focus();
     }
