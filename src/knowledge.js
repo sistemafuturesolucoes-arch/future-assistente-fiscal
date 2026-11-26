@@ -200,6 +200,29 @@
       return null;
     }
 
+    // Consultas às listas de cadastros devem abrir a listagem, nunca o formulário de novo registro.
+    if (!createRequest && /\\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\\b/.test(q)) {
+      const listingRoutes = [
+        { re: /\\b(cliente|clientes)\\b/, labels: ["Cadastros", "Clientes"] },
+        { re: /\\b(produto|produtos)\\b/, labels: ["Cadastros", "Produtos"] },
+        { re: /\\b(servico|servicos)\\b/, labels: ["Cadastros", "Serviços"] },
+        { re: /\\b(veiculo|veiculos)\\b/, labels: ["Cadastros", "Veículos"] },
+        { re: /\\b(condutor|condutores|motorista|motoristas)\\b/, labels: ["Cadastros", "Condutores"] },
+        { re: /grupo.?tributario/, labels: ["Cadastros", "Grupo Tributário"] },
+        { re: /natureza.?de.?operacao/, labels: ["Cadastros", "Natureza de Operação"] }
+      ];
+      const selected = listingRoutes.find(item => item.re.test(q));
+      if (selected) {
+        const path = selected.labels.join(" > ");
+        return selected.labels.map((label, index) => makeStep(
+          bundleCache, label, "click", path,
+          index === selected.labels.length - 1
+            ? "Abra a listagem para pesquisar, consultar ou selecionar um registro existente. Não é necessário criar um novo cadastro."
+            : "Abra esta opção no menu lateral para seguir até a listagem."
+        ));
+      }
+    }
+
     // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
     // A extensão não lê, armazena ou preenche a senha do certificado.
     if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
@@ -435,7 +458,7 @@
               }
               continue;
             }
-            if (isIssue && isList && !/emitir|novo|gerar|adicionar/i.test(label)) continue;
+            if (isIssue && isList && !/emitir|gerar/i.test(label)) continue;
             if (isIssue && si > 0 && !isForm && !/formulario|dados|secao|totais|transporte|pagamento|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)) continue;
             if (isEdit && isList && !/procurar|busca|opcoes|editar/i.test(label)) continue;
             if (!isList && !isForm && si > 0) continue;
