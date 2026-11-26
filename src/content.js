@@ -1347,6 +1347,10 @@
           status.textContent = "A tela não mudou; aguardando você conferir o menu.";
           return;
         }
+        // Quando o próximo alvo já está no DOM, avance diretamente no plano local.
+        // Não passe pelo bloqueio requestInProgress: ele protege chamadas à IA, mas não
+        // deve impedir uma transição visual que não faz nenhuma requisição.
+        if (navigationPlan.length && advanceLocalNavigationPlan()) return;
         continueNavigationGuide();
       }, 0);
     };
