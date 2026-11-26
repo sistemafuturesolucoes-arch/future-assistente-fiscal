@@ -179,3 +179,34 @@ test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pe
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
 });
+
+test("gera roteiro local para instalar ou renovar certificado A1 sem depender da IA", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como carregar um novo arquivo do certificado digital A1" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como carregar um novo arquivo do certificado digital A1");
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx"
+  ]);
+  assert.equal(plan.at(-1).kind, "field");
+  assert.match(plan.at(-1).description, /senha.*diretamente no sistema/i);
+});
+
+test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde informar o código CSC da nota de cupom" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("onde informar o código CSC da nota de cupom");
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e", "CSC", "ID CSC", "Salvar Configurações"
+  ]);
+  assert.equal(plan.at(-1).kind, "final_action");
+  assert.ok(plan.some(step => step.label === "ID CSC" && step.kind === "field"));
+});
+
+test("extrai campos descritos em listas e hotspots de configuração para a navegação local", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como alterar a série da NFC-e" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como alterar a série da NFC-e");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Série.*NFC-e/i.test(step.label) && step.kind === "field"));
+  assert.ok(plan.some(step => /NFC-e/i.test(step.label)));
+});

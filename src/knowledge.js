@@ -154,8 +154,35 @@
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
+
+    // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
+    // A extensão não lê, armazena ou preenche a senha do certificado.
+    if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
+      const path = "Configurações > Empresa > Certificado Digital > Opções";
+      return [
+        makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
+        makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
+        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital e confira os dados do A1 atual."),
+        makeStep(bundleCache, "Opções", "click", path, "No quadro do Certificado Digital A1, abra Opções para enviar ou renovar o arquivo .pfx."),
+        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo .pfx somente na janela oficial do Emissor. A senha deve ser digitada diretamente no sistema; nunca a envie ao assistente.")
+      ];
+    }
+
+    // CSC e ID CSC pertencem aos parâmetros da NFC-e dentro das configurações da empresa.
+    if (/\bcsc\b/.test(q)) {
+      const path = "Configurações > Empresa > Notas Fiscais > NFC-e";
+      return [
+        makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
+        makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
+        makeStep(bundleCache, "Notas Fiscais", "click", path, "Abra a aba Notas Fiscais."),
+        makeStep(bundleCache, "NFC-e", "click", path, "Localize a seção ou subaba NFC-e nos parâmetros por tipo de documento."),
+        makeStep(bundleCache, "CSC", "field", path, "Informe o Código de Segurança do Contribuinte fornecido pela SEFAZ. Não compartilhe o código no chat."),
+        makeStep(bundleCache, "ID CSC", "field", path, "Informe o identificador correspondente ao CSC, também fornecido pela SEFAZ."),
+        makeStep(bundleCache, "Salvar Configurações", "final_action", path, "Revise os parâmetros da NFC-e e clique em Salvar Configurações quando estiver pronto.")
+      ];
+    }
 
     // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
     // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
@@ -277,6 +304,35 @@
       const isCreate = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
       const isEdit = /\b(editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
       const isIssue = /\b(emitir|emita|gerar|gere|transmitir|transmita|finalizar|finalize)\b/.test(q);
+
+      // Campos citados pelo usuário podem estar descritos em bullets ou hotspots de screenshots.
+      const requestedTerms = q.split(/[^a-z0-9]+/).filter(term => term.length >= 3);
+      const hotspotPool = [
+        ...(lesson.hotspots || []),
+        ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])
+      ];
+      for (const hotspot of hotspotPool) {
+        const description = String(hotspot.description || "");
+        for (const line of description.split(/\n+/)) {
+          const match = line.match(/^\s*(?:[-•*]\s*)?(?:\*\*)?([^:\n]{2,70}?)(?:\*\*)?\s*:\s*(.+)$/);
+          if (!match) continue;
+          const fieldLabel = match[1].replace(/^[\s•*\d.]+/, "").replace(/\*\*/g, "").trim();
+          const fieldText = match[2].replace(/\*\*/g, "").trim();
+          const fieldNorm = normalize(fieldLabel);
+          if (!fieldLabel || !requestedTerms.some(term => fieldNorm.includes(term))) continue;
+          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
+        }
+      }
+      for (const line of String(lesson.content || "").split(/\n+/)) {
+        const match = line.match(/^\s*(?:[-•*]\s*)?(?:\*\*)?([^:\n]{2,70}?)(?:\*\*)?\s*:\s*(.+)$/);
+        if (!match) continue;
+        const fieldLabel = match[1].replace(/^[\s•*\d.]+/, "").replace(/\*\*/g, "").trim();
+        const fieldText = match[2].replace(/\*\*/g, "").trim();
+        const fieldNorm = normalize(fieldLabel);
+        if (fieldLabel && requestedTerms.some(term => fieldNorm.includes(term))) {
+          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
+        }
+      }
 
       if (isCreate || isIssue) {
         const action = (lesson.hotspots || []).find(h => /^(novo|nova|emitir|adicionar|incluir)/i.test(String(h.title || "").trim()));

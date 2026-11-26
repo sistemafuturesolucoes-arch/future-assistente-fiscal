@@ -1073,13 +1073,29 @@
   function showGuideStep(index) {
     if (!guideState) return;
     const step = guideState.steps[index];
-    if (!step?.element?.isConnected) {
-      guideState.card.querySelector(".guide-desc").textContent = "Este elemento não está mais disponível nesta tela. Avance para o próximo passo.";
-      return;
-    }
+    if (step?.element && !step.element.isConnected) step.element = findElementByName(step.title);
     guideState.index = index;
     guideState.pendingIndex = null;
     persistGuideProgress(index);
+    const manualNext = guideState.card.querySelector(".guide-manual-next");
+    if (!step.element || !isGuideNodeVisible(step.element)) {
+      guideState.frame.hidden = true;
+      guideState.marker.hidden = true;
+      guideState.dismiss.hidden = true;
+      guideState.card.hidden = false;
+      guideState.card.style.left = Math.max(8, (window.innerWidth - 330) / 2) + "px";
+      guideState.card.style.top = "88px";
+      guideState.card.querySelector(".guide-kicker").textContent = "CAMINHO DO MANUAL · PASSO " + (index + 1) + " DE " + navigationPlan.length;
+      guideState.card.querySelector(".guide-title").textContent = step.title;
+      guideState.card.querySelector(".guide-desc").textContent = step.description;
+      guideState.card.querySelector(".guide-hint").textContent = "Nenhum destaque será exibido enquanto o controle não for identificado com segurança. Abra o caminho indicado e confirme para avançar.";
+      if (manualNext) manualNext.hidden = !step.missingTarget;
+      if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
+      return;
+    }
+    guideState.frame.hidden = false;
+    guideState.dismiss.hidden = false;
+    if (manualNext) manualNext.hidden = true;
     step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     const rect = step.element.getBoundingClientRect();
     const pad = 5;
@@ -1196,12 +1212,14 @@
     }
     const next = navigationPlan[navigationPlanIndex];
     const element = findElementByName(next.label);
-    if (!element) return false;
+    const pathDescription = (next.path ? "Caminho completo: " + next.path + ". " : "") + next.description;
+    // Preserve o roteiro mesmo quando o menu está fechado ou o controle ainda não existe no DOM.
     startVisualGuide([{
-      element, title: next.label,
-      description: (next.path ? "Caminho: " + next.path + ". " : "") + next.description,
+      element: element || null, title: next.label,
+      description: element ? pathDescription : pathDescription + " Ainda não encontrei este controle nesta tela. Abra manualmente o caminho indicado e use “Procurar novamente” ou “Já abri — avançar”. Não vou destacar outro elemento por aproximação.",
       waitForInput: next.kind === "field",
-      kind: next.kind
+      kind: next.kind,
+      missingTarget: !element
     }]);
     status.textContent = "Navegação local ativa — próximo passo " + (navigationPlanIndex + 1) + " de " + navigationPlan.length + ".";
     return true;
@@ -1338,7 +1356,7 @@
     card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
+      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
     const onTargetClick = event => {
@@ -1476,8 +1494,15 @@
         current.element = replacement;
         showGuideStep(guideState.index);
       } else {
-        card.querySelector(".guide-desc").textContent = "Ainda não encontrei este item com segurança. Confira se o menu correto está aberto.";
+        card.querySelector(".guide-desc").textContent = current?.description || "Ainda não encontrei este item com segurança. Confira o caminho indicado; não vou destacar outro controle por aproximação.";
       }
+    });
+    card.querySelector(".guide-manual-next").addEventListener("click", () => {
+      if (!navigationGuideActive || !guideState) return;
+      navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+      persistNavigationTask();
+      closeGuide();
+      if (!advanceLocalNavigationPlan()) continueNavigationGuide();
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
@@ -1501,8 +1526,9 @@
       originalIndex,
       element: findElementByName(title),
       title,
-      description: "A orientação foi retomada nesta tela. Confira este elemento antes de prosseguir."
-    })).filter(step => step.element);
+      description: "A orientação foi retomada nesta tela. Confira este elemento antes de prosseguir.",
+      missingTarget: false
+    }));
     if (!matches.length) {
       if (guideRestoreAttempts++ < 24) {
         clearTimeout(guideRestoreTimer);
