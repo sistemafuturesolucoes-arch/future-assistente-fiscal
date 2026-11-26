@@ -160,13 +160,15 @@
     // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
     // A extensão não lê, armazena ou preenche a senha do certificado.
     if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
-      const path = "Configurações > Empresa > Certificado Digital > Opções";
+      const path = "Configurações > Empresa > Certificado Digital";
       return [
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
-        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital e confira os dados do A1 atual."),
-        makeStep(bundleCache, "Opções", "click", path, "No quadro do Certificado Digital A1, abra Opções para enviar ou renovar o arquivo .pfx."),
-        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo .pfx somente na janela oficial do Emissor. A senha deve ser digitada diretamente no sistema; nunca a envie ao assistente.")
+        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital. Você chegou à tela correta para atualizar o certificado."),
+        makeStep(bundleCache, "Opções", "click", path, "Na seção Certificado Digital A1, clique em Opções para importar o novo arquivo .pfx."),
+        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo do certificado digital (.pfx) nesta tela do Emissor."),
+        makeStep(bundleCache, "Senha do certificado", "field", path, "Digite a senha do certificado diretamente no campo do Emissor. Não envie a senha pelo chat nem compartilhe com o assistente."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Clique em Salvar/confirmar na própria tela para concluir a importação. Depois confira os dados e a validade do certificado.")
       ];
     }
 
@@ -177,10 +179,7 @@
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
         makeStep(bundleCache, "Notas Fiscais", "click", path, "Abra a aba Notas Fiscais."),
-        makeStep(bundleCache, "NFC-e", "click", path, "Localize a seção ou subaba NFC-e nos parâmetros por tipo de documento."),
-        makeStep(bundleCache, "CSC", "field", path, "Informe o Código de Segurança do Contribuinte fornecido pela SEFAZ. Não compartilhe o código no chat."),
-        makeStep(bundleCache, "ID CSC", "field", path, "Informe o identificador correspondente ao CSC, também fornecido pela SEFAZ."),
-        makeStep(bundleCache, "Salvar Configurações", "final_action", path, "Revise os parâmetros da NFC-e e clique em Salvar Configurações quando estiver pronto.")
+        makeStep(bundleCache, "NFC-e", "click", path, "Abra a seção ou subaba NFC-e. É aqui que ficam os campos CSC e ID CSC; localize-os nesta tela. Os códigos são fornecidos pela SEFAZ e devem ser digitados diretamente no Emissor, nunca no chat.")
       ];
     }
 
@@ -381,13 +380,24 @@
     })).sort((a, b) => b.score - a.score);
     const best = ranked[0];
     if (!best?.lesson || best.score < 8) return "";
-    const related = ranked.filter(item => item.score >= Math.max(8, best.score * 0.42)).slice(0, 2);
-    const parts = [
+    // Responda com uma única aula principal. Misturar aulas relacionadas (por exemplo,
+    // configuração da NFC-e com emissão de NFC-e) gera respostas longas e fora da intenção.
+    const lesson = best.lesson;
+    const plan = getLocalNavigationPlan(question);
+    if (Array.isArray(plan) && plan.length) {
+      const route = plan.map(step => step.label).join(" > ");
+      const finalStep = plan[plan.length - 1];
+      return [
+        "Caminho no Emissor: " + route,
+        finalStep?.description || "",
+        "Se algum menu estiver diferente, envie um print para eu localizar a opção correta. A extensão não preenche nem salva dados automaticamente."
+      ].filter(Boolean).join("\n\n");
+    }
+    return [
       "Encontrei esta orientação na base local do Manual Future:",
-      ...related.map(({ lesson }) => lessonText(lesson, true)),
+      lessonText(lesson, false),
       "Se a tela estiver diferente, envie um print para eu localizar o controle exato. A extensão não preenche nem salva dados automaticamente."
-    ];
-    return parts.join("\n\n").slice(0, 22000);
+    ].join("\n\n").slice(0, 9000);
   }
 
   let bundleCache = null;
