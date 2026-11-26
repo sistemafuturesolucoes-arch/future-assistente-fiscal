@@ -1037,6 +1037,8 @@
     }
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
+    document.removeEventListener("click", guideState.onOutsideClick, true);
+    document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1057,6 +1059,8 @@
     persistGuideProgress();
     document.removeEventListener("scroll", guideState.reposition, true);
     document.removeEventListener("click", guideState.onTargetClick, true);
+    document.removeEventListener("click", guideState.onOutsideClick, true);
+    document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1079,6 +1083,7 @@
     persistGuideProgress(index);
     const manualNext = guideState.card.querySelector(".guide-manual-next");
     if (!step.element || !isGuideNodeVisible(step.element)) {
+      step.element = null;
       guideState.frame.hidden = true;
       guideState.marker.hidden = true;
       guideState.dismiss.hidden = true;
@@ -1343,8 +1348,8 @@
     marker.className = "guide-question";
     marker.type = "button";
     marker.textContent = "?";
-    marker.title = "Ver orientação deste item";
-    marker.setAttribute("aria-label", "Ver orientação deste item");
+    marker.title = "Pergunta: ver orientação deste item";
+    marker.setAttribute("aria-label", "Pergunta: ver orientação deste item");
     const dismiss = document.createElement("button");
     dismiss.className = "guide-dismiss";
     dismiss.type = "button";
@@ -1359,6 +1364,28 @@
       <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
+    const onOutsideClick = event => {
+      if (!guideState || !navigationGuideActive) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+      if (path.some(node => node === host || (node instanceof Node && host.contains(node)))) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.element || !isGuideNodeVisible(current.element)) return;
+      const insideTarget = path.some(node => node instanceof Node &&
+        (node === current.element || current.element.contains(node)));
+      if (insideTarget) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      status.textContent = "Para evitar sair do roteiro, clique no item destacado. Use Pergunta para rever a orientação ou Fechar para liberar a tela.";
+    };
+    const onGuideKeyDown = event => {
+      if (event.key === "Escape" && guideState) {
+        event.preventDefault();
+        clearNavigationTask();
+        closeGuide();
+        status.textContent = "Guia encerrado pelo atalho Esc. A tela está liberada.";
+      }
+    };
     const onTargetClick = event => {
       if (!guideState) return;
       const target = event.target;
@@ -1410,7 +1437,7 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
     // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
     guideState.observer = new MutationObserver(() => {
       if (!guideState || guideState.waitingForNavigation) return;
@@ -1424,7 +1451,12 @@
             current.element = replacement;
             showGuideStep(guideState.index);
           } else {
-            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou ainda não está visível. Abra o menu correspondente e use “Procurar novamente”.";
+            current.element = null;
+            guideState.frame.hidden = true;
+            guideState.marker.hidden = true;
+            guideState.dismiss.hidden = true;
+            guideState.card.hidden = false;
+            guideState.card.querySelector(".guide-desc").textContent = "Este item mudou ou não está mais visível. Abra o menu correspondente e use “Procurar novamente”. O destaque antigo foi removido.";
           }
         }
       }, 140);
@@ -1439,12 +1471,25 @@
       if (current?.element?.isConnected && isGuideNodeVisible(current.element)) {
         const rect = current.element.getBoundingClientRect();
         const pad = 5;
+        const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
+        const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
         Object.assign(frame.style, {
           left: Math.max(2, rect.left - pad) + "px",
           top: Math.max(2, rect.top - pad) + "px",
           width: Math.max(12, rect.width + pad * 2) + "px",
           height: Math.max(12, rect.height + pad * 2) + "px"
         });
+        marker.style.left = markerLeft + "px";
+        marker.style.top = markerTop + "px";
+        dismiss.style.left = Math.min(window.innerWidth - 22, markerLeft + 26) + "px";
+        dismiss.style.top = Math.max(4, markerTop - 7) + "px";
+      } else if (current?.element) {
+        current.element = null;
+        frame.hidden = true;
+        marker.hidden = true;
+        dismiss.hidden = true;
+        card.hidden = false;
+        card.querySelector(".guide-desc").textContent = "O item destacado mudou ou saiu da tela. Abra o menu correto e use “Procurar novamente”. Nenhum destaque antigo será mantido.";
       }
       guideState.positionFrame = requestAnimationFrame(followTarget);
     };
@@ -1506,7 +1551,9 @@
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     document.addEventListener("scroll", guideState.reposition, true);
+    document.addEventListener("click", onOutsideClick, true);
     document.addEventListener("click", onTargetClick, true);
+    document.addEventListener("keydown", onGuideKeyDown, true);
     window.addEventListener("resize", guideState.reposition);
     showGuideStep(Math.max(0, Math.min(initialIndex, steps.length - 1)));
   }
