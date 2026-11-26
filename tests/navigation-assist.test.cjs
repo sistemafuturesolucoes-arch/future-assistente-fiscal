@@ -272,6 +272,20 @@ test("base JSON do Manual está autorizada como recurso local da extensão", () 
 });
 
 
+test("remove protocolos de navegação internos e aceita o marcador legado PATH", () => {
+  assert.match(source, /FUTURE_NAVIGATION_PLAN\(\?:_PATH\)\?/);
+  assert.match(source, /cleanAnswer = cleanAnswer\.replace/);
+  assert.match(source, /FUTURE_NAVIGATION_PLAN_PATH/);
+});
+
+test("pedidos de cadastro não usam texto livre para escolher um marcador visual", () => {
+  const start = source.indexOf("function maybeStartAutomaticGuide(answer)");
+  const end = source.indexOf("const instructionIntent", start);
+  const guide = source.slice(start, end);
+  assert.match(guide, /Sem roteiro estruturado e controle exato, não mostre marcador algum/);
+  assert.match(guide, /return false/);
+});
+
 test("marcadores não usam aproximação textual e exigem instrução com rótulo exato", () => {
   const start = source.indexOf("function findGuideSteps(answer)");
   const end = source.indexOf("function persistGuideProgress", start);
