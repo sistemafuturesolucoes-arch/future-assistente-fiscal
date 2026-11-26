@@ -201,7 +201,7 @@ test("rotas do Manual viram um plano local e o próximo passo é resolvido no DO
   assert.match(source, /FUTURE_NAVIGATION_PLAN_REQUEST/);
   assert.match(source, /function extractNavigationPlan\(answer\)/);
   assert.match(source, /function advanceLocalNavigationPlan\(\)/);
-  assert.match(source, /findElementByName\(next\.label\)/);
+  assert.match(source, /findElementForPlanStep\\(next\\)/);
   assert.match(source, /plan: navigationPlan, planIndex: navigationPlanIndex/);
   assert.match(source, /navigationPlanIndex = Number\.isInteger\(saved\.planIndex\)/);
 });
@@ -322,7 +322,7 @@ test("balão de pergunta abre e fecha alternadamente e o botão X encerra a orie
 test("guia bloqueia cliques fora do alvo e permite fechar ou sair com Esc", () => {
   assert.match(source, /const onOutsideClick = event =>/);
   assert.match(source, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/);
-  assert.match(source, /path\.some\(node => node === host/);
+  assert.match(source, /path\.includes\(host\)/);
   assert.match(source, /event\.key === "Escape"/);
   assert.match(source, /document\.removeEventListener\("click", guideState\.onOutsideClick, true\)/);
   assert.match(source, /document\.removeEventListener\("keydown", guideState\.onGuideKeyDown, true\)/);
@@ -333,4 +333,26 @@ test("marcador Pergunta e botão Fechar acompanham o alvo e não deixam destaque
   assert.match(source, /marker\.style\.left = markerLeft \+ "px"/);
   assert.match(source, /dismiss\.style\.left = Math\.min\(window\.innerWidth - 22, markerLeft \+ 26\)/);
   assert.match(source, /current\.element = null;\s*frame\.hidden = true;\s*marker\.hidden = true;\s*dismiss\.hidden = true/);
+});
+
+test("botões Pergunta e Fechar recebem eventos apesar do host usar pointer-events none", () => {
+  assert.match(source, /\.guide-question\{pointer-events:auto;/);
+  assert.match(source, /\.guide-dismiss\{pointer-events:auto;/);
+  assert.match(source, /marker\.addEventListener\("click"/);
+  assert.match(source, /dismiss\.addEventListener\("click"/);
+});
+
+test("campos de pesquisa avançam somente após digitação e confirmação", () => {
+  assert.match(source, /const commitCurrentField = \(\) =>/);
+  assert.match(source, /document\.addEventListener\("input", onGuideInput, true\)/);
+  assert.match(source, /document\.addEventListener\("change", onGuideFieldChange, true\)/);
+  assert.match(source, /document\.addEventListener\("focusout", onGuideFieldBlur, true\)/);
+  assert.match(source, /guideState\.fieldChanged/);
+  assert.match(source, /navigationPlanIndex = Math\.min\(navigationPlan\.length, navigationPlanIndex \+ 1\)/);
+});
+
+test("guia mantém Pergunta e Fechar acessíveis mesmo sem localizar o controle", () => {
+  assert.match(source, /Mesmo sem localizar o alvo, mantenha Fechar acessível/);
+  assert.match(source, /guideState\.marker\.hidden = false/);
+  assert.match(source, /guideState\.dismiss\.hidden = false/);
 });
