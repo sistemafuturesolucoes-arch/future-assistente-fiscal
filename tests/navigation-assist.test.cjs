@@ -304,3 +304,16 @@ test("roteiro local de condutores está ligado ao caminho correto do Manual", ()
   assert.match(knowledgeSource, /"CPF", "field"/);
   assert.match(knowledgeSource, /"Nome", "field"/);
 });
+test("botão Parar permanece disponível enquanto a orientação visual continua após a resposta da IA", () => {
+  assert.match(source, /stopButton\\.disabled = !\\(guideState \\|\\| navigationGuideActive \\|\\| voiceIsSpeaking\\)/);
+  assert.match(source, /activeRequestController\\?\\.abort\\(\\)/);
+  assert.match(source, /clearNavigationTask\\(\\);\\s*closeGuide\\(\\)/);
+});
+
+test("balão de pergunta abre e fecha alternadamente e o botão X encerra a orientação", () => {
+  assert.match(source, /marker\\.addEventListener\\("click", event =>/);
+  assert.match(source, /activeCard\\.hidden = !activeCard\\.hidden/);
+  assert.match(source, /marker\\.setAttribute\\("aria-expanded", String\\(!activeCard\\.hidden\\)\\)/);
+  assert.match(source, /dismiss\\.addEventListener\\("click", event =>/);
+  assert.match(source, /Indicador fechado\\. A orientação foi encerrada e não será retomada/);
+});
