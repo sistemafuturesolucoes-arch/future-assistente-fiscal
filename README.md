@@ -19,7 +19,10 @@ Extensão Chrome (Manifest V3) para Windows e macOS que adiciona um assistente f
 ## Verificações automáticas
 O GitHub Actions valida o JSON do Manifest, a sintaxe dos scripts e executa testes automatizados do cache e da priorização contextual do Manual em cada push ou pull request para `main`.
 
-## Carregamento da extensão\n- O Manifest carrega `src/knowledge.js` e `src/content.js` nas páginas do Emissor e usa `src/background.js` como service worker. O ícone da extensão abre o painel flutuante.\n\n## Instalação de desenvolvimento
+## Carregamento da extensão
+- O Manifest carrega `src/manual-knowledge.js`, `src/knowledge.js` e `src/content.js` nas páginas do Emissor e usa `src/background.js` como service worker. O ícone da extensão abre o painel flutuante.
+
+## Instalação de desenvolvimento
 1. Baixe o repositório como ZIP ou clone-o.
 2. Abra `chrome://extensions`.
 3. Ative **Modo do desenvolvedor**.
