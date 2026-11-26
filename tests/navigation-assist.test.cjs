@@ -357,3 +357,16 @@ test("guia mantém Pergunta e Fechar acessíveis mesmo sem localizar o controle"
   assert.match(source, /guideState\.marker\.hidden = false/);
   assert.match(source, /guideState\.dismiss\.hidden = false/);
 });
+
+test("base local preserva os marcadores de todas as aulas e capturas do Manual", () => {
+  const markers = new Set();
+  for (const lesson of manualBundle.lessons) {
+    for (const marker of [...(lesson.hotspots || []), ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])]) {
+      assert.ok(marker.title, "marcador sem título na aula " + lesson.title);
+      assert.ok(marker.description, "marcador sem orientação na aula " + lesson.title);
+      markers.add(lesson.id + ":" + (marker.id || marker.title));
+    }
+  }
+  assert.ok(manualBundle.lessons.every(lesson => Array.isArray(lesson.screenshots)));
+  assert.ok(markers.size >= 370, "a extensão deve carregar os marcadores do Manual, não só os títulos das aulas");
+});
