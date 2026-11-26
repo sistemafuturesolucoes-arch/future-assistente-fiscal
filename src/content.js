@@ -1440,50 +1440,29 @@
       if (!guideState) return;
       const target = event.target;
       const isNode = value => Boolean(value && typeof value === "object" && typeof value.nodeType === "number");
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
       if (path.includes(host) || path.some(node => isNode(node) && (card.contains(node) || host.contains(node)))) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element || !isNode(current.element)) return;
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
       const clicked = path.find(node => isNode(node) && (node === current.element || current.element.contains(node)));
-      if (!clicked) return;
-      if (current.validationField || current.waitForInput) return;
+      if (!clicked || current.validationField || current.waitForInput) return;
+
       navigationLastCompletedStep = current.title || getElementName(current.element) || "item destacado";
       navigationLastCompletedRoute = location.pathname;
       if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
       persistNavigationTask();
-      const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
-      const beforeSnapshot = navigationSnapshot();
-      const navigationUpdate = nextPlannedLabel
-        ? waitForNavigationStep(navigationPlan[navigationPlanIndex], 5000)
-        : waitForNavigationUpdate(beforeSnapshot, current.kind === "final_action" ? 12000 : 5000);
-      const nextIndex = guideState.index + 1;
-      guideState.pendingIndex = nextIndex;
+      guideState.pendingIndex = guideState.index + 1;
       guideState.waitingForNavigation = true;
-      guideState.card.querySelector(".guide-desc").textContent = "Aguarde: estou verificando o que apareceu depois do clique.";
-      status.textContent = "Lendo a nova tela ou submenu...";
-      persistGuideProgress(nextIndex);
-      guideState.navigationTimer = window.setTimeout(async () => {
+      status.textContent = "Abrindo a próxima etapa do Manual...";
+      // Avança depois do clique real do sistema (bubble handlers/React). Se o alvo
+      // ainda não estiver renderizado, o próximo cartão informa o caminho e permite
+      // procurar novamente, sem manter o marcador antigo preso na tela.
+      guideState.navigationTimer = window.setTimeout(() => {
         if (!navigationGuideActive) return;
-        const changed = await navigationUpdate;
-        if (!navigationGuideActive) return;
-        if (!changed) {
-          if (navigationPlan.length) {
-            navigationPlanIndex = Math.max(0, navigationPlanIndex - 1);
-            persistNavigationTask();
-          }
-          if (guideState) {
-            guideState.waitingForNavigation = false;
-            guideState.card.querySelector(".guide-desc").textContent = "Não detectei mudança na tela. Verifique se o menu abriu ou envie um print para eu localizar a opção correta. Não vou repetir o mesmo clique automaticamente.";
-          }
-          status.textContent = "A tela não mudou; aguardando você conferir o menu.";
-          return;
-        }
-        // Quando o próximo alvo já está no DOM, avance diretamente no plano local.
-        // Não passe pelo bloqueio requestInProgress: ele protege chamadas à IA, mas não
-        // deve impedir uma transição visual que não faz nenhuma requisição.
+        if (guideState) guideState.waitingForNavigation = false;
         if (navigationPlan.length && advanceLocalNavigationPlan()) return;
         continueNavigationGuide();
-      }, 0);
+      }, 80);
     };
     navigationGuideActive = true;
     persistNavigationTask();
@@ -1735,10 +1714,12 @@
   window.addEventListener("popstate", () => {
     suspendGuideForNavigation();
     scheduleGuideRestore();
+    window.setTimeout(restoreNavigationAfterPageLoad, 300);
   });
   window.addEventListener("hashchange", () => {
     suspendGuideForNavigation();
     scheduleGuideRestore();
+    window.setTimeout(restoreNavigationAfterPageLoad, 300);
   });
 
   for (const method of ["pushState", "replaceState"]) {
@@ -1749,6 +1730,7 @@
       if (location.pathname !== previousPath) {
         suspendGuideForNavigation();
         scheduleGuideRestore();
+        window.setTimeout(restoreNavigationAfterPageLoad, 300);
       }
       return result;
     };
