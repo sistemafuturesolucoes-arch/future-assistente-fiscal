@@ -159,22 +159,22 @@
 
     // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
     // Não transformar "onde fica NFC-e?" em um roteiro de emissão ou preenchimento.
-    const locateOnly = /\\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|localizar|localize|me mostre onde|qual caminho|qual menu)\\b/.test(q)
-      && !/\\b(cadastrar|criar|emitir|gerar|preencher|alterar|editar|configurar|informar|salvar|carregar|instalar|renovar|exportar|cancelar)\\b/.test(q);
+    const locateOnly = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|localizar|localize|me mostre onde|qual caminho|qual menu)\b/.test(q)
+      && !/\b(cadastrar|criar|emitir|gerar|preencher|alterar|editar|configurar|informar|salvar|carregar|instalar|renovar|exportar|cancelar)\b/.test(q);
     if (locateOnly) {
       const rankedForRoute = [...bundleCache.lessons].map(lesson => ({
         lesson, score: relevance(lesson, location.pathname, question)
       })).sort((a, b) => b.score - a.score);
       const bestRoute = rankedForRoute[0]?.lesson;
       if (bestRoute && rankedForRoute[0].score >= 18) {
-        let routeParts = String(bestRoute.path || "").split(/\\s*>\\s*/)
+        let routeParts = String(bestRoute.path || "").split(/\s*>\s*/)
           .map(part => part.trim()).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
         const lessonTextAll = normalize([bestRoute.title, bestRoute.summary, bestRoute.content,
           ...(bestRoute.hotspots || []).map(h => h.title + " " + h.description),
           ...(bestRoute.screenshots || []).flatMap(s => (s.hotspots || []).map(h => h.title + " " + h.description))
         ].join(" "));
         // A aula de Empresa contém várias abas internas; explicitar a aba solicitada.
-        if (/certificado|\\bpfx\\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
+        if (/certificado|\bpfx\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Certificado Digital"];
         } else if (/nfce|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
@@ -410,7 +410,7 @@
       // por etapa do Manual (listagem, formulário, seções e ações finais).
       // Isso amplia a cobertura sem inventar rótulos que não estejam documentados.
       const screenshots = Array.isArray(lesson.screenshots) ? lesson.screenshots : [];
-      if (screenshots.length && (isCreate || isEdit || isIssue || /\\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\\b/.test(q))) {
+      if (screenshots.length && (isCreate || isEdit || isIssue || /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\b/.test(q))) {
         for (let si = 0; si < screenshots.length; si++) {
           const shot = screenshots[si];
           const caption = normalize(shot.caption || "");
