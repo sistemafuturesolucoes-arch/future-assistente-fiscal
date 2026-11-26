@@ -158,7 +158,7 @@
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque|me ajude|me ajuda|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|altero|conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque|me ajude|me ajuda|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
     const createRequest = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
 
@@ -270,10 +270,10 @@
 
     // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
     // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
-    if (/\bcfop\b/.test(q) && /\b(grupo|grupos|tributario|tributarios)\b/.test(q)) {
+    if (/\bcfop\b/.test(q)) {
       const path = "Cadastros > Grupo Tributário > grupo desejado > Regras Tributárias > Editar Regra";
       const inspectionOnly = /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(q)
-        && !/\b(ajustar|ajuste|alterar|altere|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
+        && !/\b(ajustar|ajuste|alterar|altere|altero|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
       const plan = [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra Cadastros no menu lateral."),
         makeStep(bundleCache, "Grupo Tributário", "click", path, "Selecione Grupo Tributário. É nessa área que as regras fiscais são configuradas; não altere o CFOP diretamente no cadastro do produto."),
