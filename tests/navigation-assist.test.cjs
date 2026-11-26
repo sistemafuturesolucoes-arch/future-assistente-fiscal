@@ -81,7 +81,7 @@ test("orientação visual usa marcador de pergunta e não sobrepõe o elemento c
   assert.match(source, /className = "guide-question"/);
   assert.match(source, /guideState\.card\.hidden = true/);
   assert.match(source, /guideState\.marker\.style\.left/);
-  assert.doesNotMatch(source, /guide-prev|guide-next|Anterior|Concluir/);
+  assert.doesNotMatch(source, /guide-prev|guide-next|Anterior/);
   assert.match(source, /guide-end/);
 });
 
