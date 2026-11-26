@@ -1107,12 +1107,18 @@
       guideState.frame.hidden = true;
       guideState.marker.hidden = true;
       // Mesmo sem localizar o alvo, mantenha Fechar acessível para liberar a tela.
-      guideState.dismiss.hidden = false;
-      guideState.dismiss.style.left = Math.min(window.innerWidth - 22, Math.max(8, (window.innerWidth + 300) / 2)) + "px";
-      guideState.dismiss.style.top = "76px";
       guideState.card.hidden = false;
       guideState.card.style.left = Math.max(8, (window.innerWidth - 330) / 2) + "px";
       guideState.card.style.top = "88px";
+      // Pergunta e Fechar continuam visíveis mesmo quando o controle da página
+      // ainda não foi encontrado; assim o usuário nunca fica preso no guia.
+      const fallbackLeft = Math.max(8, (window.innerWidth - 330) / 2);
+      guideState.marker.hidden = false;
+      guideState.marker.style.left = Math.min(window.innerWidth - 42, fallbackLeft + 286) + "px";
+      guideState.marker.style.top = "70px";
+      guideState.dismiss.hidden = false;
+      guideState.dismiss.style.left = Math.min(window.innerWidth - 22, fallbackLeft + 312) + "px";
+      guideState.dismiss.style.top = "64px";
       guideState.card.querySelector(".guide-kicker").textContent = "CAMINHO DO MANUAL · PASSO " + (index + 1) + " DE " + navigationPlan.length;
       guideState.card.querySelector(".guide-title").textContent = step.title;
       guideState.card.querySelector(".guide-desc").textContent = step.description;
