@@ -210,3 +210,51 @@ test("extrai campos descritos em listas e hotspots de configuração para a nave
   assert.ok(plan.some(step => /Série.*NFC-e/i.test(step.label) && step.kind === "field"));
   assert.ok(plan.some(step => /NFC-e/i.test(step.label)));
 });
+
+
+test("pedidos de localização param no destino exato em vez de abrir um fluxo de cadastro", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica a configuração da NFC-e?" });
+  const nfce = ctx.knowledge.getLocalNavigationPlan("onde fica a configuração da NFC-e?");
+  assert.deepEqual(Array.from(nfce, step => step.label), [
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e"
+  ]);
+  assert.match(nfce.at(-1).description, /parâmetros do documento/i);
+
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica o certificado digital?" });
+  const certificate = ctx.knowledge.getLocalNavigationPlan("onde fica o certificado digital?");
+  assert.deepEqual(Array.from(certificate, step => step.label), [
+    "Configurações", "Empresa", "Certificado Digital"
+  ]);
+});
+
+test("pergunta de localização para cadastros não inclui campos nem botão salvar", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica o cadastro de clientes?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("onde fica o cadastro de clientes?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => step.label === "Clientes"));
+  assert.ok(!plan.some(step => step.kind === "field" || step.kind === "final_action"));
+});
+
+test("emissão de NFe usa hotspots ordenados das telas e inclui a ação final documentada", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como emitir uma NFe?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como emitir uma NFe?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Emitir NFe/i.test(step.label)));
+  assert.ok(plan.some(step => /Natureza da operação/i.test(step.label)));
+  assert.ok(plan.some(step => /Destinatário/i.test(step.label)));
+  assert.ok(plan.some(step => /Quantidade/i.test(step.label)));
+  assert.ok(plan.some(step => /Pagamentos/i.test(step.label)));
+  assert.ok(plan.some(step => /Gerar NFe/i.test(step.label) && step.kind === "final_action"));
+});
+
+test("exportação de XML aproveita os passos e hotspots da aula em vez de parar só no menu", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como exportar XML das notas?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como exportar XML das notas?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Exportar XML/i.test(step.label)));
+  assert.ok(plan.some(step => /Período/i.test(step.label) || /Ambiente/i.test(step.label) || /Enviar/i.test(step.label)));
+});
