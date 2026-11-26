@@ -1039,6 +1039,10 @@
     document.removeEventListener("click", guideState.onTargetClick, true);
     document.removeEventListener("click", guideState.onOutsideClick, true);
     document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
+    document.removeEventListener("keydown", guideState.onGuideFieldKeyDown, true);
+    document.removeEventListener("input", guideState.onGuideInput, true);
+    document.removeEventListener("change", guideState.onGuideFieldChange, true);
+    document.removeEventListener("focusout", guideState.onGuideFieldBlur, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1061,6 +1065,10 @@
     document.removeEventListener("click", guideState.onTargetClick, true);
     document.removeEventListener("click", guideState.onOutsideClick, true);
     document.removeEventListener("keydown", guideState.onGuideKeyDown, true);
+    document.removeEventListener("keydown", guideState.onGuideFieldKeyDown, true);
+    document.removeEventListener("input", guideState.onGuideInput, true);
+    document.removeEventListener("change", guideState.onGuideFieldChange, true);
+    document.removeEventListener("focusout", guideState.onGuideFieldBlur, true);
     window.removeEventListener("resize", guideState.reposition);
     clearTimeout(guideState.waitTimer);
     clearTimeout(guideState.navigationTimer);
@@ -1080,13 +1088,18 @@
     if (step?.element && !step.element.isConnected) step.element = findElementByName(step.title);
     guideState.index = index;
     guideState.pendingIndex = null;
+    guideState.fieldChanged = false;
+    guideState.fieldCommitPending = false;
     persistGuideProgress(index);
     const manualNext = guideState.card.querySelector(".guide-manual-next");
     if (!step.element || !isGuideNodeVisible(step.element)) {
       step.element = null;
       guideState.frame.hidden = true;
       guideState.marker.hidden = true;
-      guideState.dismiss.hidden = true;
+      // Mesmo sem localizar o alvo, mantenha Fechar acessível para liberar a tela.
+      guideState.dismiss.hidden = false;
+      guideState.dismiss.style.left = Math.min(window.innerWidth - 22, Math.max(8, (window.innerWidth + 300) / 2)) + "px";
+      guideState.dismiss.style.top = "76px";
       guideState.card.hidden = false;
       guideState.card.style.left = Math.max(8, (window.innerWidth - 330) / 2) + "px";
       guideState.card.style.top = "88px";
@@ -1367,7 +1380,7 @@
     const onOutsideClick = event => {
       if (!guideState || !navigationGuideActive) return;
       const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
-      if (path.some(node => node === host || (node instanceof Node && host.contains(node)))) return;
+      if (path.includes(host) || path.some(node => node instanceof Node && host.contains(node))) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element || !isGuideNodeVisible(current.element)) return;
       const insideTarget = path.some(node => node instanceof Node &&
@@ -1390,7 +1403,7 @@
       if (!guideState) return;
       const target = event.target;
       const isNode = value => Boolean(value && typeof value === "object" && typeof value.nodeType === "number");
-      if (isNode(target) && (card.contains(target) || host.contains(target))) return;
+      if (path.includes(host) || path.some(node => isNode(node) && (card.contains(node) || host.contains(node)))) return;
       const current = guideState.steps[guideState.index];
       if (!current?.element || !isNode(current.element)) return;
       const path = typeof event.composedPath === "function" ? event.composedPath() : [target];
@@ -1437,7 +1450,7 @@
     };
     navigationGuideActive = true;
     persistNavigationTask();
-    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, reposition: () => showGuideStep(guideState?.index || 0) };
+    guideState = { steps, index: 0, pendingIndex: null, frame, marker, dismiss, card, onTargetClick, onOutsideClick, onGuideKeyDown, onGuideInput, onGuideFieldChange, onGuideFieldKeyDown, onGuideFieldBlur, waitTimer: null, navigationTimer: null, mutationTimer: null, observer: null, positionFrame: 0, fieldChanged: false, fieldCommitPending: false, reposition: () => showGuideStep(guideState?.index || 0) };
     // O motor Lovable acompanha re-renderizações do emissor e reposiciona o destaque continuamente.
     guideState.observer = new MutationObserver(() => {
       if (!guideState || guideState.waitingForNavigation) return;
@@ -1497,6 +1510,7 @@
     stopButton.disabled = false;
     dismiss.addEventListener("click", event => {
       event.preventDefault();
+      event.stopImmediatePropagation();
       event.stopPropagation();
       if (!guideState) return;
       clearNavigationTask();
@@ -1505,6 +1519,7 @@
     });
     marker.addEventListener("click", event => {
       event.preventDefault();
+      event.stopImmediatePropagation();
       event.stopPropagation();
       if (!guideState) return;
       const activeCard = guideState.card;
@@ -1550,6 +1565,49 @@
       if (!advanceLocalNavigationPlan()) continueNavigationGuide();
     });
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
+    // Campos (ex.: Procurar) só avançam depois de uma alteração real e confirmação
+    // por Enter, change ou saída do campo. Um simples clique não deixa o roteiro travado.
+    const commitCurrentField = () => {
+      if (!guideState || !navigationGuideActive) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !guideState.fieldChanged || guideState.fieldCommitPending) return;
+      guideState.fieldCommitPending = true;
+      window.setTimeout(() => {
+        if (!guideState || !navigationGuideActive) return;
+        navigationLastCompletedStep = current.title || "campo";
+        navigationLastCompletedRoute = location.pathname;
+        if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+        persistNavigationTask();
+        closeGuide();
+        if (!advanceLocalNavigationPlan()) continueNavigationGuide();
+      }, 120);
+    };
+    const onGuideInput = event => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !current.element) return;
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [event.target];
+      if (path.some(node => node instanceof Node && (node === current.element || current.element.contains(node)))) {
+        guideState.fieldChanged = true;
+      }
+    };
+    const onGuideFieldChange = event => {
+      onGuideInput(event);
+      commitCurrentField();
+    };
+    const onGuideFieldKeyDown = event => {
+      if (event.key === "Enter") commitCurrentField();
+    };
+    const onGuideFieldBlur = event => {
+      if (!guideState) return;
+      const current = guideState.steps[guideState.index];
+      if (!current?.waitForInput || !current.element) return;
+      if (event.target === current.element || current.element.contains(event.target)) commitCurrentField();
+    };
+    document.addEventListener("input", onGuideInput, true);
+    document.addEventListener("change", onGuideFieldChange, true);
+    document.addEventListener("keydown", onGuideFieldKeyDown, true);
+    document.addEventListener("focusout", onGuideFieldBlur, true);
     document.addEventListener("scroll", guideState.reposition, true);
     document.addEventListener("click", onOutsideClick, true);
     document.addEventListener("click", onTargetClick, true);
