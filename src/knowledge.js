@@ -95,9 +95,12 @@
     return parts.join("\n\n").slice(0, 26000);
   }
 
-  function findHotspot(bundle, label) {
+  function findHotspot(bundle, label, path = "") {
     const target = normalize(label);
-    for (const lesson of bundle.lessons) {
+    const lessons = [...bundle.lessons].sort((a, b) =>
+      Number(normalize(b.path) === normalize(path)) - Number(normalize(a.path) === normalize(path))
+    );
+    for (const lesson of lessons) {
       for (const hotspot of (lesson.hotspots || [])) {
         if (normalize(hotspot.title) === target) return hotspot;
       }
@@ -111,7 +114,7 @@
   }
 
   function makeStep(bundle, label, kind, path, extraDescription = "") {
-    const hotspot = findHotspot(bundle, label);
+    const hotspot = findHotspot(bundle, label, path);
     const description = extraDescription || hotspot?.description || `Localize ${label} na tela atual.`;
     return { label, kind, path, description };
   }
