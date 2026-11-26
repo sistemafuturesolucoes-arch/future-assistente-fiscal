@@ -698,7 +698,7 @@
       if (!isLikelyFiscalError(node, message) && !fiscalReturn) continue;
       const target = fieldForErrorNode(node);
       add(target || node, message, target ? "erro associado ao campo" : "rejeição fiscal da prefeitura");
-      if (/\\bE0160\\b/i.test(message)) {
+      if (/\bE0160\b/i.test(message)) {
         const simpleNationalFields = [...document.querySelectorAll("input,select,textarea,[role=combobox],[role=radio],[role=checkbox]")]
           .filter(control => isGuideNodeVisible(control) && getElementNames(control).some(name => /simples nacional|situação.*tribut|regime.*tribut|opção.*simples/i.test(name)));
         for (const control of simpleNationalFields.slice(0, 4)) {
