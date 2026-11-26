@@ -288,3 +288,19 @@ test("fluxos de CT-e, CT-e OS, MDF-e e CIOT usam as aulas de transporte do Manua
     assert.ok(plan.some(step => fieldPattern.test(step.label)), question + " deve usar campos/hotspots da aula");
   }
 });
+
+
+test("todas as aulas navegáveis do Manual geram o caminho local correspondente", async () => {
+  const ctx = createKnowledgeContext();
+  for (const lesson of manualBundle.lessons) {
+    const expected = String(lesson.path || "").split(/\\s*>\\s*/)
+      .map(part => part.trim())
+      .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    if (!expected.length) continue;
+    const question = "onde fica " + lesson.title + "?";
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(Array.isArray(plan) && plan.length, "deve gerar rota para: " + lesson.title);
+    assert.deepEqual(Array.from(plan, step => step.label), expected, "rota divergente para: " + lesson.title);
+  }
+});
