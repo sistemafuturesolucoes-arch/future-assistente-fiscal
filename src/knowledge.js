@@ -134,6 +134,21 @@
       ];
     }
 
+    if (/\b(veiculo|veiculos)\b/.test(q)) {
+      const path = "Cadastros > Veículos > Novo Veículo";
+      return [
+        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros na barra lateral."),
+        makeStep(bundleCache, "Veículos", "click", path, "No submenu Cadastros, selecione Veículos."),
+        makeStep(bundleCache, "Novo Veículo", "click", path, "Na listagem, clique em Novo Veículo para abrir o formulário."),
+        makeStep(bundleCache, "Placa", "field", path, "Informe a placa do veículo."),
+        makeStep(bundleCache, "UF", "field", path, "Selecione a UF de emplacamento."),
+        makeStep(bundleCache, "Tipo Rodado", "field", path, "Selecione o tipo de rodado correspondente."),
+        makeStep(bundleCache, "Tipo Carroceria", "field", path, "Selecione o tipo de carroceria correspondente."),
+        makeStep(bundleCache, "Número de eixos", "field", path, "Informe o número de eixos do veículo."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar. Se necessário, configure a aba Reboques e use Adicionar Reboque antes de salvar.")
+      ];
+    }
+
     if (/\b(cliente|clientes)\b/.test(q)) {
       const path = "Cadastros > Clientes > Novo Cliente";
       return [
