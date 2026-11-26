@@ -275,13 +275,13 @@
       const inspectionOnly = /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(q)
         && !/\b(ajustar|ajuste|alterar|altere|altero|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
       const plan = [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra Cadastros no menu lateral."),
-        makeStep(bundleCache, "Grupo Tributário", "click", path, "Selecione Grupo Tributário. É nessa área que as regras fiscais são configuradas; não altere o CFOP diretamente no cadastro do produto."),
-        makeStep(bundleCache, "Procurar", "field", path, "Pesquise pelo nome do grupo tributário vinculado ao produto e confirme que selecionou o grupo correto."),
-        makeStep(bundleCache, "Opções", "click", path, "Na linha do grupo correto, abra o menu de opções e escolha Editar."),
-        makeStep(bundleCache, "Editar Regra", "click", path, "Na seção Regras Tributárias, localize a regra correspondente à Natureza de Operação, destinatário e UF. Clique em Editar Regra. Se a regra ainda não existir, use Adicionar Regra em vez de duplicar uma regra existente."),
-        makeStep(bundleCache, "CFOP", "field", path, "Na identificação da regra, confira Natureza de Operação, CFOP, Tipo Destinatário e UFs Destino. Selecione o CFOP somente conforme a operação e a orientação da contabilidade."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os demais parâmetros tributários e clique em Salvar. Você fará a alteração e a gravação; a extensão não salva automaticamente.")
+        makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral, abra Cadastros."),
+        makeStep(bundleCache, "Grupo Tributário", "click", path, "Abra Grupo Tributário. Ao chegar à listagem, o guia continuará pelos marcadores desta aula do Manual."),
+        makeStep(bundleCache, "Procurar", "field", path, "Marcador do Manual: digite o nome do grupo tributário utilizado pelo produto. Pressione Enter ou saia do campo para aplicar a busca; depois o guia mostrará as opções da linha correspondente."),
+        makeStep(bundleCache, "Botão Opções da Linha", "click", path, "Marcador do Manual: na linha do grupo encontrado, abra as opções daquela linha. Não use as opções gerais da listagem."),
+        makeStep(bundleCache, "Editar Regra", "click", path, "Marcador do Manual: na área de regras tributárias, abra Editar Regra para a natureza de operação, destinatário e UF correspondentes."),
+        makeStep(bundleCache, "CFOP", "field", path, "Marcador do Manual: confira o campo CFOP junto com Natureza de Operação, Tipo Destinatário e UFs Destino. A escolha fiscal deve ser validada conforme a operação e a orientação da contabilidade."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar os parâmetros com a contabilidade, revise a regra e clique em Salvar. A extensão não altera nem grava os dados por você.")
       ];
       // Conferência é somente leitura: pare no campo CFOP e aguarde o usuário enviar a tela.
       return inspectionOnly ? plan.slice(0, 6) : plan;
