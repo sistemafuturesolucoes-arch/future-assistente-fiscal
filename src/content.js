@@ -963,51 +963,53 @@
   }
 
   function findGuideSteps(answer) {
-    const answerNorm = normalize(answer);
+    // Marcadores automáticos só são permitidos para rótulos exatos em uma instrução
+    // acionável. Correspondência aproximada pode apontar para outro menu e foi removida.
     const nodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
-    const lines = answer.split(/\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const lines = String(answer || "").split(/\\n+/).map(x => x.replace(/[*#`]/g, "").trim()).filter(Boolean);
+    const actionable = /\\b(clique|clicar|selecione|selecionar|acesse|acessar|abra|abrir|localize|localizar|procure|procurar|preencha|preencher|informe|informar|escolha|escolher|vá|ir até|campo|botão)\\b/i;
     const candidates = [];
-    for (const el of nodes) {
-      const names = getElementNames(el).filter(name => normalize(name).length >= 4);
-      if (!names.length) continue;
-      let best = null;
-      for (const name of names) {
-        const key = normalize(name);
-        const exactAt = answerNorm.indexOf(key);
-        let score = exactAt >= 0 ? 1 : 0;
-        if (!score) {
-          const tokens = key.split(" ").filter(token => token.length > 2);
-          if (tokens.length >= 2) {
-            const hits = tokens.filter(token => answerNorm.includes(token)).length;
-            score = hits / tokens.length;
-          }
-        }
-        if (!best || score > best.score || (score === best.score && exactAt >= 0 && best.exactAt < 0)) {
-          best = { el, name, key, exactAt, score };
+    lines.forEach((line, lineIndex) => {
+      if (!actionable.test(line)) return;
+      const lineNorm = normalize(line);
+      const lineMatches = [];
+      for (const el of nodes) {
+        const names = getElementNames(el);
+        for (const name of names) {
+          const key = normalize(name);
+          if (key.length < 2) continue;
+          const at = lineNorm.indexOf(key);
+          if (at < 0) continue;
+          const before = at === 0 ? "" : lineNorm[at - 1];
+          const after = lineNorm[at + key.length] || "";
+          if ((before && /[a-z0-9]/.test(before)) || (after && /[a-z0-9]/.test(after))) continue;
+          lineMatches.push({ element: el, title: name, key, at, lineIndex, line });
         }
       }
-      // Evita destacar controles por coincidência de uma palavra genérica.
-      if (best && (best.exactAt >= 0 || best.score >= 0.82)) candidates.push(best);
-    }
-    candidates.sort((a, b) => {
-      if (a.exactAt >= 0 && b.exactAt >= 0) return a.exactAt - b.exactAt;
-      if (a.exactAt >= 0) return -1;
-      if (b.exactAt >= 0) return 1;
-      return b.score - a.score;
+      // Se o mesmo texto identifica mais de um controle, não arrisca escolher um.
+      const byKey = new Map();
+      for (const match of lineMatches) {
+        if (!byKey.has(match.key)) byKey.set(match.key, new Set());
+        byKey.get(match.key).add(match.element);
+      }
+      for (const match of lineMatches) {
+        if (byKey.get(match.key)?.size !== 1) continue;
+        candidates.push(match);
+      }
     });
+    candidates.sort((a, b) => a.lineIndex - b.lineIndex || a.at - b.at);
     const steps = [];
     const seenElements = new Set();
-    const seenNames = new Set();
     for (const candidate of candidates) {
-      if (seenElements.has(candidate.el) || seenNames.has(candidate.key)) continue;
-      seenElements.add(candidate.el);
-      seenNames.add(candidate.key);
-      const line = lines.find(x => normalize(x).includes(candidate.key)) ||
-        lines.find(x => candidate.key.split(" ").filter(t => t.length > 2).length >= 2 &&
-          candidate.key.split(" ").filter(t => t.length > 2).every(t => normalize(x).includes(t))) || "";
-      const description = line.length > candidate.name.length + 8 ? line :
-        "Confira este elemento indicado pela orientação antes de fazer qualquer alteração.";
-      steps.push({ element: candidate.el, title: candidate.name.slice(0, 90), description: description.slice(0, 420) });
+      if (seenElements.has(candidate.element)) continue;
+      seenElements.add(candidate.element);
+      steps.push({
+        element: candidate.element,
+        title: candidate.title.slice(0, 90),
+        description: candidate.line.length > candidate.title.length + 8
+          ? candidate.line.slice(0, 420)
+          : "Confira este elemento indicado pela orientação antes de fazer qualquer alteração."
+      });
       if (steps.length >= 12) break;
     }
     return steps;
