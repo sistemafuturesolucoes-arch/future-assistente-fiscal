@@ -178,7 +178,7 @@
         // A aula de Empresa contém várias abas internas; explicitar a aba solicitada.
         if (/certificado|\bpfx\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Certificado Digital"];
-        } else if (/nfce|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+        } else if (/nfc.?e|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
         } else if (/nfe|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
           routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
@@ -435,6 +435,18 @@
         }
       }
 
+      if (isExport) {
+        const exportLines = String(lesson.content || "").split(/\n+/);
+        for (const line of exportLines) {
+          let match = line.match(/\bno campo\s+([^,.:;]+)/i);
+          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
+          match = line.match(/\bchave\s+([^,.:;?]+\??)/i);
+          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
+          match = line.match(/\bbot[aã]o\s+([^,.:;]+)/i);
+          if (match) add(match[1].trim(), /enviar|exportar|gerar/i.test(match[1]) ? "final_action" : "click", line.replace(/^\s*\d+\.\s*/, "").trim());
+        }
+      }
+
       if (plan.length) return plan.slice(0, 30);
     }
 
@@ -456,10 +468,12 @@
       const route = plan.map(step => step.label).join(" > ");
       const finalStep = plan[plan.length - 1];
       return [
-        "Caminho no Emissor: " + route,
-        finalStep?.description || "",
+        "## Aula: " + lesson.title,
+        lesson.summary || "",
+        "Caminho no Emissor: " + route.replace(/ > /g, " → "),
+        ...plan.map(step => step.label + ": " + step.description),
         "Se algum menu estiver diferente, envie um print para eu localizar a opção correta. A extensão não preenche nem salva dados automaticamente."
-      ].filter(Boolean).join("\n\n");
+      ].filter(Boolean).join("\n\n").slice(0, 9000);
     }
     return [
       "Encontrei esta orientação na base local do Manual Future:",
