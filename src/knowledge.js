@@ -65,7 +65,7 @@
     if (/(nfs.?e|nota.?de.?servico)/.test(q) && /nfs.?e|servico/.test(title + " " + path)) score += 75;
     if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 75;
     if (/ct.?e.?os/.test(q) && /ct.?e.?os/.test(title + " " + path)) score += 120;
-    if (/(mdfe|manifesto)/.test(q) && /mdfe|manifesto/.test(title + " " + path)) score += 75;
+    if (/mdf.?e|manifesto/.test(q) && /mdf.?e|manifesto/.test(title + " " + path)) score += 75;
     const matched = terms.filter(term => haystack.includes(term));
     if (terms.length && matched.length === terms.length) score += 55;
     if (terms.length && matched.length) score += matched.length * 7;
