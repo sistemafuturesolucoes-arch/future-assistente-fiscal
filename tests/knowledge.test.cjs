@@ -78,6 +78,21 @@ test("gera roteiros locais de produto e serviço e deixa tarefas desconhecidas p
 });
 
 
+test("gera roteiro local documentado para cadastrar veículo sem depender da IA", async () => {
+  const ctx = createKnowledgeContext();
+  const text = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como cadastrar um veículo"
+  });
+  assert.ok(text.includes("Gerenciamento e Edição de Veículos"));
+  const plan = ctx.knowledge.getLocalNavigationPlan("como cadastrar um veículo");
+  assert.ok(Array.isArray(plan));
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Veículos", "Novo Veículo", "Placa", "UF",
+    "Tipo Rodado", "Tipo Carroceria", "Número de eixos", "Salvar"
+  ]);
+  assert.equal(plan.at(-1).kind, "final_action");
+});
+
 test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pede para cadastrar", async () => {
   const ctx = createKnowledgeContext();
   const text = await ctx.knowledge.load({
