@@ -244,9 +244,8 @@ test("Manual Future completo fica empacotado localmente na extensão", () => {
 });
 
 test("base de conhecimento não consulta tabelas do Supabase nem baixa o Manual pela internet", () => {
-  assert.match(knowledgeSource, /chrome\.runtime\.getURL\(BUNDLE_URL\)/);
-  assert.match(knowledgeSource, /fetch\(url\)/);
-  assert.doesNotMatch(knowledgeSource, /SUPABASE_URL|PUBLISHABLE_KEY|\/rest\/v1\/course_lessons/);
+  assert.match(knowledgeSource, /window\.FutureManualBundle/);
+  assert.doesNotMatch(knowledgeSource, /SUPABASE_URL|PUBLISHABLE_KEY|\/rest\/v1\/course_lessons|fetch\(/);
   assert.match(knowledgeSource, /getLocalNavigationPlan/);
 });
 
@@ -266,8 +265,8 @@ test("cadastro de clientes, produtos e serviços possui roteiros locais sem IA",
 });
 
 test("base JSON do Manual está autorizada como recurso local da extensão", () => {
-  assert.ok(manifest.web_accessible_resources.some(item =>
-    item.resources.includes("src/manual-knowledge.json") &&
-    item.matches.includes("https://sistema.emissorfiscalonline.com.br/*")
-  ));
+  assert.deepEqual(manifest.web_accessible_resources, []);
+  assert.deepEqual(manifest.content_scripts[0].js.slice(0, 3), [
+    "src/manual-knowledge.js", "src/knowledge.js", "src/content.js"
+  ]);
 });
