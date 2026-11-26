@@ -1220,7 +1220,11 @@
       el.getAttribute("data-state") || "",
       el.getAttribute("aria-disabled") || (el.disabled ? "true" : "")
     ].join(":")).join("|");
-    return [location.pathname, location.hash, fingerprint].join("::");
+    const notices = [...document.querySelectorAll('[role=alert],[aria-live],.toast,.alert,[class*=notification]')]
+      .filter(isGuideNodeVisible)
+      .map(el => normalize(el.innerText || el.textContent).slice(0, 300))
+      .filter(Boolean).join("|");
+    return [location.pathname, location.hash, fingerprint, notices].join("::");
   }
 
   async function waitForNavigationTarget(label, timeoutMs = 3000) {
@@ -1346,8 +1350,8 @@
       const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
       const beforeSnapshot = navigationSnapshot();
       const navigationUpdate = nextPlannedLabel
-        ? waitForNavigationTarget(nextPlannedLabel, 3000)
-        : waitForNavigationUpdate(beforeSnapshot);
+        ? waitForNavigationTarget(nextPlannedLabel, 5000)
+        : waitForNavigationUpdate(beforeSnapshot, current.kind === "final_action" ? 12000 : 5000);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
       guideState.waitingForNavigation = true;
