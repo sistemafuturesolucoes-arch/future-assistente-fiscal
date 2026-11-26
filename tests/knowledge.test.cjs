@@ -93,6 +93,23 @@ test("gera roteiro local documentado para cadastrar veículo sem depender da IA"
   assert.equal(plan.at(-1).kind, "final_action");
 });
 
+test("gera roteiro local para ajustar CFOP em grupo tributário sem chamar a IA", async () => {
+  const ctx = createKnowledgeContext();
+  const text = await ctx.knowledge.load({
+    route: "/app/dashboard", question: "como ajustar o cfop no grupo tributario"
+  });
+  assert.ok(text.includes("Gerenciamento e Edição de Grupos Tributários"));
+  assert.ok(text.includes("Cadastros > Grupo Tributário"));
+  assert.ok(text.includes("CFOP"));
+  const plan = ctx.knowledge.getLocalNavigationPlan("como ajustar o cfop no grupo tributario");
+  assert.ok(Array.isArray(plan));
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP", "Salvar"
+  ]);
+  assert.equal(plan.at(-1).kind, "final_action");
+  assert.equal(plan.find(step => step.label === "CFOP").kind, "field");
+});
+
 test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pede para cadastrar", async () => {
   const ctx = createKnowledgeContext();
   const text = await ctx.knowledge.load({
