@@ -1200,6 +1200,33 @@
     return [location.pathname, location.hash, fingerprint].join("::");
   }
 
+  async function waitForNavigationTarget(label, timeoutMs = 3000) {
+    return new Promise(resolve => {
+      let settled = false;
+      let pollTimer = null;
+      let observer = null;
+      const startedAt = Date.now();
+      const finish = found => {
+        if (settled) return;
+        settled = true;
+        if (observer) observer.disconnect();
+        clearInterval(pollTimer);
+        resolve(Boolean(found));
+      };
+      const check = () => {
+        if (findElementByName(label)) finish(true);
+        else if (Date.now() - startedAt >= timeoutMs) finish(false);
+      };
+      observer = new MutationObserver(check);
+      if (document.documentElement) observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["class", "aria-expanded", "aria-hidden", "aria-controls", "data-state", "hidden", "disabled"]
+      });
+      pollTimer = window.setInterval(check, 100);
+      check();
+    });
+  }
+
   async function waitForNavigationUpdate(beforeSnapshot, timeoutMs = 3000) {
     return new Promise(resolve => {
       let settled = false;
@@ -1293,8 +1320,11 @@
       navigationLastCompletedRoute = location.pathname;
       if (navigationPlan.length) navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
       persistNavigationTask();
+      const nextPlannedLabel = navigationPlan[navigationPlanIndex]?.label || "";
       const beforeSnapshot = navigationSnapshot();
-      const navigationUpdate = waitForNavigationUpdate(beforeSnapshot);
+      const navigationUpdate = nextPlannedLabel
+        ? waitForNavigationTarget(nextPlannedLabel, 3000)
+        : waitForNavigationUpdate(beforeSnapshot);
       const nextIndex = guideState.index + 1;
       guideState.pendingIndex = nextIndex;
       guideState.waitingForNavigation = true;
