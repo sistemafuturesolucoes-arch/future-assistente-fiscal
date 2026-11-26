@@ -104,7 +104,7 @@ test("gera roteiro local para ajustar CFOP em grupo tributário sem chamar a IA"
   const plan = ctx.knowledge.getLocalNavigationPlan("como ajustar o cfop no grupo tributario");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
   assert.equal(plan.find(step => step.label === "CFOP").kind, "field");
