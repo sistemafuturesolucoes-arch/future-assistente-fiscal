@@ -211,8 +211,15 @@ test("avanço normal do roteiro local não chama a IA a cada clique", () => {
   assert.match(source, /waitForNavigationUpdate\(beforeSnapshot\)/);
 });
 
-test("o plano local não executa ações fiscais nem preenche formulários automaticamente", () => {
-  assert.match(source, /Não inclua campos de formulário, botões Salvar, Emitir, Transmitir, Autorizar ou Finalizar/);
-  assert.match(source, /um item por clique, na ordem correta/);
+test("o plano local cobre o fluxo completo, inclusive campos e botão final", () => {
+  assert.match(source, /ROTEIRO COMPLETO de ponta a ponta/);
+  assert.match(source, /kind=field/);
+  assert.match(source, /kind=final_action/);
+  assert.match(source, /navigationPlanRequest/);
+  assert.match(source, /parsed\.slice\(0, 30\)/);
+  assert.match(source, /waitForInput: next\.kind === "field"/);
+  assert.match(source, /completeNavigationInputStep/);
+  assert.match(source, /Preencha este campo conforme a orientação/);
+  assert.match(source, /NUNCA clique, preencha ou envie automaticamente/);
   assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
 });

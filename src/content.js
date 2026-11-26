@@ -1153,7 +1153,7 @@
       try {
         const parsed = JSON.parse(raw.trim());
         if (!Array.isArray(parsed)) return "";
-        const valid = parsed.slice(0, 18).filter(item =>
+        const valid = parsed.slice(0, 30).filter(item =>
           item && typeof item.label === "string" && item.label.trim() &&
           typeof item.description === "string" && item.description.trim()
         ).map(item => ({

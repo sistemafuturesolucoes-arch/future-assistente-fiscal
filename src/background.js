@@ -39,8 +39,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         throw new Error("Estado de orientação inválido.");
       }
       await chrome.storage.session.set({ [key]: {
-        plan: guide.plan.slice(0, 18),
-        step: Math.max(0, Math.min(guide.step, 18)),
+        plan: guide.plan.slice(0, 30),
+        step: Math.max(0, Math.min(guide.step, 30)),
         task: String(guide.task || "").slice(0, 1200),
         updatedAt: Date.now(),
         origin: new URL(tab.url).origin
