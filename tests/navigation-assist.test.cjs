@@ -65,8 +65,8 @@ test("cada consulta prioriza o Manual e bloqueia instruções de procedimento se
 
 test("fluxo da IA identifica finalização e não aceita conexão encerrada como resposta completa", () => {
   assert.match(source, /let completed = false/);
-  assert.match(source, /event\.type === "finish"/);
-  assert.match(source, /payload === "\[DONE\]"/);
+  assert.match(source, /raw === "\[DONE\]"/);
+  assert.match(source, /type === "finish" \|\| type === "message-finish"/);
   assert.match(source, /return \{ answer, completed: completed && !stalled \}/);
 });
 
