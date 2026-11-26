@@ -157,6 +157,45 @@
     const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
 
+    // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
+    // Não transformar "onde fica NFC-e?" em um roteiro de emissão ou preenchimento.
+    const locateOnly = /\\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|localizar|localize|me mostre onde|qual caminho|qual menu)\\b/.test(q)
+      && !/\\b(cadastrar|criar|emitir|gerar|preencher|alterar|editar|configurar|informar|salvar|carregar|instalar|renovar|exportar|cancelar)\\b/.test(q);
+    if (locateOnly) {
+      const rankedForRoute = [...bundleCache.lessons].map(lesson => ({
+        lesson, score: relevance(lesson, location.pathname, question)
+      })).sort((a, b) => b.score - a.score);
+      const bestRoute = rankedForRoute[0]?.lesson;
+      if (bestRoute && rankedForRoute[0].score >= 18) {
+        let routeParts = String(bestRoute.path || "").split(/\\s*>\\s*/)
+          .map(part => part.trim()).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+        const lessonTextAll = normalize([bestRoute.title, bestRoute.summary, bestRoute.content,
+          ...(bestRoute.hotspots || []).map(h => h.title + " " + h.description),
+          ...(bestRoute.screenshots || []).flatMap(s => (s.hotspots || []).map(h => h.title + " " + h.description))
+        ].join(" "));
+        // A aula de Empresa contém várias abas internas; explicitar a aba solicitada.
+        if (/certificado|\\bpfx\\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Certificado Digital"];
+        } else if (/nfce|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
+        } else if (/nfe|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
+        } else if (/nfse|nota.?de.?servico/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"];
+        }
+        const path = routeParts.join(" > ");
+        return routeParts.map((label, index) => makeLessonStep(
+          bundleCache, bestRoute, label, "click", path,
+          index === routeParts.length - 1
+            ? (label === "NFC-e" ? "Você chegou à configuração da NFC-e. Nesta tela ficam os parâmetros do documento, incluindo série, CSC e ID CSC."
+              : label === "Certificado Digital" ? "Você chegou à tela do certificado digital. Aqui é possível conferir o certificado A1 e abrir Opções para importar ou atualizar o arquivo."
+              : "Você chegou à área solicitada no Manual Future.")
+            : "Abra esta opção seguindo a sequência documentada no Manual Future."
+        ));
+      }
+      return null;
+    }
+
     // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
     // A extensão não lê, armazena ou preenche a senha do certificado.
     if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
@@ -367,6 +406,31 @@
           add(label, finalAction ? "final_action" : "field");
         }
       }
+      // Para os módulos com capturas de tela, aproveite os hotspots ordenados
+      // por etapa do Manual (listagem, formulário, seções e ações finais).
+      // Isso amplia a cobertura sem inventar rótulos que não estejam documentados.
+      const screenshots = Array.isArray(lesson.screenshots) ? lesson.screenshots : [];
+      if (screenshots.length && (isCreate || isEdit || isIssue || /\\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\\b/.test(q))) {
+        for (let si = 0; si < screenshots.length; si++) {
+          const shot = screenshots[si];
+          const caption = normalize(shot.caption || "");
+          const isList = /listagem|notas emitidas|painel inicial|tela inicial|menu lateral/.test(caption);
+          const isForm = /formulario|dados gerais|lancamento|secao|totais|transporte|pagamento|informacoes|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption);
+          for (const h of (shot.hotspots || [])) {
+            const label = String(h.title || "").trim();
+            const labelNorm = normalize(label);
+            if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) continue;
+            if (isIssue && isList && !/emitir|novo|gerar|adicionar/i.test(label)) continue;
+            if (isIssue && si > 0 && !isForm && !/formulario|dados|secao|totais|transporte|pagamento|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)) continue;
+            if (isEdit && isList && !/procurar|busca|opcoes|editar/i.test(label)) continue;
+            if (!isList && !isForm && si > 0) continue;
+            const isFinal = /^(salvar|salvar configuracoes|botao salvar|botao gerar|gerar nfe|gerar nfse|gerar cte|emitir ciot|emitir mdfe|emitir nfce)$/i.test(labelNorm);
+            const isAction = /^(emitir|gerar|novo|adicionar|botao emitir|botao gerar)/i.test(labelNorm);
+            add(label, isFinal ? "final_action" : isAction ? "click" : "field", h.description || h.tip || "");
+          }
+        }
+      }
+
       if (plan.length) return plan.slice(0, 24);
     }
 
