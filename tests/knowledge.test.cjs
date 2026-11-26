@@ -293,7 +293,7 @@ test("fluxos de CT-e, CT-e OS, MDF-e e CIOT usam as aulas de transporte do Manua
 test("todas as aulas navegáveis do Manual geram o caminho local correspondente", async () => {
   const ctx = createKnowledgeContext();
   for (const lesson of manualBundle.lessons) {
-    const expected = String(lesson.path || "").split(/\\s*>\\s*/)
+    const expected = String(lesson.path || "").split(/\s*>\s*/)
       .map(part => part.trim())
       .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
     if (!expected.length) continue;
