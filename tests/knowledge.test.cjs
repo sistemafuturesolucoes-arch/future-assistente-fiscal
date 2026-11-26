@@ -365,3 +365,18 @@ test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar
   assert.equal(plan.find(step => step.label === "CFOP").manualMarker.title, "CFOP");
   assert.ok(plan.find(step => step.label === "CFOP").manualMarker.id);
 });
+
+test("variação 'Como ajusto o CFOP?' inicia o guia visual local com marcadores", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "Como ajusto o CFOP?";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.ok(Array.isArray(plan), "a pergunta deve gerar um plano visual local, não cair na resposta textual de fallback");
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+  ]);
+  for (const label of ["Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar Regra", "CFOP"]) {
+    const step = plan.find(item => item.label === label);
+    assert.ok(step?.manualMarker?.id, `o passo ${label} deve carregar o marcador do Manual Future`);
+  }
+});
