@@ -965,16 +965,23 @@
   function findElementForPlanStep(step) {
     if (!step) return null;
     const names = [step.label, ...(Array.isArray(step.targetNames) ? step.targetNames : [])].filter(Boolean);
+    const visibleNodes = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)].filter(isGuideNodeVisible);
     for (const name of names) {
-      const element = findElementByName(name);
-      if (element) return element;
+      const wanted = normalize(name);
+      const exact = visibleNodes.filter(el => getElementNames(el).some(label => normalize(label) === wanted));
+      if (exact.length === 1) return exact[0];
+      if (exact.length > 1) {
+        // Quando o mesmo nome aparece em um cartão e no submenu, prefira o item
+        // da navegação lateral indicado pelo caminho do Manual.
+        const navCandidates = exact.filter(el => el.closest("aside,[role=navigation],nav,[class*=sidebar],[class*=menu]"));
+        if (navCandidates.length === 1) return navCandidates[0];
+      }
     }
     // O Manual chama este alvo de "Botão Opções da Linha", mas alguns layouts
     // exibem apenas "Opções". Só aceita o botão dentro de uma linha da tabela
     // quando houver um único candidato visível, nunca o botão geral da listagem.
     if (normalize(step.label) === normalize("Botão Opções da Linha")) {
-      const candidates = [...document.querySelectorAll(GUIDE_NODE_SELECTOR)]
-        .filter(isGuideNodeVisible)
+      const candidates = visibleNodes
         .filter(el => el.closest("tr,[role=row]"))
         .filter(el => getElementNames(el).some(name => /\b(opcoes|opcoes da linha)\b/.test(normalize(name))));
       if (candidates.length === 1) return candidates[0];
