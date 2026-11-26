@@ -1151,9 +1151,15 @@
   }
   function extractNavigationPlan(answer) {
     let plan = null;
-    const cleanAnswer = String(answer || "").replace(/\[\[FUTURE_NAVIGATION_PLAN\]\]([\s\S]*?)\[\[\/FUTURE_NAVIGATION_PLAN\]\]/g, (_, raw) => {
+    // Compatibilidade com versões do backend que emitiram FUTURE_NAVIGATION_PLAN_PATH
+    // e com delimitadores de uma ou duas chaves. O conteúdo nunca é texto para o usuário.
+    const marker = /\[{1,2}FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}([\s\S]*?)\[{1,2}\/FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}/gi;
+    let cleanAnswer = String(answer || "").replace(marker, (_, raw) => {
       try {
-        const parsed = JSON.parse(raw.trim());
+        const text = raw.trim();
+        const jsonStart = text.indexOf("[");
+        const jsonEnd = text.lastIndexOf("]");
+        const parsed = JSON.parse(jsonStart >= 0 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd + 1) : text);
         if (!Array.isArray(parsed)) return "";
         const valid = parsed.slice(0, 30).filter(item =>
           item && typeof item.label === "string" && item.label.trim() &&
@@ -1167,7 +1173,8 @@
         if (valid.length) plan = valid;
       } catch {}
       return "";
-    }).trim();
+    });
+    cleanAnswer = cleanAnswer.replace(/\[{1,2}\/?FUTURE_NAVIGATION_PLAN(?:_PATH)?\]{1,2}/gi, "").trim();
     return { cleanAnswer, plan };
   }
   function activateNavigationPlan(plan) {
@@ -1607,6 +1614,12 @@
       navigationPlan = [];
       navigationPlanIndex = 0;
     }
+    // Em pedidos de cadastro passo a passo, nunca deduza o alvo pela prosa.
+    // Sem roteiro estruturado e controle exato, não mostre marcador algum.
+    if (navigationTask && /\b(cadastrar|cadastre|cadastro|criar|crie|incluir|adicione|adicionar|novo|nova|passo a passo|me guie|como faço|como faco)\b/i.test(navigationTask)) {
+      status.textContent = "Não encontrei um controle com identificação exata para destacar. Envie um print da tela atual para eu localizar com segurança.";
+      return false;
+    }
     const instructionIntent = /(?:clique|selecione|acesse|abra|localize|procure|preencha|informe|escolha|vá até|avance|primeiro passo|próximo passo|passo\s*\d|para continuar|para corrigir|corrija|verifique o campo)/i.test(answer);
     if (!instructionIntent) return false;
     const asksToSave = /\b(salvar|salve|gravar|grave|confirmar cadastro|finalizar cadastro)\b/i.test(answer);
@@ -1853,7 +1866,13 @@
     function appendText(value) {
       if (typeof value !== "string" || !value) return;
       answer += value;
-      target.textContent = initialAnswer ? initialAnswer + "\n\n" + answer : answer;
+      const markerStart = answer.search(/\[{1,2}FUTURE_NAVIGATION_PLAN(?:_PATH)?/i);
+      let visibleAnswer = markerStart >= 0 ? answer.slice(0, markerStart) : answer;
+      const partialMarker = visibleAnswer.lastIndexOf("[[");
+      if (partialMarker >= 0 && /^\[\[FUTURE_[A-Z_]*$/i.test(visibleAnswer.slice(partialMarker))) {
+        visibleAnswer = visibleAnswer.slice(0, partialMarker);
+      }
+      target.textContent = initialAnswer ? initialAnswer + "\n\n" + visibleAnswer : visibleAnswer;
       messages.scrollTop = messages.scrollHeight;
     }
     function consumePayload(payload, eventName = "") {
