@@ -185,10 +185,10 @@ test("gera roteiro local para instalar ou renovar certificado A1 sem depender da
   await ctx.knowledge.load({ route: "/app/dashboard", question: "como carregar um novo arquivo do certificado digital A1" });
   const plan = ctx.knowledge.getLocalNavigationPlan("como carregar um novo arquivo do certificado digital A1");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx"
+    "Configurações", "Empresa", "Certificado Digital", "Opções", "Arquivo .pfx", "Senha do certificado", "Salvar"
   ]);
-  assert.equal(plan.at(-1).kind, "field");
-  assert.match(plan.at(-1).description, /senha.*diretamente no sistema/i);
+  assert.equal(plan.at(-1).kind, "final_action");
+  assert.ok(plan.some(step => step.label === "Senha do certificado" && /diretamente no campo do Emissor/i.test(step.description)));
 });
 
 test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA", async () => {
@@ -196,10 +196,9 @@ test("gera roteiro local para informar CSC e ID CSC da NFC-e sem depender da IA"
   await ctx.knowledge.load({ route: "/app/dashboard", question: "onde informar o código CSC da nota de cupom" });
   const plan = ctx.knowledge.getLocalNavigationPlan("onde informar o código CSC da nota de cupom");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Configurações", "Empresa", "Notas Fiscais", "NFC-e", "CSC", "ID CSC", "Salvar Configurações"
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e"
   ]);
-  assert.equal(plan.at(-1).kind, "final_action");
-  assert.ok(plan.some(step => step.label === "ID CSC" && step.kind === "field"));
+  assert.match(plan.at(-1).description, /CSC e ID CSC/i);
 });
 
 test("extrai campos descritos em listas e hotspots de configuração para a navegação local", async () => {
@@ -209,4 +208,117 @@ test("extrai campos descritos em listas e hotspots de configuração para a nave
   assert.ok(Array.isArray(plan));
   assert.ok(plan.some(step => /Série.*NFC-e/i.test(step.label) && step.kind === "field"));
   assert.ok(plan.some(step => /NFC-e/i.test(step.label)));
+});
+
+
+test("pedidos de localização param no destino exato em vez de abrir um fluxo de cadastro", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica a configuração da NFC-e?" });
+  const nfce = ctx.knowledge.getLocalNavigationPlan("onde fica a configuração da NFC-e?");
+  assert.deepEqual(Array.from(nfce, step => step.label), [
+    "Configurações", "Empresa", "Notas Fiscais", "NFC-e"
+  ]);
+  assert.match(nfce.at(-1).description, /parâmetros do documento/i);
+
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica o certificado digital?" });
+  const certificate = ctx.knowledge.getLocalNavigationPlan("onde fica o certificado digital?");
+  assert.deepEqual(Array.from(certificate, step => step.label), [
+    "Configurações", "Empresa", "Certificado Digital"
+  ]);
+});
+
+test("pergunta de localização para cadastros não inclui campos nem botão salvar", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "onde fica o cadastro de clientes?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("onde fica o cadastro de clientes?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => step.label === "Clientes"));
+  assert.ok(!plan.some(step => step.kind === "field" || step.kind === "final_action"));
+});
+
+test("emissão de NFe usa hotspots ordenados das telas e inclui a ação final documentada", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como emitir uma NFe?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como emitir uma NFe?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Emitir NFe/i.test(step.label)));
+  assert.ok(plan.some(step => /Natureza da operação/i.test(step.label)));
+  assert.ok(plan.some(step => /Destinatário/i.test(step.label)));
+  assert.ok(plan.some(step => /Quantidade/i.test(step.label)));
+  assert.ok(plan.some(step => /Pagamentos/i.test(step.label)));
+  assert.ok(plan.some(step => /Gerar NFe/i.test(step.label) && step.kind === "final_action"));
+});
+
+test("exportação de XML aproveita os passos e hotspots da aula em vez de parar só no menu", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como exportar XML das notas?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como exportar XML das notas?");
+  assert.ok(Array.isArray(plan));
+  assert.ok(plan.some(step => /Exportar XML/i.test(step.label)));
+  assert.ok(plan.some(step => /Período/i.test(step.label) || /Ambiente/i.test(step.label) || /Enviar/i.test(step.label)));
+});
+
+
+test("emissão de NFS-e não é confundida com cadastro de serviço", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard", question: "como emitir uma NFS-e?" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("como emitir uma NFS-e?");
+  assert.ok(Array.isArray(plan));
+  assert.equal(plan[0].label, "Documentos");
+  assert.ok(plan.some(step => /Tomador|Cliente/i.test(step.label)));
+  assert.ok(plan.some(step => /Descrição Serviço/i.test(step.label)));
+  assert.ok(plan.some(step => /Gerar/i.test(step.label) && step.kind === "final_action"));
+  assert.ok(!plan.some(step => step.label === "Novo Serviço"));
+});
+
+test("fluxos de CT-e, CT-e OS, MDF-e e CIOT usam as aulas de transporte do Manual", async () => {
+  const ctx = createKnowledgeContext();
+  const cases = [
+    ["como emitir um CT-e", /CT-e/i, /Tomador|Remetente|Destinatário/i],
+    ["como emitir um CT-e OS", /CTe OS|CT-e OS/i, /Tomador/i],
+    ["como emitir um MDF-e", /MDFe|MDF-e/i, /Municípios|Veículo|Condutor/i],
+    ["como emitir um CIOT", /CIOT/i, /Pagamento|Contratante|Emitente/i]
+  ];
+  for (const [question, routePattern, fieldPattern] of cases) {
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(Array.isArray(plan), question + " deve gerar roteiro local");
+    assert.equal(plan[0].label, "Documentos", question + " deve começar no menu Documentos");
+    assert.ok(plan.some(step => routePattern.test(step.label)), question + " deve apontar para o módulo correto");
+    assert.ok(plan.some(step => fieldPattern.test(step.label)), question + " deve usar campos/hotspots da aula");
+  }
+});
+
+
+test("todas as aulas navegáveis do Manual geram o caminho local correspondente", async () => {
+  const ctx = createKnowledgeContext();
+  for (const lesson of manualBundle.lessons) {
+    const expected = String(lesson.path || "").split(/\s*>\s*/)
+      .map(part => part.trim())
+      .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    if (!expected.length) continue;
+    const question = "onde fica " + lesson.title + "?";
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(Array.isArray(plan) && plan.length, "deve gerar rota para: " + lesson.title);
+    assert.deepEqual(Array.from(plan, step => step.label), expected, "rota divergente para: " + lesson.title);
+  }
+});
+
+
+test("configurações dos modelos fiscais levam à aba interna correta da Empresa", async () => {
+  const ctx = createKnowledgeContext();
+  const cases = [
+    ["onde fica o CSC?", ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"]],
+    ["onde fica a série da NF-e?", ["Configurações", "Empresa", "Notas Fiscais", "NF-e"]],
+    ["onde fica a série da NFS-e?", ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"]],
+    ["onde fica a série do CT-e?", ["Configurações", "Empresa", "Notas Fiscais", "CT-e"]],
+    ["onde fica a série do CT-e OS?", ["Configurações", "Empresa", "Notas Fiscais", "CT-e OS"]],
+    ["onde fica a configuração do MDF-e?", ["Configurações", "Empresa", "Notas Fiscais", "MDF-e"]]
+  ];
+  for (const [question, expected] of cases) {
+    await ctx.knowledge.load({ route: "/app/dashboard", question });
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.deepEqual(Array.from(plan, step => step.label), expected, question);
+  }
 });

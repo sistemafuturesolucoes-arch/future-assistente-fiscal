@@ -60,11 +60,15 @@
     if (/(csc|id.?csc|serie|numeracao|certificado|pfx|regime.?tributario)/.test(q) && /empresa|configur/.test(title + " " + path)) score += 85;
     if (/(motorista|condutor)/.test(q) && /condutor/.test(title + " " + path)) score += 90;
     if (/(placa|reboque|renavam|veiculo)/.test(q) && /veiculo/.test(title + " " + path)) score += 90;
-    if (/(nfe|nota.?eletronica)/.test(q) && /nfe/.test(title + " " + path)) score += 75;
-    if (/(nfce|cupom|consumidor)/.test(q) && /nfce|consumidor/.test(title + " " + path)) score += 75;
-    if (/(nfse|nota.?de.?servico)/.test(q) && /nfse|servico/.test(title + " " + path)) score += 75;
-    if (/(cte|conhecimento.?transporte)/.test(q) && /cte/.test(title + " " + path)) score += 75;
-    if (/(mdfe|manifesto)/.test(q) && /mdfe|manifesto/.test(title + " " + path)) score += 75;
+    if (/(nf.?e|nota.?eletronica)/.test(q) && /nf.?e/.test(title + " " + path)) score += 75;
+    if (/(nfc.?e|cupom|consumidor)/.test(q) && /nfc.?e|consumidor/.test(title + " " + path)) score += 75;
+    if (/(nfs.?e|nota.?de.?servico)/.test(q) && /nfs.?e|servico/.test(title + " " + path)) score += 75;
+    const cteOsQuery = /ct.?e.?os/.test(q);
+    const cteOsLesson = /ct.?e.?os/.test(title + " " + path);
+    if (cteOsQuery && cteOsLesson) score += 150;
+    else if (!cteOsQuery && cteOsLesson) score -= 60;
+    else if (/ct.?e|conhecimento.?transporte/.test(q) && /ct.?e/.test(title + " " + path)) score += 100;
+    if (/mdf.?e|manifesto/.test(q) && /mdf.?e|manifesto/.test(title + " " + path)) score += 75;
     const matched = terms.filter(term => haystack.includes(term));
     if (terms.length && matched.length === terms.length) score += 55;
     if (terms.length && matched.length) score += matched.length * 7;
@@ -154,19 +158,102 @@
 
   function getLocalNavigationPlan(question) {
     const q = normalize(question);
-    const taskWords = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
+    const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
+    const createRequest = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
+
+
+    // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
+    // Não transformar "onde fica NFC-e?" em um roteiro de emissão ou preenchimento.
+    const locateOnly = /^\s*(onde fica|onde esta|onde encontro|onde acho|onde acesso|como acessar|como chegar|ir para|ir ate|qual caminho|qual menu)\b/.test(q)
+      || (/\b(localizar|localize|me mostre onde)\b/.test(q) && !createRequest);
+    if (locateOnly) {
+      const rankedForRoute = [...bundleCache.lessons].map(lesson => ({
+        lesson,
+        score: relevance(lesson, location.pathname, question)
+          + (/configur|serie|parametro/.test(q) && /configuracoes|empresa/.test(normalize(lesson.module_id + " " + lesson.title + " " + lesson.path)) ? 90 : 0)
+      })).sort((a, b) => b.score - a.score);
+      const settingsRequested = /(configur|serie|parametro|csc)/.test(q)
+        && /(nf.?e|nfc.?e|nfs.?e|ct.?e|mdf.?e|certificado|csc)/.test(q);
+      const companySettingsLesson = bundleCache.lessons.find(lesson =>
+        /configurando os dados gerais da empresa/i.test(lesson.title || "")
+      );
+      const bestRoute = settingsRequested && companySettingsLesson
+        ? companySettingsLesson
+        : rankedForRoute[0]?.lesson;
+      if (bestRoute && rankedForRoute[0].score >= 18) {
+        let routeParts = String(bestRoute.path || "").split(/\s*>\s*/)
+          .map(part => part.trim()).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+        const lessonTextAll = normalize([bestRoute.title, bestRoute.summary, bestRoute.content,
+          ...(bestRoute.hotspots || []).map(h => h.title + " " + h.description),
+          ...(bestRoute.screenshots || []).flatMap(s => (s.hotspots || []).map(h => h.title + " " + h.description))
+        ].join(" "));
+        // A aula de Empresa contém várias abas internas; explicitar a aba solicitada.
+        if (/certificado|\bpfx\b/.test(q) && /certificado digital/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Certificado Digital"];
+        } else if (/\bcsc\b/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
+        } else if (/nfc.?e|nota.?de.?consumidor|cupom/.test(q) && /(configur|csc|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFC-e"];
+        } else if (/nfs.?e|nota.?de.?servico/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NFS-e"];
+        } else if (/ct.?e.?os/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "CT-e OS"];
+        } else if (/ct.?e/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "CT-e"];
+        } else if (/mdf.?e/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "MDF-e"];
+        } else if (/nf.?e|nota.?eletronica/.test(q) && /(configur|serie|parametro)/.test(q) && /notas fiscais/.test(lessonTextAll)) {
+          routeParts = ["Configurações", "Empresa", "Notas Fiscais", "NF-e"];
+        }
+        const path = routeParts.join(" > ");
+        return routeParts.map((label, index) => makeLessonStep(
+          bundleCache, bestRoute, label, "click", path,
+          index === routeParts.length - 1
+            ? (label === "NFC-e" ? "Você chegou à configuração da NFC-e. Nesta tela ficam os parâmetros do documento, incluindo série, CSC e ID CSC."
+              : label === "Certificado Digital" ? "Você chegou à tela do certificado digital. Aqui é possível conferir o certificado A1 e abrir Opções para importar ou atualizar o arquivo."
+              : "Você chegou à área solicitada no Manual Future.")
+            : "Abra esta opção seguindo a sequência documentada no Manual Future."
+        ));
+      }
+      return null;
+    }
+
+    // Consultas às listas de cadastros devem abrir a listagem, nunca o formulário de novo registro.
+    if (!createRequest && /\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\b/.test(q)) {
+      const listingRoutes = [
+        { re: /\b(cliente|clientes)\b/, labels: ["Cadastros", "Clientes"] },
+        { re: /\b(produto|produtos)\b/, labels: ["Cadastros", "Produtos"] },
+        { re: /\b(servico|servicos)\b/, labels: ["Cadastros", "Serviços"] },
+        { re: /\b(veiculo|veiculos)\b/, labels: ["Cadastros", "Veículos"] },
+        { re: /\b(condutor|condutores|motorista|motoristas)\b/, labels: ["Cadastros", "Condutores"] },
+        { re: /grupo.?tributario/, labels: ["Cadastros", "Grupo Tributário"] },
+        { re: /natureza.?de.?operacao/, labels: ["Cadastros", "Natureza de Operação"] }
+      ];
+      const selected = listingRoutes.find(item => item.re.test(q));
+      if (selected) {
+        const path = selected.labels.join(" > ");
+        return selected.labels.map((label, index) => makeStep(
+          bundleCache, label, "click", path,
+          index === selected.labels.length - 1
+            ? "Abra a listagem para pesquisar, consultar ou selecionar um registro existente. Não é necessário criar um novo cadastro."
+            : "Abra esta opção no menu lateral para seguir até a listagem."
+        ));
+      }
+    }
 
     // Certificado A1: o arquivo .pfx é enviado pela opção da aba Certificado Digital.
     // A extensão não lê, armazena ou preenche a senha do certificado.
     if (/\b(certificado|pfx)\b/.test(q) && /\b(carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|novo|arquivo)\b/.test(q)) {
-      const path = "Configurações > Empresa > Certificado Digital > Opções";
+      const path = "Configurações > Empresa > Certificado Digital";
       return [
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
-        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital e confira os dados do A1 atual."),
-        makeStep(bundleCache, "Opções", "click", path, "No quadro do Certificado Digital A1, abra Opções para enviar ou renovar o arquivo .pfx."),
-        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo .pfx somente na janela oficial do Emissor. A senha deve ser digitada diretamente no sistema; nunca a envie ao assistente.")
+        makeStep(bundleCache, "Certificado Digital", "click", path, "Abra a aba Certificado Digital. Você chegou à tela correta para atualizar o certificado."),
+        makeStep(bundleCache, "Opções", "click", path, "Na seção Certificado Digital A1, clique em Opções para importar o novo arquivo .pfx."),
+        makeStep(bundleCache, "Arquivo .pfx", "field", path, "Selecione o novo arquivo do certificado digital (.pfx) nesta tela do Emissor."),
+        makeStep(bundleCache, "Senha do certificado", "field", path, "Digite a senha do certificado diretamente no campo do Emissor. Não envie a senha pelo chat nem compartilhe com o assistente."),
+        makeStep(bundleCache, "Salvar", "final_action", path, "Clique em Salvar/confirmar na própria tela para concluir a importação. Depois confira os dados e a validade do certificado.")
       ];
     }
 
@@ -177,10 +264,7 @@
         makeStep(bundleCache, "Configurações", "click", path, "Abra Configurações no menu lateral."),
         makeStep(bundleCache, "Empresa", "click", path, "Entre nas configurações da empresa."),
         makeStep(bundleCache, "Notas Fiscais", "click", path, "Abra a aba Notas Fiscais."),
-        makeStep(bundleCache, "NFC-e", "click", path, "Localize a seção ou subaba NFC-e nos parâmetros por tipo de documento."),
-        makeStep(bundleCache, "CSC", "field", path, "Informe o Código de Segurança do Contribuinte fornecido pela SEFAZ. Não compartilhe o código no chat."),
-        makeStep(bundleCache, "ID CSC", "field", path, "Informe o identificador correspondente ao CSC, também fornecido pela SEFAZ."),
-        makeStep(bundleCache, "Salvar Configurações", "final_action", path, "Revise os parâmetros da NFC-e e clique em Salvar Configurações quando estiver pronto.")
+        makeStep(bundleCache, "NFC-e", "click", path, "Abra a seção ou subaba NFC-e. É aqui que ficam os campos CSC e ID CSC; localize-os nesta tela. Os códigos são fornecidos pela SEFAZ e devem ser digitados diretamente no Emissor, nunca no chat.")
       ];
     }
 
@@ -199,7 +283,7 @@
       ];
     }
 
-    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q)) {
+    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
       const path = "Cadastros > Condutores > Novo Condutor";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral esquerdo, abra Cadastros."),
@@ -212,7 +296,7 @@
       ];
     }
 
-    if (/\b(veiculo|veiculos)\b/.test(q)) {
+    if (/\b(veiculo|veiculos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Veículos > Novo Veículo";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros na barra lateral."),
@@ -227,7 +311,7 @@
       ];
     }
 
-    if (/\b(cliente|clientes)\b/.test(q)) {
+    if (/\b(cliente|clientes)\b/.test(q) && createRequest) {
       const path = "Cadastros > Clientes > Novo Cliente";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -243,7 +327,7 @@
       ];
     }
 
-    if (/\b(produto|produtos)\b/.test(q)) {
+    if (/\b(produto|produtos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Produtos > Novo Produto";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -260,7 +344,7 @@
       ];
     }
 
-    if (/\b(servico|servicos)\b/.test(q)) {
+    if (/\b(servico|servicos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Serviços > Novo Serviço";
       return [
         makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
@@ -290,7 +374,7 @@
       const seen = new Set();
       const add = (label, kind, description) => {
         const key = normalize(label);
-        if (!label || !key || seen.has(key) || plan.length >= 24) return;
+        if (!label || !key || seen.has(key) || plan.length >= 30) return;
         seen.add(key);
         plan.push(makeLessonStep(bundleCache, lesson, label, kind, path, description || ""));
       };
@@ -304,6 +388,8 @@
       const isCreate = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
       const isEdit = /\b(editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
       const isIssue = /\b(emitir|emita|gerar|gere|transmitir|transmita|finalizar|finalize)\b/.test(q);
+      const isExport = /\b(exportar|exporte|baixar|download|enviar xml)\b/.test(q);
+      const isConfigure = /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\b/.test(q);
 
       // Campos citados pelo usuário podem estar descritos em bullets ou hotspots de screenshots.
       const requestedTerms = q.split(/[^a-z0-9]+/).filter(term => term.length >= 3);
@@ -335,7 +421,9 @@
       }
 
       if (isCreate || isIssue) {
-        const action = (lesson.hotspots || []).find(h => /^(novo|nova|emitir|adicionar|incluir)/i.test(String(h.title || "").trim()));
+        const action = (lesson.hotspots || []).find(h => isIssue
+          ? /^(emitir|gerar)/i.test(String(h.title || "").trim())
+          : /^(novo|nova|adicionar|incluir)/i.test(String(h.title || "").trim()));
         if (action) add(action.title, "click", action.description || "Abra o formulário indicado pela aula.");
         const boldActions = [...String(lesson.content || "").matchAll(/\*\*([^*]{2,60})\*\*/g)]
           .map(match => match[1].trim()).filter(label => /^(novo|nova|emitir|adicionar|incluir|gerar|finalizar)/i.test(label));
@@ -368,7 +456,55 @@
           add(label, finalAction ? "final_action" : "field");
         }
       }
-      if (plan.length) return plan.slice(0, 24);
+      // Para os módulos com capturas de tela, aproveite os hotspots ordenados
+      // por etapa do Manual (listagem, formulário, seções e ações finais).
+      // Isso amplia a cobertura sem inventar rótulos que não estejam documentados.
+      const screenshots = Array.isArray(lesson.screenshots) ? lesson.screenshots : [];
+      if (screenshots.length && (isCreate || isEdit || isIssue || isExport || isConfigure)) {
+        for (let si = 0; si < screenshots.length; si++) {
+          const shot = screenshots[si];
+          const caption = normalize(shot.caption || "");
+          const isList = /listagem|notas emitidas|painel inicial|tela inicial|menu lateral/.test(caption)
+            || (/^\d+$/.test(caption) && si === 1);
+          const isForm = /formulario|dados gerais|lancamento|secao|totais|transporte|pagamento|informacoes|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)
+            || (/^\d+$/.test(caption) && si >= 2);
+          for (const h of (shot.hotspots || [])) {
+            const label = String(h.title || "").trim();
+            const labelNorm = normalize(label);
+            if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) {
+              if (isIssue || isExport) {
+                const actions = [...String(h.description || "").matchAll(/(?:^|\n)\s*[•-]?\s*(Salvar(?: rascunho)?|Pré-visualizar|Gerar [A-ZÀ-Ú -]+|Emitir [A-ZÀ-Ú -]+|Enviar)\\s*:/gi)];
+                for (const action of actions) {
+                  const actionLabel = action[1].trim();
+                  add(actionLabel, /gerar|emitir|enviar/i.test(actionLabel) ? "final_action" : "click", "Ação descrita nesta etapa do Manual. Confira todos os dados antes de confirmar.");
+                }
+              }
+              continue;
+            }
+            if (isIssue && isList && !/emitir|gerar/i.test(label)) continue;
+            if (isIssue && si > 0 && !isForm && !/formulario|dados|secao|totais|transporte|pagamento|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)) continue;
+            if (isEdit && isList && !/procurar|busca|opcoes|editar/i.test(label)) continue;
+            if (!isList && !isForm && si > 0) continue;
+            const isFinal = /^(salvar|salvar configuracoes|botao salvar|botao gerar|gerar nfe|gerar nfse|gerar cte|emitir ciot|emitir mdfe|emitir nfce)$/i.test(labelNorm);
+            const isAction = /^(emitir|gerar|novo|adicionar|botao emitir|botao gerar)/i.test(labelNorm);
+            add(label, isFinal ? "final_action" : isAction ? "click" : "field", h.description || h.tip || "");
+          }
+        }
+      }
+
+      if (isExport) {
+        const exportLines = String(lesson.content || "").split(/\n+/);
+        for (const line of exportLines) {
+          let match = line.match(/\bno campo\s+([^,.:;]+)/i);
+          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
+          match = line.match(/\bchave\s+([^,.:;?]+\??)/i);
+          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
+          match = line.match(/\bbot[aã]o\s+([^,.:;]+)/i);
+          if (match) add(match[1].trim(), /enviar|exportar|gerar/i.test(match[1]) ? "final_action" : "click", line.replace(/^\s*\d+\.\s*/, "").trim());
+        }
+      }
+
+      if (plan.length) return plan.slice(0, 30);
     }
 
     return null;
@@ -381,13 +517,26 @@
     })).sort((a, b) => b.score - a.score);
     const best = ranked[0];
     if (!best?.lesson || best.score < 8) return "";
-    const related = ranked.filter(item => item.score >= Math.max(8, best.score * 0.42)).slice(0, 2);
-    const parts = [
+    // Responda com uma única aula principal. Misturar aulas relacionadas (por exemplo,
+    // configuração da NFC-e com emissão de NFC-e) gera respostas longas e fora da intenção.
+    const lesson = best.lesson;
+    const plan = getLocalNavigationPlan(question);
+    if (Array.isArray(plan) && plan.length) {
+      const route = plan.map(step => step.label).join(" > ");
+      const finalStep = plan[plan.length - 1];
+      return [
+        "## Aula: " + lesson.title,
+        lesson.summary || "",
+        "Caminho no Emissor: " + route.replace(/ > /g, " → "),
+        ...plan.map(step => step.label + ": " + step.description),
+        "Se algum menu estiver diferente, envie um print para eu localizar a opção correta. A extensão não preenche nem salva dados automaticamente."
+      ].filter(Boolean).join("\n\n").slice(0, 9000);
+    }
+    return [
       "Encontrei esta orientação na base local do Manual Future:",
-      ...related.map(({ lesson }) => lessonText(lesson, true)),
+      lessonText(lesson, false),
       "Se a tela estiver diferente, envie um print para eu localizar o controle exato. A extensão não preenche nem salva dados automaticamente."
-    ];
-    return parts.join("\n\n").slice(0, 22000);
+    ].join("\n\n").slice(0, 9000);
   }
 
   let bundleCache = null;

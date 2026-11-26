@@ -221,15 +221,14 @@ test("pedidos naturais de localização e cadastro ativam navegação assistida"
 });
 
 test("o plano local cobre o fluxo completo, inclusive campos e botão final", () => {
-  assert.match(source, /ROTEIRO COMPLETO de ponta a ponta/);
-  assert.match(source, /kind=field/);
-  assert.match(source, /kind=final_action/);
+  assert.match(source, /LOCALIZAR\/ACESSAR uma tela/);
+  assert.match(source, /kind \(click, field ou final_action\)/);
   assert.match(source, /navigationPlanRequest/);
   assert.match(source, /parsed\.slice\(0, 30\)/);
   assert.match(source, /waitForInput: next\.kind === "field"/);
   assert.match(source, /completeNavigationInputStep/);
   assert.match(source, /Preencha este campo conforme a orientação/);
-  assert.match(source, /NUNCA clique, preencha ou envie automaticamente/);
+  assert.match(source, /Nunca clique, preencha, salve, transmita ou envie automaticamente/);
   assert.match(source, /Não vou repetir o mesmo clique automaticamente/);
 });
 
