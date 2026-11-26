@@ -347,3 +347,16 @@ test("resposta local de conferência de CFOP é curta e não afirma validade sem
   assert.match(answer, /não dá para afirmar se o CFOP está correto/i);
   assert.doesNotMatch(answer, /Aula:|Salvar/);
 });
+
+
+test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar grupo tributário", async () => {
+  const ctx = createKnowledgeContext();
+  const question = "Como altero o CFOP?";
+  await ctx.knowledge.load({ route: "/app/dashboard", question });
+  const plan = ctx.knowledge.getLocalNavigationPlan(question);
+  assert.deepEqual(Array.from(plan, step => step.label), [
+    "Cadastros", "Grupo Tributário", "Procurar", "Opções", "Editar Regra", "CFOP", "Salvar"
+  ]);
+  assert.equal(plan[0].kind, "click");
+  assert.equal(plan.at(-1).kind, "final_action");
+});
