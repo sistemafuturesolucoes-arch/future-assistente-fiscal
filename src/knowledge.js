@@ -671,7 +671,7 @@
           if (!marker?.title) return;
           const aliases = markerTargetNames(marker.title).map(normalize);
           const routeDuplicate = aliases.some(alias => routeAliases.has(alias))
-            || routeParts.some(part => normalize(part).length >= 3 && normalize(marker.title).includes(normalize(part)));
+            || routeParts.some(part => normalize(part).length >= 3 && normalize(marker.title).startsWith(normalize(part) + " "));
           if (routeDuplicate) return;
           const key = normalize(marker.title) + "|" + normalize(marker.description);
           if (markerKeys.has(key)) return;
