@@ -592,7 +592,11 @@
 
   const tourButton = panel.querySelector(".tour-button");
   async function startManualTour() {
-    if (requestInProgress || navigationGuideActive) return;
+    if (requestInProgress) return;
+    if (navigationGuideActive) {
+      clearNavigationTask();
+      closeGuide();
+    }
     try {
       await window.FutureManualKnowledge.load({ route: location.pathname });
       const plan = window.FutureManualKnowledge.getManualTourPlan?.() || [];
