@@ -442,17 +442,30 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
     const question = "Como executar a rotina " + lesson.title;
     const plan = ctx.knowledge.getLocalNavigationPlan(question);
     assert.ok(Array.isArray(plan) && plan.length, "sem roteiro para a aula: " + lesson.title);
-    const actualIds = plan.map(step => step.manualMarker?.id).filter(Boolean);
-    const expectedIds = [];
-    const seen = new Set();
+    const normalize = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+    const routeParts = String(lesson.path || "").split(/\\s*>\\s*/).map(part => part.trim())
+      .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    const routeAliases = new Set(routeParts.map(normalize));
+    const expected = [], seen = new Set();
     const add = marker => {
-      if (!marker?.title || !marker.id || seen.has(marker.id)) return;
-      seen.add(marker.id);
-      expectedIds.push(marker.id);
+      if (!marker?.title) return;
+      const raw = String(marker.title).trim(), n = normalize(raw);
+      const aliases = [raw];
+      if (/^menu:\\s*/i.test(raw)) aliases.push(raw.replace(/^menu:\\s*/i, ""));
+      else if (/^menu do\\s+/i.test(raw)) aliases.push(raw.replace(/^menu do\\s+/i, ""));
+      else if (/^menu\\s+/i.test(raw)) aliases.push(raw.replace(/^menu\\s+/i, ""));
+      const routeDuplicate = aliases.some(alias => routeAliases.has(normalize(alias)))
+        || routeParts.some(part => normalize(part).length >= 3 && n.startsWith(normalize(part) + " "));
+      if (routeDuplicate) return;
+      const key = n + "|" + normalize(marker.description);
+      if (seen.has(key)) return;
+      seen.add(key); expected.push(key);
     };
     (lesson.hotspots || []).forEach(add);
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
-    assert.deepEqual(actualIds.filter(id => expectedIds.includes(id)), expectedIds,
+    const actual = plan.filter(step => step.manualMarker).map(step =>
+      normalize(step.manualMarker.title) + "|" + normalize(step.manualMarker.description));
+    assert.deepEqual(actual, expected,
       "os marcadores devem aparecer na mesma ordem do Manual: " + lesson.title);
   }
 });
