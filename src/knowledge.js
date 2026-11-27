@@ -423,6 +423,50 @@
       return inspectionOnly ? plan.slice(0, 8) : plan;
     }
 
+    // Veículos: o Manual descreve a listagem, as opções da linha e o formulário,
+    // mas não possui hotspots individuais para todos os campos. Criamos etapas locais
+    // explícitas a partir do texto documentado para que o tour destaque cada opção.
+    if (/\\b(veiculo|veiculos)\\b/.test(q) && (editRequest || createRequest)) {
+      const lesson = bundleCache.lessons.find(item => item.title === "Gerenciamento e Edição de Veículos");
+      if (lesson) {
+        const path = "Cadastros > Veículos";
+        const step = (label, kind, description, aliases = []) => {
+          const item = makeLessonStep(bundleCache, lesson, label, kind, path, description);
+          return { ...item, targetNames: [...new Set([label, ...aliases])] };
+        };
+        const plan = [
+          step("Cadastros", "click", "Abra Cadastros no menu lateral."),
+          step("Veículos", "click", "No submenu Cadastros, abra Veículos para acessar a listagem.")
+        ];
+        if (createRequest) {
+          plan.push(step("Novo Veículo", "click", "Na listagem, clique em Novo Veículo para abrir um cadastro em branco.", ["Novo", "Adicionar Veículo", "Cadastrar Veículo"]));
+        } else {
+          plan.push({ ...step("Procurar", "field", "Etapa opcional: pesquise pela placa ou identificação do veículo. Se já localizou o registro correto, avance.", ["Barra de Pesquisa (Procurar)", "Buscar", "Pesquisa"]), optional: true });
+          plan.push(step("Listagem de Veículos", "info", "Confira a placa e os dados do registro antes de abrir as ações. Se houver mais de um veículo, confirme que selecionou o correto.", ["Veículos cadastrados", "Lista de Veículos"]));
+          plan.push(step("Opções", "click", "Na mesma linha do veículo que deseja alterar, abra o menu Opções. Não use opções gerais da página.", ["Opções da Linha", "Ações", "Mais opções"]));
+          plan.push(step("Editar", "click", "No menu da linha selecionada, escolha Editar para abrir os dados desse veículo."));
+        }
+        plan.push(
+          step("Dados do Veículo", "info", "Na tela do formulário, confira a aba Dados do Veículo e percorra os campos abaixo.", ["Dados", "Dados Gerais"]),
+          step("Ativo", "field", "Confira se o cadastro deve permanecer ativo ou inativo.", ["Status", "Ativo/Inativo"]),
+          step("Placa", "field", "Informe ou confira a placa do veículo."),
+          step("UF", "field", "Selecione ou confira a UF vinculada ao veículo.", ["Estado"]),
+          step("Tipo Rodado", "field", "Selecione ou confira o tipo de rodado do veículo.", ["Tipo de Rodado"]),
+          step("Tipo Carroceria", "field", "Selecione ou confira o tipo de carroceria.", ["Carroceria"]),
+          step("Número de eixos", "field", "Informe ou confira o número de eixos.", ["Nº de eixos", "Numero de Eixos"]),
+          step("Apelido", "field", "Preencha ou confira o apelido, se utilizado."),
+          step("Tara (KG)", "field", "Informe ou confira a tara em quilogramas.", ["Tara"]),
+          step("Capacidade em KG", "field", "Informe ou confira a capacidade em quilogramas.", ["Capacidade KG", "Capacidade (KG)"]),
+          step("Capacidade em M3", "field", "Informe ou confira a capacidade em metros cúbicos.", ["Capacidade M3", "Capacidade (M3)"]),
+          step("Veículo próprio", "field", "Marque somente se o veículo pertencer à frota própria da empresa.", ["Veiculo proprio"]),
+          step("Reboques", "click", "Abra a aba Reboques para conferir ou associar reboques favoritos.", ["Aba Reboques"]),
+          step("Adicionar Reboque", "click", "Se necessário, clique em Adicionar Reboque para vincular um reboque favorito.", ["Adicionar"]),
+          step("Salvar", "final_action", "Revise os dados e clique você mesmo em Salvar para gravar as alterações. A extensão não salva automaticamente.", ["Salvar / Avançar", "Salvar alterações"])
+        );
+        return plan;
+      }
+    }
+
     // Quando o usuário cita o título de uma aula, priorize exatamente aquela aula
     // antes das rotas genéricas de edição/criação por palavra-chave do próprio título.
     const explicitlyNamedLesson = bundleCache.lessons.find(lesson => {
