@@ -559,9 +559,9 @@
         for (const marker of orderedMarkers) {
           if (marker.id && includedIds.has(marker.id)) continue;
           const label = String(marker.title).trim(), n = normalize(label);
-          if (editRequest && /^(novo|nova|adicionar|incluir|duplicar|excluir|remover)\\b/.test(n)) continue;
-          if (createRequest && /^(editar|edicao|duplicar|excluir|remover)\\b/.test(n)) continue;
-          if (deleteRequest && !/^(procurar|barra de pesquisa|campo procurar|opcoes|botao opcoes|botao opcoes da linha|excluir|remover|apagar)\\b/.test(n)) continue;
+          if (editRequest && /^(novo|nova|adicionar|incluir|duplicar|excluir|remover)\b/.test(n)) continue;
+          if (createRequest && /^(editar|edicao|duplicar|excluir|remover)\b/.test(n)) continue;
+          if (deleteRequest && !/^(procurar|barra de pesquisa|campo procurar|opcoes|botao opcoes|botao opcoes da linha|excluir|remover|apagar)\b/.test(n)) continue;
           const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info"
             : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar/.test(n) ? "final_action"
             : /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
