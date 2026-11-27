@@ -106,7 +106,9 @@
       plan.push({
         label: action.label, kind: action.kind || "final_action", path, description: action.description,
         manualMarker: null, targetNames: markerTargetNames(action.label),
-        lessonTitle: lesson.title || "", lessonId: lesson.id || "", manualActionFromContent: true
+        lessonTitle: lesson.title || "", lessonId: lesson.id || "",
+        manualActionFromContent: action.source === "lesson_text",
+        manualActionFromMarker: action.source === "marker_description"
       });
     }
     return plan;
