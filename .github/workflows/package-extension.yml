@@ -2,7 +2,7 @@ name: Package Chrome Extension
 
 on:
   push:
-    branches: [main, feat/navegacao-local-manual-20261125, feat/motor-interacao-lovable-20261126]
+    branches: [main, feat/navegacao-local-manual-20261125, feat/motor-interacao-lovable-20261126, feat/tour-manual-completo-local]
   pull_request:
     branches: [main]
   workflow_dispatch:
