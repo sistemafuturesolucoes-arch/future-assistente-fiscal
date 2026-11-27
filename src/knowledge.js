@@ -816,6 +816,7 @@
       lessons: new Set(plan.filter(step => step.lessonStart).map(step => step.lessonId)).size,
       steps: plan.length,
       markers: plan.filter(step => step.manualMarker).length,
+      actions: plan.filter(step => step.manualActionFromContent || step.manualActionFromMarker).length,
       markerIds: [...new Set(plan.filter(step => step.manualMarker?.id).map(step => step.manualMarker.id))].length
     };
   }
