@@ -226,20 +226,20 @@
   function renderSafeMarkdown(value, target) {
     target.replaceChildren();
     const appendInline = (parent, line) => {
-      const pattern = /\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*/g;
+      const pattern = /\[([^\]]+)\]\(([^)]+)\)|(https:\/\/crm\.futuresolucoes\.com\.br\/manual\/[^\\s<>)]+)|\*\*(.+?)\*\*/g;
       let cursor = 0;
       let match;
       while ((match = pattern.exec(line))) {
         if (match.index > cursor) parent.appendChild(document.createTextNode(line.slice(cursor, match.index)));
-        if (match[1] !== undefined) {
-          const label = match[1];
-          const rawHref = match[2].trim();
+        if (match[1] !== undefined || match[2] !== undefined) {
+          const rawHref = (match[2] !== undefined ? match[2] : match[1] ? match[2] : "").trim();
+          const label = match[1] !== undefined ? match[1] : rawHref;
           let href = null;
           try {
             const manualBase = new URL(MANUAL_URL);
             const normalizedPath = rawHref.startsWith("/aula/") ? rawHref.slice(1) : rawHref;
             const parsed = new URL(normalizedPath, manualBase);
-            if (parsed.protocol === "https:" && (parsed.origin === manualBase.origin || /^https:/.test(rawHref))) href = parsed.href;
+            if (parsed.protocol === "https:" && parsed.origin === manualBase.origin) href = parsed.href;
           } catch {}
           if (href) {
             const anchor = document.createElement("a");
@@ -251,7 +251,7 @@
           } else parent.appendChild(document.createTextNode(label));
         } else {
           const strong = document.createElement("strong");
-          strong.textContent = match[3];
+          strong.textContent = match[4];
           parent.appendChild(strong);
         }
         cursor = pattern.lastIndex;
@@ -1218,11 +1218,11 @@
       guideState.marker.hidden = true;
       // Mesmo sem localizar o alvo, mantenha Fechar acessível para liberar a tela.
       guideState.card.hidden = false;
-      guideState.card.style.left = Math.max(8, (window.innerWidth - 330) / 2) + "px";
+      guideState.card.style.left = Math.max(8, window.innerWidth - Math.min(346, window.innerWidth - 16)) + "px";
       guideState.card.style.top = "88px";
       // Pergunta e Fechar continuam visíveis mesmo quando o controle da página
       // ainda não foi encontrado; assim o usuário nunca fica preso no guia.
-      const fallbackLeft = Math.max(8, (window.innerWidth - 330) / 2);
+      const fallbackLeft = Math.max(8, window.innerWidth - Math.min(346, window.innerWidth - 16));
       guideState.marker.hidden = false;
       guideState.marker.style.left = Math.min(window.innerWidth - 42, fallbackLeft + 286) + "px";
       guideState.marker.style.top = "70px";
@@ -1240,7 +1240,7 @@
     guideState.frame.hidden = false;
     guideState.dismiss.hidden = false;
     if (manualNext) { manualNext.hidden = !manualTourActive && !step.optional; manualNext.textContent = step.optional ? "Pular pesquisa →" : manualTourActive ? "Próximo passo →" : "Já abri — avançar"; }
-    step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    step.element.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
     const rect = step.element.getBoundingClientRect();
     const pad = 5;
     Object.assign(guideState.frame.style, {
@@ -1572,12 +1572,17 @@
       // Avança depois do clique real do sistema (bubble handlers/React). Se o alvo
       // ainda não estiver renderizado, o próximo cartão informa o caminho e permite
       // procurar novamente, sem manter o marcador antigo preso na tela.
-      guideState.navigationTimer = window.setTimeout(() => {
+      guideState.navigationTimer = window.setTimeout(async () => {
+        if (!navigationGuideActive) return;
+        const nextStep = navigationPlan[navigationPlanIndex];
+        if (nextStep && nextStep.kind !== "info") {
+          await waitForNavigationStep(nextStep, 5000);
+        }
         if (!navigationGuideActive) return;
         if (guideState) guideState.waitingForNavigation = false;
         if (navigationPlan.length && advanceLocalNavigationPlan()) return;
         continueNavigationGuide();
-      }, 80);
+      }, 120);
     };
     navigationGuideActive = true;
     persistNavigationTask();
