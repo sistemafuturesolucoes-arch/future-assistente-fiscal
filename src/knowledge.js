@@ -60,7 +60,7 @@
     };
     (lesson.hotspots || []).forEach(addMarker);
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addMarker));
-    const markerLabels = new Set(markers.map(marker => normalize(marker.title)));
+    const markerLabels = new Set(markers.flatMap(marker => markerTargetNames(marker.title).map(normalize)));
     const routeParts = String(path || "").split(/\s*>\s*/).map(part => part.trim())
       .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
     const plan = [];
