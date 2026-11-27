@@ -821,7 +821,7 @@
       status.textContent = "Revisão visual concluída sem alertas visíveis. Nenhuma captura de tela ou chamada à IA foi necessária.";
       addMessage("A revisão visual não encontrou campos inválidos nem mensagens de rejeição visíveis nesta tela. Isso não garante a correção fiscal do documento; apenas indica que o navegador não encontrou alertas visíveis agora.", "bot");
       reviewButton.disabled = false;
-      reviewButton.textContent = "Revisar novamente";
+      reviewButton.textContent = "Finalizar revisão";
       return;
     }
     reviewFrames = issues.map(issue => {
@@ -876,12 +876,15 @@
       status.textContent = "Não foi possível concluir a revisão. " + (error?.message || "Tente novamente.");
     } finally {
       reviewButton.disabled = false;
-      reviewButton.textContent = "Revisar novamente";
+      reviewButton.textContent = "Finalizar revisão";
     }
   }
 
   reviewButton.addEventListener("click", () => {
-    if (reviewActive) clearDocumentReview();
+    if (reviewActive) {
+      clearDocumentReview();
+      return;
+    }
     reviewDocument();
   });
 
