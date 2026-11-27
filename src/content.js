@@ -653,7 +653,7 @@
   async function saveDocumentReview(fingerprint, answer, issues) {
     try {
       if (!globalThis.chrome?.storage?.local || !answer) return;
-      const sensitive = /\\b\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}\\b|\\b\\d{2}\\.?\\d{3}\\.?\\d{3}\\/?\\d{4}-?\\d{2}\\b|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}/i;
+      const sensitive = /\b\d{11}\b|\b\d{14}\b|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/i;
       const source = issues.map(issue => issue.title + " " + issue.message).join(" ");
       if (sensitive.test(source) || sensitive.test(answer)) return;
       const saved = await chrome.storage.local.get(REVIEW_CACHE_KEY);
