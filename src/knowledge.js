@@ -431,82 +431,37 @@
     }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Condutores > Novo Condutor";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral esquerdo, abra Cadastros."),
-        makeStep(bundleCache, "Condutores", "click", path, "No submenu Cadastros, selecione Condutores."),
-        makeStep(bundleCache, "Novo Condutor", "click", path, "Na listagem, clique em Novo Condutor."),
-        makeStep(bundleCache, "Ativo", "field", path, "Deixe a chave Ativo ligada para que o condutor possa ser utilizado."),
-        makeStep(bundleCache, "CPF", "field", path, "Informe o CPF válido do motorista."),
-        makeStep(bundleCache, "Nome", "field", path, "Digite o nome completo do condutor."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar para gravar o cadastro.")
-      ];
+      const lesson = bundleCache.lessons.find(item => item.title === "Cadastro de Condutores");
+      return getLessonMarkerRoute(lesson, "Cadastros > Condutores > Novo Condutor");
     }
 
     if (/\b(veiculo|veiculos)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Veículos > Novo Veículo";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros na barra lateral."),
-        makeStep(bundleCache, "Veículos", "click", path, "No submenu Cadastros, selecione Veículos."),
-        makeStep(bundleCache, "Novo Veículo", "click", path, "Na listagem, clique em Novo Veículo para abrir o formulário."),
-        makeStep(bundleCache, "Placa", "field", path, "Informe a placa do veículo."),
-        makeStep(bundleCache, "UF", "field", path, "Selecione a UF de emplacamento."),
-        makeStep(bundleCache, "Tipo Rodado", "field", path, "Selecione o tipo de rodado correspondente."),
-        makeStep(bundleCache, "Tipo Carroceria", "field", path, "Selecione o tipo de carroceria correspondente."),
-        makeStep(bundleCache, "Número de eixos", "field", path, "Informe o número de eixos do veículo."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar. Se necessário, configure a aba Reboques e use Adicionar Reboque antes de salvar.")
-      ];
+      const lesson = bundleCache.lessons.find(item => item.title === "Gerenciamento e Edição de Veículos");
+      return getLessonMarkerRoute(lesson, "Cadastros > Veículos > Novo Veículo");
     }
 
     if (/\b(cliente|clientes)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Clientes > Novo Cliente";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Clientes", "click", path, "No submenu Cadastros, escolha Clientes."),
-        makeStep(bundleCache, "Novo Cliente", "click", path, "Na listagem, clique em Novo Cliente para abrir o formulário."),
-        makeStep(bundleCache, "CPF/CNPJ", "field", path, "Confira se Cliente está habilitado em Tipo de Cadastro e informe o CPF ou CNPJ."),
-        makeStep(bundleCache, "Nome", "field", path, "Informe o nome. Telefone e e-mail podem ser preenchidos nos campos opcionais se desejar."),
-        makeStep(bundleCache, "Consumidor Final", "field", path),
-        makeStep(bundleCache, "Contribuinte ICMS", "field", path),
-        makeStep(bundleCache, "Endereço Principal", "click", path, "Abra a aba Endereço Principal para informar o endereço do cliente."),
-        makeStep(bundleCache, "CEP", "field", path, "Informe o CEP e use a lupa para buscar/preencher o endereço."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os dados e clique em Salvar quando estiver tudo correto.")
-      ];
+      const lesson = bundleCache.lessons.find(item => item.title === "Cadastrar cliente");
+      return getLessonMarkerRoute(lesson, "Cadastros > Clientes > Novo Cliente");
     }
 
     if (/\b(produto|produtos)\b/.test(q) && createRequest) {
       const path = "Cadastros > Produtos > Novo Produto";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Produtos", "click", path, "No submenu Cadastros, escolha Produtos."),
-        makeStep(bundleCache, "Novo Produto", "click", path, "Na listagem, clique em Novo Produto."),
-        makeStep(bundleCache, "Descrição", "field", path),
-        makeStep(bundleCache, "Un. Medida", "field", path),
-        makeStep(bundleCache, "Preço Unitário", "field", path),
-        makeStep(bundleCache, "NCM", "field", path, "Informe o NCM correto; se houver dúvida, confirme com a contabilidade. Código de barras e CEST são complementares quando aplicáveis."),
-        makeStep(bundleCache, "Aba Tributação", "click", path, "Abra a aba Tributação do cadastro do produto."),
-        makeStep(bundleCache, "Grupo Tributário", "field", path, "Selecione o grupo definido para a operação pela contabilidade."),
-        makeStep(bundleCache, "Origem", "field", path),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar para gravar o produto.")
-      ];
+      const dataLesson = bundleCache.lessons.find(item => item.title === "Cadastrar produto: Dados do Produto");
+      const taxLesson = bundleCache.lessons.find(item => item.title === "Cadastrar produto: Tributação");
+      if (/tributacao|grupo tributario|origem/.test(q) && !/dados do produto/.test(q)) {
+        return getLessonMarkerRoute(taxLesson, path);
+      }
+      const dataPlan = getLessonMarkerRoute(dataLesson, path);
+      if (/dados do produto/.test(q) || !taxLesson) return dataPlan;
+      const taxPlan = getLessonMarkerRoute(taxLesson, path, false);
+      const existing = new Set(dataPlan.filter(step => step.manualMarker).map(step => normalize(step.label)));
+      return [...dataPlan, ...taxPlan.filter(step => step.manualMarker && !existing.has(normalize(step.label)))];
     }
 
     if (/\b(servico|servicos)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Serviços > Novo Serviço";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Serviços", "click", path, "No submenu Cadastros, escolha Serviços."),
-        makeStep(bundleCache, "Novo Serviço", "click", path, "Na listagem, clique em Novo Serviço."),
-        makeStep(bundleCache, "Descrição", "field", path),
-        makeStep(bundleCache, "Valor", "field", path),
-        makeStep(bundleCache, "Unidade", "field", path),
-        makeStep(bundleCache, "CNAE", "field", path, "Informe o código conforme a atividade e orientação da contabilidade."),
-        makeStep(bundleCache, "Código Trib. Município", "field", path),
-        makeStep(bundleCache, "Item Lista de Serviço", "field", path),
-        makeStep(bundleCache, "Cód. Trib. Nacional", "field", path),
-        makeStep(bundleCache, "NBS", "field", path),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os códigos fiscais com a contabilidade e clique em Salvar.")
-      ];
+      const lesson = bundleCache.lessons.find(item => item.title === "Cadastrar serviço");
+      return getLessonMarkerRoute(lesson, "Cadastros > Serviços > Novo Serviço");
     }
     // Roteiro genérico orientado pelo conteúdo real da aula. Funciona para os demais
     // módulos sem criar rótulos fictícios: o content script só destaca controles com nome acessível exato.
