@@ -995,6 +995,10 @@
       const wanted = normalize(name);
       const exact = visibleNodes.filter(el => getElementNames(el).some(label => normalize(label) === wanted));
       if (exact.length === 1) return exact[0];
+      if (exact.length > 1 && step.kind === "field") {
+        const fieldCandidates = exact.filter(el => el.matches("input,select,textarea,[role=textbox],[role=combobox],[role=checkbox],[role=switch]"));
+        if (fieldCandidates.length === 1) return fieldCandidates[0];
+      }
       if (exact.length > 1) {
         // Quando o mesmo nome aparece em um cartão e no submenu, prefira o item
         // da navegação lateral indicado pelo caminho do Manual.
