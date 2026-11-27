@@ -32,6 +32,46 @@
     return [...new Set(names.filter(Boolean))];
   }
 
+  function getLessonMarkerRoute(lesson, pathOverride = "", includeRoute = true) {
+    if (!lesson) return [];
+    const path = pathOverride || lesson.path || lesson.title;
+    const markers = [], seen = new Set();
+    const addMarker = marker => {
+      if (!marker?.title) return;
+      const key = marker.id || normalize(marker.title) + "|" + normalize(marker.description);
+      if (seen.has(key)) return;
+      seen.add(key); markers.push(marker);
+    };
+    (lesson.hotspots || []).forEach(addMarker);
+    (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addMarker));
+    const markerLabels = new Set(markers.map(marker => normalize(marker.title)));
+    const routeParts = String(path || "").split(/\s*>\s*/).map(part => part.trim())
+      .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    const plan = [];
+    if (includeRoute) {
+      for (const label of routeParts) {
+        if (markerLabels.has(normalize(label))) continue;
+        plan.push({ ...makeLessonStep(bundleCache, lesson, label, "click", path, "Abra esta seção para seguir o procedimento documentado no Manual."), manualMarker: null });
+      }
+    }
+    for (const marker of markers) {
+      const label = String(marker.title).trim(), n = normalize(label);
+      const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n);
+      const field = /campo|chave|barra de pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinatario|tomador|remetente|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|periodo|ambiente|regime|csc/.test(n);
+      const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info" : finalAction ? "final_action" : field ? "field" : "click";
+      plan.push({
+        label, kind, path,
+        description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\n\n") || "Siga esta etapa conforme o Manual Future.",
+        manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
+        targetNames: markerTargetNames(label),
+        optional: /^(barra de pesquisa|campo procurar|procurar)$/.test(n),
+        lessonTitle: lesson.title || "",
+        lessonId: lesson.id || ""
+      });
+    }
+    return plan;
+  }
+
   function relevance(lesson, route, question) {
     const title = normalize(lesson.title);
     const summary = normalize(lesson.summary);
