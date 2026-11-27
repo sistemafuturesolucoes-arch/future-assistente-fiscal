@@ -32,6 +32,22 @@
     return [...new Set(names.filter(Boolean))];
   }
 
+  function getDocumentedActions(lesson, markers = []) {
+    const available = new Set(markers.flatMap(marker => markerTargetNames(marker.title).map(normalize)));
+    const allowed = /^(salvar|gerar|emitir|enviar|finalizar venda|confirmar|entrar|concluir|imprimir|fechar)$/;
+    const actions = [], seen = new Set();
+    for (const line of String(lesson?.content || "").split(/\n+/)) {
+      for (const match of line.matchAll(/\*\*([^*]{2,60})\*\*/g)) {
+        const label = match[1].trim(), key = normalize(label);
+        if (!allowed.test(key) || available.has(key) || seen.has(key)) continue;
+        if (!/(clique|pressione|confirme|selecione|aperte|toque)/i.test(line.slice(0, match.index))) continue;
+        seen.add(key);
+        actions.push({ label, description: line.replace(/\*\*/g, "").trim() });
+      }
+    }
+    return actions;
+  }
+
   function getLessonMarkerRoute(lesson, pathOverride = "", includeRoute = true) {
     if (!lesson) return [];
     const path = pathOverride || lesson.path || lesson.title;
@@ -67,6 +83,13 @@
         optional: /^(barra de pesquisa|campo procurar|procurar)$/.test(n),
         lessonTitle: lesson.title || "",
         lessonId: lesson.id || ""
+      });
+    }
+    for (const action of getDocumentedActions(lesson, markers)) {
+      plan.push({
+        label: action.label, kind: "final_action", path, description: action.description,
+        manualMarker: null, targetNames: markerTargetNames(action.label),
+        lessonTitle: lesson.title || "", lessonId: lesson.id || "", manualActionFromContent: true
       });
     }
     return plan;
@@ -432,12 +455,12 @@
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
       const lesson = bundleCache.lessons.find(item => item.title === "Cadastro de Condutores");
-      return getLessonMarkerRoute(lesson, "Cadastros > Condutores > Novo Condutor");
+      return getLessonMarkerRoute(lesson, "Cadastros > Condutores");
     }
 
     if (/\b(veiculo|veiculos)\b/.test(q) && createRequest) {
       const lesson = bundleCache.lessons.find(item => item.title === "Gerenciamento e Edição de Veículos");
-      return getLessonMarkerRoute(lesson, "Cadastros > Veículos > Novo Veículo");
+      return getLessonMarkerRoute(lesson, "Cadastros > Veículos");
     }
 
     if (/\b(cliente|clientes)\b/.test(q) && createRequest) {
@@ -454,9 +477,10 @@
       }
       const dataPlan = getLessonMarkerRoute(dataLesson, path);
       if (/dados do produto/.test(q) || !taxLesson) return dataPlan;
+      const dataWithoutPrematureSave = dataPlan.filter(step => !(step.manualMarker && normalize(step.label) === "salvar"));
       const taxPlan = getLessonMarkerRoute(taxLesson, path, false);
-      const existing = new Set(dataPlan.filter(step => step.manualMarker).map(step => normalize(step.label)));
-      return [...dataPlan, ...taxPlan.filter(step => step.manualMarker && !existing.has(normalize(step.label)))];
+      const existing = new Set(dataWithoutPrematureSave.filter(step => step.manualMarker).map(step => normalize(step.label)));
+      return [...dataWithoutPrematureSave, ...taxPlan.filter(step => step.manualMarker && !existing.has(normalize(step.label)))];
     }
 
     if (/\b(servico|servicos)\b/.test(q) && createRequest) {
@@ -710,7 +734,8 @@
       };
       (lesson.hotspots || []).forEach(addMarker);
       (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addMarker));
-      const total = markers.length + 1;
+      const contentActions = getDocumentedActions(lesson, markers);
+      const total = markers.length + contentActions.length + 1;
       plan.push({
         label: lesson.title, kind: "info", path, lessonStart: true, lessonId: lesson.id || "",
         lessonIndex, lessonCount: lessons.length, lessonStepIndex: 1, lessonStepCount: total,
@@ -730,6 +755,16 @@
           description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\n\n") || "Consulte este elemento conforme o Manual Future.",
           manualMarker: { id: marker.id || "", title, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
           targetNames: [...new Set(targetNames)]
+        });
+      });
+      contentActions.forEach((action, actionIndex) => {
+        plan.push({
+          label: action.label, kind: "final_action", path,
+          lessonId: lesson.id || "", lessonIndex, lessonCount: lessons.length,
+          lessonStepIndex: markers.length + actionIndex + 2, lessonStepCount: total,
+          lessonTitle: lesson.title, moduleTitle: module?.title || "Manual Future",
+          description: action.description, manualMarker: null,
+          targetNames: markerTargetNames(action.label), manualActionFromContent: true
         });
       });
     });
