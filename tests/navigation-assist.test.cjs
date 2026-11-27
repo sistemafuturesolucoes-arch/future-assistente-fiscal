@@ -8,13 +8,17 @@ const knowledgeSource = fs.readFileSync(path.join(__dirname, "../src/knowledge.j
 const manualBundle = JSON.parse(fs.readFileSync(path.join(__dirname, "../src/manual-knowledge.json"), "utf8"));
 const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
 
-test("botão Tour guiado inicia orientação interativa baseada no Manual", () => {
+test("botão Tour Guiado inicia o catálogo local completo sem chamar IA", () => {
   assert.match(source, /class="tour-button"/);
-  assert.match(source, /\[TOUR GUIADO\]/);
-  assert.match(source, /identifique a aula correspondente/);
-  assert.match(source, /aguarde o usuário clicar/);
-  assert.match(source, /até concluir o procedimento/);
-  assert.match(source, /não clique nem preencha pelo usuário/);
+  assert.match(source, /getManualTourPlan/);
+  assert.match(source, /getManualTourCoverage/);
+  assert.match(source, /manualTourActive = true/);
+  assert.match(source, /guide-finish-lesson/);
+  assert.match(source, /guide-skip/);
+  const start = source.indexOf("const tourButton =");
+  const end = source.indexOf("const reviewButton =", start);
+  assert.ok(start >= 0 && end > start);
+  assert.doesNotMatch(source.slice(start, end), /\bask\s*\(/);
 });
 
 test("contexto seguro da tela inclui menus e submenus visíveis", () => {
@@ -369,4 +373,19 @@ test("base local preserva os marcadores de todas as aulas e capturas do Manual",
   }
   assert.ok(manualBundle.lessons.every(lesson => Array.isArray(lesson.screenshots)));
   assert.ok(markers.size >= 370, "a extensão deve carregar os marcadores do Manual, não só os títulos das aulas");
+});
+
+test("Tour local mantém estado entre rotas e o service worker", () => {
+  assert.match(source, /manualTourActive, savedAt: Date\.now\(\)/);
+  assert.match(source, /manualTourActive: snapshot\.manualTourActive/);
+  assert.match(source, /manualTourActive = Boolean\(saved\.manualTourActive\)/);
+  assert.match(source, /manualTourActive\) \{[\s\S]{0,220}Nenhuma IA será chamada/);
+});
+
+test("etapas do Tour exibem aula, módulo e progresso do marcador", () => {
+  assert.match(source, /AULA .*lessonIndex/);
+  assert.match(source, /lessonStepIndex/);
+  assert.match(source, /lessonStepCount/);
+  assert.match(source, /card\.hidden = !manualTourActive/);
+  assert.match(source, /max-height:calc\(100vh - 32px\)/);
 });
