@@ -421,6 +421,16 @@
       return inspectionOnly ? plan.slice(0, 8) : plan;
     }
 
+    // Quando o usuário cita o título de uma aula, priorize exatamente aquela aula
+    // antes das rotas genéricas de edição/criação por palavra-chave do próprio título.
+    const explicitlyNamedLesson = bundleCache.lessons.find(lesson => {
+      const title = normalize(lesson.title);
+      return title.length >= 8 && q.includes(title);
+    });
+    if (explicitlyNamedLesson) {
+      return getLessonMarkerRoute(explicitlyNamedLesson, explicitlyNamedLesson.path || explicitlyNamedLesson.title);
+    }
+
     if (editRequest || deleteRequest) {
       const editRoutes = [
         { re: /\b(cliente|clientes)\b/, title: "Lista de Clientes" },
