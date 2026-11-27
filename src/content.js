@@ -22,7 +22,7 @@
     .notice{flex:0 0 auto;font-size:10px;color:#81768b;padding:0 12px 9px}
     .review-wash{position:fixed;z-index:2147483640;inset:0;background:rgba(111,45,180,.12);box-shadow:inset 0 0 0 5px rgba(126,65,190,.42);pointer-events:none;transition:background .2s}.review-frame{position:fixed;z-index:2147483644;border:3px solid #8d43d6;border-radius:8px;box-shadow:0 0 0 3px #ffffffcc,0 0 18px #7b2bc8aa;pointer-events:none;box-sizing:border-box}.review-frame.error{border-color:#d83c68;box-shadow:0 0 0 3px #ffffffdd,0 0 18px #d83c68aa}.review-label{position:absolute;left:-3px;top:-25px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:3px 7px;background:#54218a;color:white;font:700 10px/1.3 system-ui;box-shadow:0 2px 8px #25103f55}.review-frame.error .review-label{background:#b4234c}
     .spotlight{position:fixed;z-index:2147483645;border:3px solid #ffbf36;border-radius:9px;box-shadow:0 0 0 9999px #160d2866,0 0 12px 5px #ffbf36,0 0 30px 10px #ff8c00;pointer-events:none;transition:all .18s ease}
-    .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto}
+    .guide-card{position:fixed;z-index:2147483647;width:min(330px,calc(100vw - 28px));box-sizing:border-box;background:#25103f;color:#fff;border:1px solid #b88aff;border-radius:14px;padding:13px;box-shadow:0 12px 40px #12091f88;font:13px/1.45 system-ui;pointer-events:auto;max-height:calc(100vh - 32px);overflow:auto}
     .guide-card .guide-kicker{font-size:10px;color:#d7baff;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
     .guide-card .guide-title{font-size:15px;font-weight:800;margin:4px 0 6px}
     .guide-card .guide-desc{font-size:12px;color:#f2eafa;white-space:pre-wrap}
@@ -1186,7 +1186,7 @@
       : step.kind === "final_action"
         ? "Confira os dados. Quando estiver pronto, clique você mesmo neste botão; a extensão não executa a ação."
         : "Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.";
-    guideState.card.hidden = true;
+    guideState.card.hidden = !manualTourActive;
     guideState.marker.hidden = false;
     const markerLeft = Math.min(Math.max(8, rect.right - 17), window.innerWidth - 42);
     const markerTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top - 17));
