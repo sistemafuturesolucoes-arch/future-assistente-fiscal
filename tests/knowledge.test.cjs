@@ -565,3 +565,57 @@ test("rota de edição de grupo tributário nunca apresenta a ação destrutiva 
   assert.ok(plan.some(step => step.label === "Salvar" && step.kind === "final_action"));
   assert.ok(!plan.some(step => /excluir|remover|apagar/i.test(step.label)));
 });
+
+test("todas as 26 aulas podem ser percorridas pela rota local com os marcadores na ordem do Manual", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const normalize = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim().toLowerCase().replace(/\\s+/g, " ");
+  for (const lesson of manualBundle.lessons) {
+    const plan = ctx.knowledge.getLocalNavigationPlan("Me guie pela aula " + lesson.title);
+    assert.ok(Array.isArray(plan) && plan.length, "sem rota local para: " + lesson.title);
+    const routeParts = String(lesson.path || "").split(/\\s*>\\s*/).map(part => part.trim())
+      .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    const routeAliases = new Set(routeParts.map(normalize));
+    const expected = [], seen = new Set();
+    const add = marker => {
+      if (!marker?.title) return;
+      const title = normalize(marker.title), aliases = [title];
+      if (/^menu:\\s*/.test(title)) aliases.push(title.replace(/^menu:\\s*/, ""));
+      else if (/^menu do\\s+/.test(title)) aliases.push(title.replace(/^menu do\\s+/, ""));
+      else if (/^menu\\s+/.test(title)) aliases.push(title.replace(/^menu\\s+/, ""));
+      if (/^(botao|campo|chave|aba)\\s+/.test(title)) aliases.push(title.replace(/^(botao|campo|chave|aba)\\s+/, ""));
+      if (/^barra de pesquisa|^campo procurar/.test(title)) aliases.push("procurar");
+      const duplicate = routeAliases.has(title) || aliases.some(alias => routeAliases.has(alias))
+        || routeParts.some(part => normalize(part).length >= 3 && title.startsWith(normalize(part) + " "));
+      if (duplicate) return;
+      const key = title + "|" + normalize(marker.description);
+      if (!seen.has(key)) { seen.add(key); expected.push(key); }
+    };
+    (lesson.hotspots || []).forEach(add);
+    (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+    const actual = plan.filter(step => step.manualMarker).map(step =>
+      normalize(step.manualMarker.title) + "|" + normalize(step.manualMarker.description));
+    assert.deepEqual(actual, expected, "marcadores ausentes, extras ou fora de ordem: " + lesson.title);
+  }
+});
+
+test("rotas fiscais essenciais chegam às ações finais documentadas", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const cases = [
+    ["Como ajustar o CFOP?", "Salvar"],
+    ["Como emitir uma NFe?", "Opções"],
+    ["Como emitir uma NFCe?", "Fechar"],
+    ["Como emitir um CIOT?", "Emitir CIOT"],
+    ["Como emitir um CTe OS?", "Gerar CTe"],
+    ["Como emitir uma NFS-e?", "Botão Gerar"],
+    ["Como emitir um MDF-e?", "Gerar"]
+  ];
+  for (const [question, finalLabel] of cases) {
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(plan.length, "sem rota para " + question);
+    assert.equal(plan.at(-1).label, finalLabel, "etapa final divergente em " + question);
+    assert.ok(plan.at(-1).kind === "final_action" || question.includes("NFe"),
+      "a última etapa deve ser uma ação final documentada em " + question);
+  }
+});
