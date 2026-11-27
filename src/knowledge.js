@@ -532,7 +532,44 @@
       if (plan.length) return plan.slice(0, 1000);
     }
 
-    const fallbackMatc
+    const fallbackMatch = !locateOnly ? [...bundleCache.lessons]
+      .map(lesson => ({ lesson, score: relevance(lesson, location.pathname, question) }))
+      .sort((a, b) => b.score - a.score)[0] : null;
+    if (fallbackMatch?.lesson && fallbackMatch.score >= 12) {
+      const lesson = fallbackMatch.lesson;
+      const routeParts = String(lesson.path || "").split(/\s*>\s*/).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+      const result = [];
+      for (const label of routeParts) {
+        if (!result.some(step => normalize(step.label) === normalize(label))) {
+          result.push(makeLessonStep(bundleCache, lesson, label, "click", routeParts.join(" > "), "Abra esta seção para seguir o procedimento documentado na aula " + lesson.title + "."));
+        }
+      }
+      const markers = [], seen = new Set();
+      const collect = marker => {
+        if (!marker?.title) return;
+        const key = marker.id ? "id:" + marker.id : normalize(marker.title) + "|" + normalize(marker.description);
+        if (seen.has(key)) return;
+        seen.add(key); markers.push(marker);
+      };
+      (lesson.hotspots || []).forEach(collect);
+      (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collect));
+      for (const marker of markers) {
+        if (result.some(step => normalize(step.label) === normalize(marker.title))) continue;
+        const n = normalize(marker.title);
+        const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
+          : /campo|pesquisa|procurar|cfop|cst|al[ií]quota|senha|cpf|e-mail|uf|natureza|chave|s[eé]rie|numera[cç][aã]o/.test(n) ? "field" : "click";
+        const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
+        step.targetNames = [marker.title];
+        if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
+        if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
+        result.push(step);
+      }
+      if (result.length) return result.slice(0, 1000);
+    }
+    return null;
+  }
+
+
   function getManualTourPlan() {
     if (!bundleCache) return [];
     const moduleById = new Map(bundleCache.modules.map(module => [module.id, module]));
@@ -593,43 +630,6 @@
       markers: plan.filter(step => step.manualMarker).length,
       markerIds: [...new Set(plan.filter(step => step.manualMarker?.id).map(step => step.manualMarker.id))].length
     };
-  }
-
-h = [...bundleCache.lessons]
-      .map(lesson => ({ lesson, score: relevance(lesson, location.pathname, question) }))
-      .sort((a, b) => b.score - a.score)[0];
-    if (fallbackMatch?.lesson && fallbackMatch.score >= 12) {
-      const lesson = fallbackMatch.lesson;
-      const routeParts = String(lesson.path || "").split(/\s*>\s*/).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
-      const result = [];
-      for (const label of routeParts) {
-        if (!result.some(step => normalize(step.label) === normalize(label))) {
-          result.push(makeLessonStep(bundleCache, lesson, label, "click", routeParts.join(" > "), "Abra esta seção para seguir o procedimento documentado na aula " + lesson.title + "."));
-        }
-      }
-      const markers = [], seen = new Set();
-      const collect = marker => {
-        if (!marker?.title) return;
-        const key = marker.id ? "id:" + marker.id : normalize(marker.title) + "|" + normalize(marker.description);
-        if (seen.has(key)) return;
-        seen.add(key); markers.push(marker);
-      };
-      (lesson.hotspots || []).forEach(collect);
-      (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collect));
-      for (const marker of markers) {
-        if (result.some(step => normalize(step.label) === normalize(marker.title))) continue;
-        const n = normalize(marker.title);
-        const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
-          : /campo|pesquisa|procurar|cfop|cst|al[ií]quota|senha|cpf|e-mail|uf|natureza|chave|s[eé]rie|numera[cç][aã]o/.test(n) ? "field" : "click";
-        const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
-        step.targetNames = [marker.title];
-        if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
-        if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
-        result.push(step);
-      }
-      if (result.length) return result.slice(0, 1000);
-    }
-    return null;
   }
 
   function getLocalAnswer(question) {
