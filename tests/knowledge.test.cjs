@@ -474,3 +474,22 @@ test("exclusão de regra tributária usa a opção da regra documentada no Manua
   assert.ok(plan.some(step => step.label === "Excluir Regra"));
   assert.ok(!plan.some(step => /^Novo Grupo Tributário$/i.test(step.label)));
 });
+
+test("marcadores com prefixos do Manual recebem aliases de texto acessível", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getManualTourPlan();
+  const cases = [
+    ["Menu Documentos", "Documentos"],
+    ["Menu Cadastros", "Cadastros"],
+    ["Campo Procurar", "Procurar"],
+    ["Botão Salvar", "Salvar"],
+    ["Aba Tributação", "Tributação"],
+    ["Chave Ativo", "Ativo"]
+  ];
+  for (const [label, alias] of cases) {
+    const step = plan.find(item => item.label === label);
+    assert.ok(step, "marcador ausente: " + label);
+    assert.ok(step.targetNames.includes(alias), "alias ausente para " + label);
+  }
+});
