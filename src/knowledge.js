@@ -73,7 +73,7 @@
     for (const marker of markers) {
       const label = String(marker.title).trim(), n = normalize(label);
       const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n);
-      const field = /campo|chave|barra de pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinatario|tomador|remetente|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|periodo|ambiente|regime|csc/.test(n);
+      const field = /campo|chave|barra de pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinatario|tomador|remetente|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|periodo|ambiente|regime|csc|data|numero|serie|emitente|contratante|contratado|transportadora|percurso/.test(n);
       const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info" : finalAction ? "final_action" : field ? "field" : "click";
       plan.push({
         label, kind, path,
@@ -664,7 +664,7 @@
           if (createRequest && /^(editar|edicao|duplicar|excluir|remover)\b/.test(n)) continue;
           if (deleteRequest && !/^(procurar|barra de pesquisa|campo procurar|opcoes|botao opcoes|botao opcoes da linha|excluir|remover|apagar)\b/.test(n)) continue;
           const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info"
-            : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar/.test(n) ? "final_action"
+            : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n) ? "final_action"
             : /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
           const targetNames = [label];
           if (/^menu:\\s*/i.test(label)) targetNames.push(label.replace(/^menu:\\s*/i, ""));
@@ -707,8 +707,8 @@
       for (const marker of markers) {
         if (result.some(step => normalize(step.label) === normalize(marker.title))) continue;
         const n = normalize(marker.title);
-        const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
-          : /campo|pesquisa|procurar|ordenar|cfop|cst|al[ií]quota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|s[eé]rie|numera[cç][aã]o|nome|descri[cç][aã]o|c[oó]digo|pre[cç]o|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|raz[aã]o social|fantasia|endere[cç]o|bairro|munic[ií]pio|inscri[cç][aã]o|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
+        const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n) ? "final_action"
+          : /campo|pesquisa|procurar|ordenar|cfop|cst|al[ií]quota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinat[aá]rio|tomador|remetente|data|n[uú]mero|s[eé]rie|munic[ií]pio|emitente|contratante|contratado|transportadora|percurso|chave|nome|descri[cç][aã]o|c[oó]digo|pre[cç]o|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|raz[aã]o social|fantasia|endere[cç]o|bairro|inscri[cç][aã]o|categoria|quantidade|peso|frete|per[ií]odo|ambiente|regime|csc/.test(n) ? "field" : "click";
         const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
         step.targetNames = markerTargetNames(marker.title);
         result.push(step);
@@ -751,8 +751,8 @@
       });
       markers.forEach((marker, markerIndex) => {
         const title = String(marker.title || "").trim(), targetNames = markerTargetNames(title), n = normalize(title);
-        const field = /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n);
-        const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
+        const field = /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinatario|tomador|remetente|data|numero|serie|municipio|emitente|contratante|contratado|transportadora|percurso|chave|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|inscricao|categoria|quantidade|peso|periodo|ambiente|regime|csc/.test(n);
+        const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n);
         plan.push({
           label: title, kind: finalAction ? "final_action" : field ? "field" : "click", path,
           lessonId: lesson.id || "", lessonIndex, lessonCount: lessons.length,
