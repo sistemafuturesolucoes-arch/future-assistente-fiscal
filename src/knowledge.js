@@ -821,7 +821,8 @@
           lessonTitle: lesson.title, moduleTitle: module?.title || "Manual Future",
           description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\n\n") || "Consulte este elemento conforme o Manual Future.",
           manualMarker: { id: marker.id || "", title, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
-          targetNames: [...new Set(targetNames)]
+          targetNames: [...new Set(targetNames)],
+          optional: /^(barra de pesquisa(?: procurar)?|campo procurar|procurar)$/.test(n) || /^barra de pesquisa/.test(n)
         });
       });
       contentActions.forEach((action, actionIndex) => {
