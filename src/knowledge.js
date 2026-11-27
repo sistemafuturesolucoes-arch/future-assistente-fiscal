@@ -77,17 +77,24 @@
     };
     (lesson.hotspots || []).forEach(addMarker);
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addMarker));
-    const markerLabels = new Set(markers.flatMap(marker => markerTargetNames(marker.title).map(normalize)));
     const routeParts = String(path || "").split(/\s*>\s*/).map(part => part.trim())
       .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+    const routeAliases = new Set(routeParts.map(normalize));
+    const routeDuplicate = marker => {
+      const title = normalize(marker.title);
+      const aliases = markerTargetNames(marker.title).map(normalize);
+      return aliases.some(alias => routeAliases.has(alias))
+        || routeParts.some(part => normalize(part).length >= 3 && title.startsWith(normalize(part) + " "));
+    };
     const plan = [];
     if (includeRoute) {
       for (const label of routeParts) {
-        if (markerLabels.has(normalize(label))) continue;
+        if (markers.some(marker => routeDuplicate(marker) && markerTargetNames(marker.title).map(normalize).includes(normalize(label)))) continue;
         plan.push({ ...makeLessonStep(bundleCache, lesson, label, "click", path, "Abra esta seção para seguir o procedimento documentado no Manual."), manualMarker: null });
       }
     }
     for (const marker of markers) {
+      if (routeDuplicate(marker)) continue;
       const label = String(marker.title).trim(), n = normalize(label);
       const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar|enviar|confirmar|entrar|imprimir|fechar/.test(n);
       const field = /campo|chave|barra de pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|tipo|finalidade|destinatario|tomador|remetente|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|periodo|ambiente|regime|csc|data|numero|serie|emitente|contratante|contratado|transportadora|percurso/.test(n);
@@ -520,6 +527,9 @@
     const best = rankedLessons[0];
     if (best?.lesson && best.score >= 18) {
       const lesson = best.lesson;
+      // Rotas genéricas percorrem a sequência integral documentada da aula,
+      // incluindo marcadores das capturas e ações finais descritas no próprio Manual.
+      return getLessonMarkerRoute(lesson, lesson.path || lesson.title); 
       let path = lesson.path || lesson.title;
       const plan = [];
       const seen = new Set();
