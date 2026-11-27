@@ -291,21 +291,21 @@
     // Ajustes de CFOP são resolvidos diretamente pela aula local de Grupos Tributários.
     // O usuário escolhe o grupo e a regra; a extensão nunca altera ou salva dados por conta própria.
     if (/\bcfop\b/.test(q)) {
-      const path = "Cadastros > Grupo Tributário > grupo desejado > Regras Tributárias > Editar Regra";
+      const path = "Cadastros > Grupo Tributário > grupo desejado > Opções da Linha > Editar > Regras Tributárias > Editar Regra";
       const inspectionOnly = /\b(conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque)\b/.test(q)
         && !/\b(ajustar|ajuste|alterar|altere|altero|corrigir|corrija|editar|edite|trocar|troque|modificar|modifique)\b/.test(q);
       const plan = [
         makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral, abra Cadastros."),
-        makeStep(bundleCache, "Grupo Tributário", "click", path, "Abra Grupo Tributário. Ao chegar à listagem, o guia continuará pelos marcadores desta aula do Manual."),
-        makeStep(bundleCache, "Procurar", "field", path, "Marcador do Manual: digite o nome do grupo tributário utilizado pelo produto. Pressione Enter ou saia do campo para aplicar a busca; depois o guia mostrará as opções da linha correspondente."),
-        { ...makeStep(bundleCache, "Botão Opções da Linha", "click", path, "Marcador do Manual: na linha do grupo encontrado, abra as opções daquela linha. Não use as opções gerais da listagem."), targetNames: ["Opções da Linha", "Opções"] },
-        makeStep(bundleCache, "Editar", "click", path, "No menu que abriu na linha do grupo selecionado, escolha Editar para abrir o painel de regras tributárias."),
-        makeStep(bundleCache, "Editar Regra", "click", path, "Marcador do Manual: na área de regras tributárias, abra Editar Regra para a natureza de operação, destinatário e UF correspondentes."),
-        makeStep(bundleCache, "CFOP", "field", path, "Marcador do Manual: confira o campo CFOP junto com Natureza de Operação, Tipo Destinatário e UFs Destino. A escolha fiscal deve ser validada conforme a operação e a orientação da contabilidade."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar os parâmetros com a contabilidade, revise a regra e clique em Salvar. A extensão não altera nem grava os dados por você.")
+        makeStep(bundleCache, "Grupo Tributário", "click", path, "Abra Grupo Tributário para acessar a listagem dos grupos."),
+        { ...makeStep(bundleCache, "Procurar", "field", path, "Etapa opcional: use a pesquisa apenas se precisar localizar o grupo. Se já estiver vendo o grupo correto, avance sem pesquisar."), optional: true, targetNames: ["Barra de Pesquisa (Procurar)", "Procurar"] },
+        { ...makeStep(bundleCache, "Botão Opções da Linha", "click", path, "Na linha do grupo tributário correto, abra as opções daquela linha. Não use o botão Opções geral da listagem."), targetNames: ["Opções da Linha", "Opções"] },
+        makeStep(bundleCache, "Editar", "click", path, "No menu contextual da linha selecionada, escolha Editar para abrir o grupo tributário."),
+        makeStep(bundleCache, "Regras Tributárias", "info", path, "Dentro do grupo, localize a área Regras Tributárias. Escolha a regra correspondente à natureza da operação, ao tipo de destinatário e à UF de destino."),
+        makeStep(bundleCache, "Editar Regra", "click", path, "Na regra correspondente, clique em Editar Regra. Não altere uma regra diferente apenas porque ela está mais visível."),
+        makeStep(bundleCache, "CFOP", "field", path, "Confira o campo CFOP junto com Natureza de Operação, Tipo Destinatário e UFs Destino. A escolha fiscal depende da operação real e deve ser validada com a contabilidade."),
+        { ...makeStep(bundleCache, "Salvar", "final_action", path, "Depois de validar todos os parâmetros com a contabilidade, revise a regra e clique você mesmo em Salvar. A extensão não altera nem grava dados automaticamente."), targetNames: ["Salvar", "Salvar Regra", "Salvar alterações"] }
       ];
-      // Conferência é somente leitura: pare no campo CFOP e aguarde o usuário enviar a tela.
-      return inspectionOnly ? plan.slice(0, 7) : plan;
+      return inspectionOnly ? plan.slice(0, 8) : plan;
     }
 
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
@@ -529,9 +529,106 @@
         }
       }
 
-      if (plan.length) return plan.slice(0, 30);
+      if (plan.length) return plan.slice(0, 1000);
     }
 
+    const fallbackMatc
+  function getManualTourPlan() {
+    if (!bundleCache) return [];
+    const moduleById = new Map(bundleCache.modules.map(module => [module.id, module]));
+    const lessons = [...bundleCache.lessons].sort((a, b) => {
+      const ma = moduleById.get(a.module_id)?.position ?? 999;
+      const mb = moduleById.get(b.module_id)?.position ?? 999;
+      return ma - mb || (a.position ?? 0) - (b.position ?? 0);
+    });
+    const plan = [];
+    lessons.forEach((lesson, lessonIndex) => {
+      const module = moduleById.get(lesson.module_id);
+      const path = String(lesson.path || "").split(/\s*>\s*/).filter(Boolean).join(" > ");
+      const markers = [], seen = new Set();
+      const addMarker = marker => {
+        if (!marker || !String(marker.title || "").trim()) return;
+        const key = marker.id ? "id:" + marker.id : "text:" + normalize(marker.title) + "|" + normalize(marker.description);
+        if (seen.has(key)) return;
+        seen.add(key); markers.push(marker);
+      };
+      (lesson.hotspots || []).forEach(addMarker);
+      (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addMarker));
+      const total = markers.length + 1;
+      plan.push({
+        label: lesson.title, kind: "info", path, lessonStart: true, lessonId: lesson.id || "",
+        lessonIndex, lessonCount: lessons.length, lessonStepIndex: 1, lessonStepCount: total,
+        lessonTitle: lesson.title, moduleTitle: module?.title || "Manual Future",
+        description: [lesson.summary, lesson.content, path ? "Caminho no Emissor: " + path : ""].filter(Boolean).join("\n\n"),
+        manualMarker: null, targetNames: []
+      });
+      markers.forEach((marker, markerIndex) => {
+        const title = String(marker.title || "").trim(), targetNames = [title], n = normalize(title);
+        if (/^menu:\s*/i.test(title)) targetNames.push(title.replace(/^menu:\s*/i, ""));
+        if (/^barra de pesquisa/i.test(title)) targetNames.push("Procurar");
+        if (/^botão opções da linha/i.test(n)) targetNames.push("Opções da Linha", "Opções");
+        if (/^botão\s+/i.test(title)) targetNames.push(title.replace(/^botão\s+/i, ""));
+        const field = /campo|pesquisa|procurar|cfop|cst|alíquota|senha|cpf|e-mail|uf|natureza|chave|série|numeração/.test(n);
+        const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
+        plan.push({
+          label: title, kind: finalAction ? "final_action" : field ? "field" : "click", path,
+          lessonId: lesson.id || "", lessonIndex, lessonCount: lessons.length,
+          lessonStepIndex: markerIndex + 2, lessonStepCount: total,
+          lessonTitle: lesson.title, moduleTitle: module?.title || "Manual Future",
+          description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\n\n") || "Consulte este elemento conforme o Manual Future.",
+          manualMarker: { id: marker.id || "", title, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
+          targetNames: [...new Set(targetNames)]
+        });
+      });
+    });
+    return plan;
+  }
+
+  function getManualTourCoverage() {
+    const plan = getManualTourPlan();
+    return {
+      modules: bundleCache?.modules?.length || 0,
+      lessons: new Set(plan.filter(step => step.lessonStart).map(step => step.lessonId)).size,
+      steps: plan.length,
+      markers: plan.filter(step => step.manualMarker).length,
+      markerIds: [...new Set(plan.filter(step => step.manualMarker?.id).map(step => step.manualMarker.id))].length
+    };
+  }
+
+h = [...bundleCache.lessons]
+      .map(lesson => ({ lesson, score: relevance(lesson, location.pathname, question) }))
+      .sort((a, b) => b.score - a.score)[0];
+    if (fallbackMatch?.lesson && fallbackMatch.score >= 12) {
+      const lesson = fallbackMatch.lesson;
+      const routeParts = String(lesson.path || "").split(/\s*>\s*/).filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+      const result = [];
+      for (const label of routeParts) {
+        if (!result.some(step => normalize(step.label) === normalize(label))) {
+          result.push(makeLessonStep(bundleCache, lesson, label, "click", routeParts.join(" > "), "Abra esta seção para seguir o procedimento documentado na aula " + lesson.title + "."));
+        }
+      }
+      const markers = [], seen = new Set();
+      const collect = marker => {
+        if (!marker?.title) return;
+        const key = marker.id ? "id:" + marker.id : normalize(marker.title) + "|" + normalize(marker.description);
+        if (seen.has(key)) return;
+        seen.add(key); markers.push(marker);
+      };
+      (lesson.hotspots || []).forEach(collect);
+      (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collect));
+      for (const marker of markers) {
+        if (result.some(step => normalize(step.label) === normalize(marker.title))) continue;
+        const n = normalize(marker.title);
+        const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
+          : /campo|pesquisa|procurar|cfop|cst|al[ií]quota|senha|cpf|e-mail|uf|natureza|chave|s[eé]rie|numera[cç][aã]o/.test(n) ? "field" : "click";
+        const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
+        step.targetNames = [marker.title];
+        if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
+        if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
+        result.push(step);
+      }
+      if (result.length) return result.slice(0, 1000);
+    }
     return null;
   }
 
@@ -601,6 +698,8 @@
   window.FutureManualKnowledge = {
     load,
     getLocalNavigationPlan: question => bundleCache ? getLocalNavigationPlan(question) : null,
+    getManualTourPlan: () => getManualTourPlan(),
+    getManualTourCoverage: () => getManualTourCoverage(),
     getLocalAnswer,
     getStatus: () => lastStatus
   };
