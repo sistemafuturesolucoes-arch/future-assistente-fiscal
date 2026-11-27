@@ -454,6 +454,8 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
       if (/^menu:\\s*/i.test(raw)) aliases.push(raw.replace(/^menu:\\s*/i, ""));
       else if (/^menu do\\s+/i.test(raw)) aliases.push(raw.replace(/^menu do\\s+/i, ""));
       else if (/^menu\\s+/i.test(raw)) aliases.push(raw.replace(/^menu\\s+/i, ""));
+      if (/^(botao|campo|chave|aba)\\s+/.test(n)) aliases.push(raw.replace(/^(bot[aã]o|campo|chave|aba)\\s+/i, ""));
+      if (/^barra de pesquisa|^campo procurar/.test(n)) aliases.push("Procurar");
       const routeDuplicate = aliases.some(alias => routeAliases.has(normalize(alias)))
         || routeParts.some(part => normalize(part).length >= 3 && n.startsWith(normalize(part) + " "));
       if (routeDuplicate) return;
