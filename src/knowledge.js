@@ -506,7 +506,7 @@
       const dataLesson = bundleCache.lessons.find(item => item.title === "Cadastrar produto: Dados do Produto");
       const taxLesson = bundleCache.lessons.find(item => item.title === "Cadastrar produto: Tributação");
       if (/tributacao|grupo tributario|origem/.test(q) && !/dados do produto/.test(q)) {
-        return getLessonMarkerRoute(taxLesson, path);
+        return getLessonMarkerRoute(taxLesson, taxLesson.path || path);
       }
       const dataPlan = getLessonMarkerRoute(dataLesson, path);
       if (/dados do produto/.test(q) || !taxLesson) return dataPlan;
