@@ -1076,8 +1076,18 @@
     if (normalize(step.label) === normalize("Botão Opções da Linha")) {
       const candidates = visibleNodes
         .filter(el => el.closest("tr,[role=row]"))
-        .filter(el => getElementNames(el).some(name => /\b(opcoes|opcoes da linha)\b/.test(normalize(name))));
-      if (candidates.length === 1) return candidates[0];
+        .filter(el => getElementNames(el).some(name =>
+          /\b(opcoes|opcoes da linha|acoes|mais opcoes|mais acoes|menu de acoes|more options|actions)\b/.test(normalize(name))
+        ));
+      // Ícones sem texto também são aceitos apenas quando a linha oferece
+      // um único controle com semântica explícita de menu/mais ações.
+      const iconCandidates = visibleNodes
+        .filter(el => el.closest("tr,[role=row]"))
+        .filter(el => /^(more-horizontal|ellipsis|ellipsis-vertical|more-vert|more_horiz)$/i.test(
+          [el.getAttribute("data-icon"), el.getAttribute("data-lucide"), el.getAttribute("aria-label"), el.getAttribute("title")].filter(Boolean).join(" ")
+        ));
+      const unique = [...new Set([...candidates, ...iconCandidates])];
+      if (unique.length === 1) return unique[0];
     }
     return null;
   }
