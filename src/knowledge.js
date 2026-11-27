@@ -561,6 +561,8 @@
         const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
         step.targetNames = [marker.title];
         if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
+        if (/^barra de pesquisa/i.test(marker.title)) step.targetNames.push("Procurar");
+        if (/^botão\s+/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^botão\s+/i, ""));
         if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
         result.push(step);
       }
