@@ -231,8 +231,8 @@
       let match;
       while ((match = pattern.exec(line))) {
         if (match.index > cursor) parent.appendChild(document.createTextNode(line.slice(cursor, match.index)));
-        if (match[1] !== undefined || match[2] !== undefined) {
-          const rawHref = (match[2] !== undefined ? match[2] : match[1] ? match[2] : "").trim();
+        if (match[1] !== undefined || match[3] !== undefined) {
+          const rawHref = (match[2] !== undefined ? match[2] : match[3] || "").trim();
           const label = match[1] !== undefined ? match[1] : rawHref;
           let href = null;
           try {
