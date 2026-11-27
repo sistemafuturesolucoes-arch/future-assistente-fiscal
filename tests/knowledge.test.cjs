@@ -549,6 +549,9 @@ test("Tour inclui ações finais descritas no texto mesmo quando não há marcad
   const plan = ctx.knowledge.getManualTourPlan();
   assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Cadastrar cliente" && step.label === "Salvar"));
   assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Gerenciamento e Edição de Grupos Tributários" && step.label === "Salvar"));
+  assert.ok(plan.some(step => step.manualActionFromMarker && step.lessonTitle === "Emissão de Ciot" && step.label === "Emitir CIOT"));
+  assert.ok(plan.some(step => step.manualActionFromMarker && step.lessonTitle === "Emitir Cteos" && step.label === "Gerar CTe"));
+  assert.equal(ctx.knowledge.getManualTourCoverage().steps, 406);
 });
 
 test("rota de edição de grupo tributário nunca apresenta a ação destrutiva de excluir", async () => {
