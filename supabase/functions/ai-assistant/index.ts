@@ -313,7 +313,13 @@ async function errorFingerprint(message: UIMessage) {
     const fingerprint = await sha256(image);
     return { fingerprint, signature: "imagem:" + fingerprint.slice(0, 24), hasImage: true };
   }
-  const sourceText = textFromMessage(message);
+  const rawText = textFromMessage(message);
+  const reviewMarker = "Sinais visíveis de validação identificados pela extensão";
+  const reviewStart = rawText.indexOf(reviewMarker);
+  const reviewEnd = reviewStart >= 0 ? rawText.indexOf("\\n\\nRESPOSTA DIRETA", reviewStart) : -1;
+  const sourceText = reviewStart >= 0
+    ? rawText.slice(reviewStart, reviewEnd >= 0 ? reviewEnd : undefined).replace(reviewMarker + ":", "").trim()
+    : rawText;
   const normalized = sanitizeText(sourceText)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -665,7 +671,10 @@ Deno.serve(async (request: Request) => {
       onError: ({ error }) => console.error("Gemini assistant error", error),
       onFinish: async ({ text }) => {
         if (fingerprintData) {
-          await recordPendingError(fingerprintData.fingerprint, fingerprintData.signature, userText || fingerprintData.signature, text);
+          const storedErrorMessage = userText.includes("Faça uma revisão orientativa do documento")
+            ? fingerprintData.signature
+            : userText || fingerprintData.signature;
+          await recordPendingError(fingerprintData.fingerprint, fingerprintData.signature, storedErrorMessage, text);
         }
         if (lastUser && !hasAttachment) {
           const learningFingerprint = knowledgeFingerprint || {
