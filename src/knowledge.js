@@ -435,11 +435,16 @@
           if (editRequest && /editar|edicao/.test(n)) hasEditAction = true;
           const targetNames = markerTargetNames(label);
           plan.push({
-            label, kind: "click", path,
+            label, kind: deleteRequest && /excluir|remover|apagar/.test(n) ? "final_action" : "click", path,
             description: marker.description || marker.tip || "Siga este controle conforme o Manual Future.",
             manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
             targetNames: [...new Set(targetNames)]
           });
+        }
+        if (editRequest) {
+          for (const action of getDocumentedActions(lesson, markers)) {
+            plan.push({ label: action.label, kind: "final_action", path, description: action.description, manualMarker: null, targetNames: markerTargetNames(action.label), manualActionFromContent: true });
+          }
         }
         if (!hasEditAction) {
           plan.push({
