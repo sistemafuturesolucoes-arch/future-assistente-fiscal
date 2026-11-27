@@ -90,8 +90,10 @@
     const plan = [];
     if (includeRoute) {
       for (const label of routeParts) {
-        if (markers.some(marker => routeDuplicate(marker) && markerTargetNames(marker.title).map(normalize).includes(normalize(label)))) continue;
-        plan.push({ ...makeLessonStep(bundleCache, lesson, label, "click", path, "Abra esta seção para seguir o procedimento documentado no Manual."), manualMarker: null });
+        // O caminho precisa permanecer completo mesmo quando o Manual também
+        // descreve o mesmo menu como marcador (ex.: "Menu Documentos").
+        // O marcador duplicado é omitido abaixo, mas a etapa de navegação não.
+        plan.push({ ...makeLessonStep(bundleCache, lesson, label, "click", path, "Abra esta seção para seguir o procedimento documentado no Manual."), manualMarker: null, lessonTitle: lesson.title || "", lessonId: lesson.id || "" });
       }
     }
     for (const marker of markers) {
