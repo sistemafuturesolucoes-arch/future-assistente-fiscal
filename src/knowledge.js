@@ -537,9 +537,10 @@
         // Para uma tarefa genérica, reconstrói a sequência na ordem do Manual:
         // caminho da tela primeiro e, depois, cada marcador único das capturas.
         // Isso evita que filtros por tipo de ação deixem a navegação pela metade.
-        const routeSteps = routeParts.map(label =>
-          plan.find(step => normalize(step.label) === normalize(label))
-        ).filter(Boolean);
+        const routeSteps = routeParts.map(label => {
+          const step = plan.find(item => normalize(item.label) === normalize(label));
+          return step ? { ...step, manualMarker: null } : null;
+        }).filter(Boolean);
         const orderedMarkers = [], markerKeys = new Set();
         const collectMarker = marker => {
           if (!marker?.title) return;
