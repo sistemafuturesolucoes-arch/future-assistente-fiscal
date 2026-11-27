@@ -17,6 +17,20 @@
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  function markerTargetNames(title) {
+    const raw = String(title || "").trim();
+    const n = normalize(raw);
+    const names = [raw];
+    if (/^menu:\s*/i.test(raw)) names.push(raw.replace(/^menu:\s*/i, ""));
+    else if (/^menu\s+/i.test(raw)) names.push(raw.replace(/^menu\s+/i, ""));
+    if (/^(botao|campo|chave|aba)\s+/.test(n)) names.push(raw.replace(/^(bot[aã]o|campo|chave|aba)\s+/i, ""));
+    if (/^barra de pesquisa|^campo procurar/.test(n)) names.push("Procurar");
+    if (/^ordenar por\s*\/\s*procurar/.test(n)) names.push("Ordenar por", "Procurar");
+    if (/^situacao:\s*/.test(n)) names.push(raw.replace(/^situa[cç][aã]o:\s*/i, ""));
+    if (/^botao opcoes da linha/.test(n)) names.push("Opções da Linha", "Opções");
+    return [...new Set(names.filter(Boolean))];
+  }
+
   function relevance(lesson, route, question) {
     const title = normalize(lesson.title);
     const summary = normalize(lesson.summary);
@@ -355,9 +369,7 @@
           if (!relevant) continue;
           if (deleteRequest && /excluir|remover|apagar/.test(n)) hasEditAction = true;
           if (editRequest && /editar|edicao/.test(n)) hasEditAction = true;
-          const targetNames = [label];
-          if (/^botao\s+/i.test(label)) targetNames.push(label.replace(/^botao\s+/i, ""));
-          if (/^botao opcoes da linha/.test(n)) targetNames.push("Opções da Linha", "Opções");
+          const targetNames = markerTargetNames(label);
           plan.push({
             label, kind: "click", path,
             description: marker.description || marker.tip || "Siga este controle conforme o Manual Future.",
@@ -672,11 +684,7 @@
         const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
           : /campo|pesquisa|procurar|ordenar|cfop|cst|al[ií]quota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|s[eé]rie|numera[cç][aã]o|nome|descri[cç][aã]o|c[oó]digo|pre[cç]o|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|raz[aã]o social|fantasia|endere[cç]o|bairro|munic[ií]pio|inscri[cç][aã]o|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
         const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
-        step.targetNames = [marker.title];
-        if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
-        if (/^barra de pesquisa/i.test(marker.title)) step.targetNames.push("Procurar");
-        if (/^botão\s+/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^botão\s+/i, ""));
-        if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
+        step.targetNames = markerTargetNames(marker.title);
         result.push(step);
       }
       if (result.length) return result.slice(0, 1000);
@@ -715,11 +723,7 @@
         manualMarker: null, targetNames: []
       });
       markers.forEach((marker, markerIndex) => {
-        const title = String(marker.title || "").trim(), targetNames = [title], n = normalize(title);
-        if (/^menu:\s*/i.test(title)) targetNames.push(title.replace(/^menu:\s*/i, ""));
-        if (/^barra de pesquisa/i.test(title)) targetNames.push("Procurar");
-        if (/^botão opções da linha/i.test(n)) targetNames.push("Opções da Linha", "Opções");
-        if (/^botão\s+/i.test(title)) targetNames.push(title.replace(/^botão\s+/i, ""));
+        const title = String(marker.title || "").trim(), targetNames = markerTargetNames(title), n = normalize(title);
         const field = /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n);
         const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
         plan.push({
