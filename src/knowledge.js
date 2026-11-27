@@ -22,8 +22,12 @@
     const summary = normalize(lesson.summary);
     const path = normalize(lesson.path);
     const content = normalize(lesson.content);
-    const hotspotTitles = normalize((lesson.hotspots || []).map(h => h.title).join(" "));
-    const hotspotText = normalize((lesson.hotspots || []).map(h => [h.title, h.description, h.tip].join(" ")).join(" "));
+    const allHotspots = [
+      ...(Array.isArray(lesson.hotspots) ? lesson.hotspots : []),
+      ...(Array.isArray(lesson.screenshots) ? lesson.screenshots.flatMap(shot => shot?.hotspots || []) : [])
+    ];
+    const hotspotTitles = normalize(allHotspots.map(h => h.title).join(" "));
+    const hotspotText = normalize(allHotspots.map(h => [h.title, h.description, h.tip].join(" ")).join(" "));
     const haystack = [title, summary, path, content, hotspotText].join(" ");
     const r = normalize(route);
     const q = normalize(question);
