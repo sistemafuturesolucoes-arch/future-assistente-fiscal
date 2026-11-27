@@ -519,8 +519,12 @@ test("rotas de criação percorrem todos os marcadores e terminam na ação fina
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
     if (lessonTitle === "Cadastrar produto: Tributação") {
       const data = manualBundle.lessons.find(item => item.title === "Cadastrar produto: Dados do Produto");
-      (data.hotspots || []).forEach(add);
-      (data.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+      const addBeforeTaxSave = marker => { if (marker?.id && marker.title !== "Salvar") expected.add(marker.id); };
+      (data.hotspots || []).forEach(addBeforeTaxSave);
+      (data.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(addBeforeTaxSave));
+      for (const marker of [...(lesson.hotspots || []), ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])]) {
+        if (marker.title !== "Aba Tributação" && marker.id) expected.add(marker.id);
+      }
     }
     for (const id of expected) assert.ok(markerIds.has(id), "marcador ausente " + id + " em " + question);
   }
