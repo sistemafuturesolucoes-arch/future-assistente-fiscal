@@ -532,6 +532,12 @@ test("rotas de criação percorrem todos os marcadores e terminam na ação fina
     const add = marker => { if (marker?.id) expected.add(marker.id); };
     (lesson.hotspots || []).forEach(add);
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+    if (lessonTitle === "Gerenciamento e Edição de Veículos") {
+      expected.clear();
+      for (const marker of [...(lesson.hotspots || []), ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])]) {
+        if (["Veículo próprio", "Salvar / Avançar", "Adicionar Reboque", "Salvar"].includes(marker.title)) add(marker);
+      }
+    }
     if (lessonTitle === "Cadastrar produto: Tributação") {
       const data = manualBundle.lessons.find(item => item.title === "Cadastrar produto: Dados do Produto");
       const addBeforeTaxSave = marker => { if (marker?.id && marker.title !== "Salvar") expected.add(marker.id); };
@@ -636,4 +642,30 @@ test("as rotas locais cobrem os módulos completos de Cadastros, Documentos, Rel
     }
   }
   assert.equal(moduleIds.size, 4, "o Manual deve manter os quatro módulos operacionais");
+});
+
+
+test("edição de veículo mostra o caminho completo, ações da linha e campos do formulário", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como editar um cadastro de veículo?");
+  const labels = Array.from(plan, step => step.label);
+  assert.deepEqual(labels.slice(0, 6), ["Cadastros", "Veículos", "Procurar", "Listagem de Veículos", "Opções", "Editar"]);
+  for (const label of ["Dados do Veículo", "Ativo", "Placa", "UF", "Tipo Rodado", "Tipo Carroceria", "Número de eixos", "Apelido", "Tara (KG)", "Capacidade em KG", "Capacidade em M3", "Veículo próprio", "Salvar / Avançar", "Reboques", "Adicionar Reboque", "Salvar"]) {
+    assert.ok(labels.includes(label), "etapa ausente: " + label);
+  }
+  assert.equal(plan.find(step => step.label === "Procurar").optional, true);
+  assert.equal(plan.at(-1).kind, "final_action");
+});
+
+test("novo veículo mostra a opção Novo Veículo e todas as opções documentadas do formulário", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como cadastrar um veículo?");
+  const labels = Array.from(plan, step => step.label);
+  assert.deepEqual(labels.slice(0, 3), ["Cadastros", "Veículos", "Novo Veículo"]);
+  for (const label of ["Placa", "UF", "Tipo Rodado", "Tipo Carroceria", "Número de eixos", "Capacidade em KG", "Capacidade em M3", "Veículo próprio", "Reboques", "Adicionar Reboque", "Salvar"]) {
+    assert.ok(labels.includes(label), "etapa ausente: " + label);
+  }
+  assert.equal(plan.at(-1).kind, "final_action");
 });
