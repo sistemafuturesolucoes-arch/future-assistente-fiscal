@@ -402,7 +402,7 @@
     const best = rankedLessons[0];
     if (best?.lesson && best.score >= 18) {
       const lesson = best.lesson;
-      const path = lesson.path || lesson.title;
+      let path = lesson.path || lesson.title;
       const plan = [];
       const seen = new Set();
       const add = (label, kind, description) => {
@@ -414,6 +414,8 @@
 
       const routeParts = String(lesson.path || "").split(/\s*>\s*/).map(part => part.trim())
         .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+      if ((editRequest || deleteRequest) && routeParts.length && /^(novo|nova|novo\s+|nova\s+)/i.test(routeParts[routeParts.length - 1])) routeParts.pop();
+      path = routeParts.join(" > ") || path;
       for (const part of routeParts) {
         add(part, "click", "Siga o caminho documentado no Manual e abra esta opção no sistema.");
       }
