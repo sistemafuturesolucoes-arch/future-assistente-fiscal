@@ -1750,6 +1750,7 @@
             task: response.guide.task,
             plan: response.guide.plan,
             planIndex: response.guide.step,
+            manualTourActive: Boolean(response.guide.manualTourActive),
             savedAt: response.guide.updatedAt || Date.now()
           };
         }
@@ -1760,7 +1761,7 @@
       return;
     }
     navigationTask = saved.task;
-    manualTourActive = Boolean(saved.manualTourActive || response?.guide?.manualTourActive);
+    manualTourActive = Boolean(saved.manualTourActive);
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
     navigationPlan = Array.isArray(saved.plan) ? saved.plan : [];
