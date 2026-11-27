@@ -1521,8 +1521,9 @@
       guideState.mutationTimer = window.setTimeout(() => {
         if (!guideState) return;
         const current = guideState.steps[guideState.index];
+        if (current?.kind === "info") return;
         if (current && (!current.element || !current.element.isConnected || !isGuideNodeVisible(current.element))) {
-          const replacement = findElementByName(current.title);
+          const replacement = findElementForPlanStep({ label: current.title, targetNames: current.targetNames || [] });
           if (replacement) {
             current.element = replacement;
             showGuideStep(guideState.index);
