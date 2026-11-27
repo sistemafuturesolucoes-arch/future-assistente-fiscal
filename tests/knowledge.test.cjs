@@ -537,3 +537,12 @@ test("Tour inclui ações finais descritas no texto mesmo quando não há marcad
   assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Cadastrar cliente" && step.label === "Salvar"));
   assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Gerenciamento e Edição de Grupos Tributários" && step.label === "Salvar"));
 });
+
+test("rota de edição de grupo tributário nunca apresenta a ação destrutiva de excluir", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como editar um grupo tributário?");
+  assert.ok(plan.some(step => step.label === "Editar Regra"));
+  assert.ok(plan.some(step => step.label === "Salvar" && step.kind === "final_action"));
+  assert.ok(!plan.some(step => /excluir|remover|apagar/i.test(step.label)));
+});
