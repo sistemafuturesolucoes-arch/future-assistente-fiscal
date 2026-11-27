@@ -348,6 +348,7 @@
         for (const marker of markers) {
           const label = String(marker.title).trim(), n = normalize(label);
           if (/^(novo|nova|adicionar|incluir|duplicar)\b/.test(n)) continue;
+          if (/opcoes.*geral|geral.*opcoes/.test(n) || /opcoes gerais|exportar e importar grupos em excel/i.test(normalize(marker.description))) continue;
           const relevant = deleteRequest
             ? /procurar|pesquisa|linha|opcoes|excluir|remover|apagar/.test(n)
             : /procurar|pesquisa|linha|opcoes|editar|regra/.test(n);
