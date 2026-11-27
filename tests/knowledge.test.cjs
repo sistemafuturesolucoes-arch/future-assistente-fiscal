@@ -454,3 +454,21 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
       "os marcadores devem aparecer na mesma ordem do Manual: " + lesson.title);
   }
 });
+
+test("perguntas de edição não são confundidas com cadastro de novo registro", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como editar cadastro de cliente?");
+  assert.ok(Array.isArray(plan) && plan.length);
+  assert.ok(!plan.some(step => /^Novo Cliente$/i.test(step.label)));
+  assert.ok(plan.some(step => /Editar|Opções da Linha/i.test(step.label)));
+});
+
+test("perguntas de exclusão orientam a linha existente e não abrem formulário novo", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como excluir um cliente?");
+  assert.ok(Array.isArray(plan) && plan.length);
+  assert.ok(!plan.some(step => /^Novo Cliente$/i.test(step.label)));
+  assert.ok(plan.some(step => /Excluir/i.test(step.label)));
+});
