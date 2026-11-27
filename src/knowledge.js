@@ -459,6 +459,7 @@
           step("Capacidade em KG", "field", "Informe ou confira a capacidade em quilogramas.", ["Capacidade KG", "Capacidade (KG)"]),
           step("Capacidade em M3", "field", "Informe ou confira a capacidade em metros cúbicos.", ["Capacidade M3", "Capacidade (M3)"]),
           step("Veículo próprio", "field", "Marque somente se o veículo pertencer à frota própria da empresa.", ["Veiculo proprio"]),
+          step("Salvar / Avançar", "click", "Use este controle para salvar a etapa atual ou avançar para a configuração de reboques, conforme o formulário apresentar.", ["Salvar", "Avançar"]),
           step("Reboques", "click", "Abra a aba Reboques para conferir ou associar reboques favoritos.", ["Aba Reboques"]),
           step("Adicionar Reboque", "click", "Se necessário, clique em Adicionar Reboque para vincular um reboque favorito.", ["Adicionar"]),
           step("Salvar", "final_action", "Revise os dados e clique você mesmo em Salvar para gravar as alterações. A extensão não salva automaticamente.", ["Salvar / Avançar", "Salvar alterações"])
