@@ -533,7 +533,45 @@
         }
       }
 
-      if (plan.length) return plan.slice(0, 1000);
+      if (plan.length) {
+        // Para uma tarefa genérica, reconstrói a sequência na ordem do Manual:
+        // caminho da tela primeiro e, depois, cada marcador único das capturas.
+        // Isso evita que filtros por tipo de ação deixem a navegação pela metade.
+        const routeSteps = routeParts.map(label =>
+          plan.find(step => normalize(step.label) === normalize(label))
+        ).filter(Boolean);
+        const orderedMarkers = [], markerKeys = new Set();
+        const collectMarker = marker => {
+          if (!marker?.title) return;
+          const key = marker.id ? "id:" + marker.id : "text:" + normalize(marker.title) + "|" + normalize(marker.description);
+          if (markerKeys.has(key)) return;
+          markerKeys.add(key); orderedMarkers.push(marker);
+        };
+        (lesson.hotspots || []).forEach(collectMarker);
+        (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collectMarker));
+        const includedIds = new Set(routeSteps.map(step => step.manualMarker?.id).filter(Boolean));
+        const completePlan = [...routeSteps];
+        for (const marker of orderedMarkers) {
+          if (marker.id && includedIds.has(marker.id)) continue;
+          const label = String(marker.title).trim(), n = normalize(label);
+          const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info"
+            : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar/.test(n) ? "final_action"
+            : /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
+          const targetNames = [label];
+          if (/^menu:\\s*/i.test(label)) targetNames.push(label.replace(/^menu:\\s*/i, ""));
+          if (/^barra de pesquisa/i.test(label)) targetNames.push("Procurar");
+          if (/^botao\\s+/i.test(n)) targetNames.push(label.replace(/^botao\\s+/i, ""));
+          if (/^botao opcoes da linha/.test(n)) targetNames.push("Opções da Linha", "Opções");
+          completePlan.push({
+            label, kind, path, description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\\n\\n") || "Siga esta etapa conforme o Manual Future.",
+            manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
+            targetNames: [...new Set(targetNames)],
+            optional: /^(barra de pesquisa|procurar)$/.test(n)
+          });
+          if (marker.id) includedIds.add(marker.id);
+        }
+        return completePlan.slice(0, 1000);
+      }
     }
 
     const fallbackMatch = !locateOnly ? [...bundleCache.lessons]
