@@ -1133,7 +1133,7 @@
   function showGuideStep(index) {
     if (!guideState) return;
     const step = guideState.steps[index];
-    if (step?.element && !step.element.isConnected) step.element = findElementByName(step.title);
+    if (step?.element && !step.element.isConnected) step.element = findElementForPlanStep({ label: step.title, targetNames: step.targetNames || [] });
     guideState.index = index;
     guideState.pendingIndex = null;
     guideState.fieldChanged = false;
@@ -1157,17 +1157,17 @@
       guideState.dismiss.hidden = false;
       guideState.dismiss.style.left = Math.min(window.innerWidth - 22, fallbackLeft + 312) + "px";
       guideState.dismiss.style.top = "64px";
-      guideState.card.querySelector(".guide-kicker").textContent = "CAMINHO DO MANUAL · PASSO " + (index + 1) + " DE " + navigationPlan.length;
+      guideState.card.querySelector(".guide-kicker").textContent = step.lessonTitle ? "AULA " + (step.lessonIndex + 1) + "/" + step.lessonCount + " · " + step.moduleTitle + " · MARCADOR " + step.lessonStepIndex + "/" + step.lessonStepCount : "CAMINHO DO MANUAL · PASSO " + (navigationPlanIndex + 1) + " DE " + navigationPlan.length;
       guideState.card.querySelector(".guide-title").textContent = step.title;
       guideState.card.querySelector(".guide-desc").textContent = step.description;
-      guideState.card.querySelector(".guide-hint").textContent = "Nenhum destaque será exibido enquanto o controle não for identificado com segurança. Abra o caminho indicado e confirme para avançar.";
-      if (manualNext) manualNext.hidden = !step.missingTarget;
+      guideState.card.querySelector(".guide-hint").textContent = step.kind === "info" ? "Leia a apresentação desta aula. Use Próximo passo para percorrer os marcadores na ordem do Manual." : "Nenhum destaque será exibido enquanto o controle não for identificado com segurança. Abra o caminho indicado e avance quando estiver pronto.";
+      if (manualNext) { manualNext.hidden = !step.missingTarget && !manualTourActive && !step.optional; manualNext.textContent = step.optional ? "Pular pesquisa →" : manualTourActive ? "Próximo passo →" : "Já abri — avançar"; }
       if (guideState.waitTimer) clearTimeout(guideState.waitTimer);
       return;
     }
     guideState.frame.hidden = false;
     guideState.dismiss.hidden = false;
-    if (manualNext) manualNext.hidden = true;
+    if (manualNext) { manualNext.hidden = !manualTourActive && !step.optional; manualNext.textContent = step.optional ? "Pular pesquisa →" : manualTourActive ? "Próximo passo →" : "Já abri — avançar"; }
     step.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     const rect = step.element.getBoundingClientRect();
     const pad = 5;
@@ -1177,7 +1177,7 @@
       width: Math.max(12, rect.width + pad * 2) + "px",
       height: Math.max(12, rect.height + pad * 2) + "px"
     });
-    guideState.card.querySelector(".guide-kicker").textContent = "ORIENTAÇÃO VISUAL · PASSO " + (index + 1) + " DE " + guideState.steps.length;
+    guideState.card.querySelector(".guide-kicker").textContent = step.lessonTitle ? "AULA " + (step.lessonIndex + 1) + "/" + step.lessonCount + " · " + step.moduleTitle + " · MARCADOR " + step.lessonStepIndex + "/" + step.lessonStepCount : "ORIENTAÇÃO VISUAL · PASSO " + (navigationPlanIndex + 1) + " DE " + navigationPlan.length;
     guideState.card.querySelector(".guide-title").textContent = step.title;
     guideState.card.querySelector(".guide-desc").textContent = step.description;
     const hint = guideState.card.querySelector(".guide-hint");
@@ -1274,9 +1274,17 @@
   function advanceLocalNavigationPlan() {
     if (!navigationGuideActive || !navigationPlan.length) return false;
     if (navigationPlanIndex >= navigationPlan.length) {
+      if (manualTourActive) {
+        const coverage = window.FutureManualKnowledge.getManualTourCoverage?.() || {};
+        clearNavigationTask();
+        closeGuide();
+        status.textContent = "Tour do Manual concluído.";
+        addMessage("Você chegou ao final do Tour Guiado do Manual Future. Foram percorridas " + (coverage.lessons || "todas as") + " aulas e " + (coverage.markers || "todos os") + " marcadores da base local. Nenhuma IA foi utilizada e nenhuma informação foi alterada automaticamente.", "bot");
+        return true;
+      }
       const lastStep = navigationPlan[navigationPlan.length - 1];
       // Depois de Salvar/Concluir, a IA confere a resposta da tela antes de declarar sucesso.
-      if (lastStep?.kind === "final_action" && navigationLastCompletedStep === lastStep.label) return false;
+      if (!manualTourActive && lastStep?.kind === "final_action" && navigationLastCompletedStep === lastStep.label) return false;
       clearNavigationTask();
       closeGuide();
       status.textContent = "Roteiro concluído. Confira a confirmação apresentada pelo sistema.";
@@ -1284,15 +1292,23 @@
       return true;
     }
     const next = navigationPlan[navigationPlanIndex];
-    const element = findElementForPlanStep(next);
+    const element = next.kind === "info" ? null : findElementForPlanStep(next);
     const pathDescription = (next.path ? "Caminho completo: " + next.path + ". " : "") + next.description;
     // Preserve o roteiro mesmo quando o menu está fechado ou o controle ainda não existe no DOM.
     startVisualGuide([{
       element: element || null, title: next.label,
-      description: element ? pathDescription : pathDescription + " Ainda não encontrei este controle nesta tela. Abra manualmente o caminho indicado e use “Procurar novamente” ou “Já abri — avançar”. Não vou destacar outro elemento por aproximação.",
+      description: next.kind === "info" || element ? pathDescription : pathDescription + " Ainda não encontrei este controle nesta tela. Abra manualmente o caminho indicado e use “Procurar novamente” ou “Já abri — avançar”. Não vou destacar outro elemento por aproximação.",
       waitForInput: next.kind === "field",
       kind: next.kind,
-      missingTarget: !element
+      missingTarget: !element,
+      optional: Boolean(next.optional),
+      targetNames: next.targetNames || [],
+      lessonTitle: next.lessonTitle || "",
+      moduleTitle: next.moduleTitle || "",
+      lessonIndex: next.lessonIndex,
+      lessonCount: next.lessonCount,
+      lessonStepIndex: next.lessonStepIndex,
+      lessonStepCount: next.lessonStepCount
     }]);
     status.textContent = "Navegação local ativa — próximo passo " + (navigationPlanIndex + 1) + " de " + navigationPlan.length + ".";
     return true;
@@ -1394,6 +1410,10 @@
     if (!navigationGuideActive || requestInProgress) return;
     closeGuide();
     if (advanceLocalNavigationPlan()) return;
+    if (manualTourActive) {
+      status.textContent = "Tour local pausado: localize o item indicado ou avance manualmente. Nenhuma IA será chamada.";
+      return;
+    }
     status.textContent = "Não encontrei com segurança o próximo item do caminho do Manual. Vou pedir ajuda à IA para reavaliar esta tela...";
     navigationPlan = [];
     navigationPlanIndex = 0;
@@ -1434,7 +1454,7 @@
     card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
+      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-skip" type="button">Pular etapa</button><button class="guide-finish-lesson" type="button" hidden>Concluir aula</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
     const onOutsideClick = event => {
@@ -1588,7 +1608,7 @@
     card.querySelector(".guide-retry").addEventListener("click", () => {
       if (!guideState) return;
       const current = guideState.steps[guideState.index];
-      const replacement = current?.title ? findElementByName(current.title) : null;
+      const replacement = current?.title ? findElementForPlanStep({ label: current.title, targetNames: current.targetNames || [] }) : null;
       if (replacement) {
         current.element = replacement;
         showGuideStep(guideState.index);
@@ -1603,6 +1623,26 @@
       closeGuide();
       if (!advanceLocalNavigationPlan()) continueNavigationGuide();
     });
+    card.querySelector(".guide-skip").addEventListener("click", () => {
+      if (!navigationGuideActive || !guideState) return;
+      navigationPlanIndex = Math.min(navigationPlan.length, navigationPlanIndex + 1);
+      persistNavigationTask();
+      closeGuide();
+      if (!advanceLocalNavigationPlan()) continueNavigationGuide();
+    });
+    const finishLessonButton = card.querySelector(".guide-finish-lesson");
+    if (finishLessonButton) {
+      finishLessonButton.hidden = !manualTourActive;
+      finishLessonButton.addEventListener("click", () => {
+        if (!manualTourActive || !guideState) return;
+        const currentLesson = navigationPlan[navigationPlanIndex]?.lessonIndex;
+        const nextIndex = navigationPlan.findIndex((step, index) => index > navigationPlanIndex && step.lessonIndex > currentLesson);
+        navigationPlanIndex = nextIndex < 0 ? navigationPlan.length : nextIndex;
+        persistNavigationTask();
+        closeGuide();
+        advanceLocalNavigationPlan();
+      });
+    }
     card.querySelector(".guide-end").addEventListener("click", () => { clearNavigationTask(); closeGuide(); });
     // Campos (ex.: Procurar) só avançam depois de uma alteração real e confirmação
     // por Enter, change ou saída do campo. Um simples clique não deixa o roteiro travado.
