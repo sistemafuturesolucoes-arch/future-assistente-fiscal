@@ -83,7 +83,8 @@
     const routeDuplicate = marker => {
       const title = normalize(marker.title);
       const aliases = markerTargetNames(marker.title).map(normalize);
-      return aliases.some(alias => routeAliases.has(alias))
+      return routeAliases.has(title)
+        || aliases.some(alias => routeAliases.has(alias))
         || routeParts.some(part => normalize(part).length >= 3 && title.startsWith(normalize(part) + " "));
     };
     const plan = [];
@@ -521,10 +522,16 @@
     }
     // Roteiro genérico orientado pelo conteúdo real da aula. Funciona para os demais
     // módulos sem criar rótulos fictícios: o content script só destaca controles com nome acessível exato.
+    const exactLesson = bundleCache.lessons.find(lesson => {
+      const title = normalize(lesson.title);
+      return title.length >= 8 && q.includes(title);
+    });
     const rankedLessons = [...bundleCache.lessons].map(lesson => ({
       lesson, score: relevance(lesson, location.pathname, question)
     })).sort((a, b) => b.score - a.score);
-    const best = rankedLessons[0];
+    const best = exactLesson
+      ? { lesson: exactLesson, score: 1000 }
+      : rankedLessons[0];
     if (best?.lesson && best.score >= 18) {
       const lesson = best.lesson;
       // Rotas genéricas percorrem a sequência integral documentada da aula,
