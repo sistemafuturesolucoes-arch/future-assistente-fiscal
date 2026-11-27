@@ -22,6 +22,7 @@
     const n = normalize(raw);
     const names = [raw];
     if (/^menu:\s*/i.test(raw)) names.push(raw.replace(/^menu:\s*/i, ""));
+    else if (/^menu do\s+/i.test(raw)) names.push(raw.replace(/^menu do\s+/i, ""));
     else if (/^menu\s+/i.test(raw)) names.push(raw.replace(/^menu\s+/i, ""));
     if (/^(botao|campo|chave|aba)\s+/.test(n)) names.push(raw.replace(/^(bot[aã]o|campo|chave|aba)\s+/i, ""));
     if (/^barra de pesquisa|^campo procurar/.test(n)) names.push("Procurar");
