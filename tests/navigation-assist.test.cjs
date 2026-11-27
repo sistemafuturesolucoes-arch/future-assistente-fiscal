@@ -394,3 +394,9 @@ test("re-renderizações do Emissor preservam aliases e não destacam títulos d
   assert.match(source, /if \(current\?\.kind === "info"\) return/);
   assert.match(source, /findElementForPlanStep\(\{ label: current\.title, targetNames: current\.targetNames \|\| \[\] \}\)/);
 });
+
+test("marcadores de campos repetidos priorizam controles de formulário sem aproximação", () => {
+  assert.match(source, /exact\.length > 1 && step\.kind === "field"/);
+  assert.match(source, /el\.matches\("input,select,textarea,\[role=textbox\],\[role=combobox\],\[role=checkbox\],\[role=switch\]"\)/);
+  assert.match(source, /if \(fieldCandidates\.length === 1\) return fieldCandidates\[0\]/);
+});
