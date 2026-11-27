@@ -184,7 +184,10 @@
     const q = normalize(question);
     const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|como|configur\w*|mudar|mude|mud\w*|remover|remova|excluir|exclua|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajust\w*|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|altero|conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque|me ajude|me ajuda|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
-    const createRequest = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
+    const editRequest = /\b(editar|edite|edicao|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|remover|remova|excluir|exclua)\b/.test(q);
+    const lookupRequest = /\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\b/.test(q);
+    const createRequest = !editRequest && !lookupRequest
+      && /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
 
 
     // Pedidos para LOCALIZAR uma tela devem terminar no destino solicitado.
