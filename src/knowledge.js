@@ -426,7 +426,7 @@
     // Veículos: o Manual descreve a listagem, as opções da linha e o formulário,
     // mas não possui hotspots individuais para todos os campos. Criamos etapas locais
     // explícitas a partir do texto documentado para que o tour destaque cada opção.
-    if (/\\b(veiculo|veiculos)\\b/.test(q) && (editRequest || createRequest)) {
+    if (/\b(veiculo|veiculos)\b/.test(q) && (editRequest || createRequest)) {
       const lesson = bundleCache.lessons.find(item => item.title === "Gerenciamento e Edição de Veículos");
       if (lesson) {
         const path = "Cadastros > Veículos";
