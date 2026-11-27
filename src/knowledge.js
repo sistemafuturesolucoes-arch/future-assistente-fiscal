@@ -666,9 +666,14 @@
           return step ? { ...step, manualMarker: null } : null;
         }).filter(Boolean);
         const orderedMarkers = [], markerKeys = new Set();
+        const routeAliases = new Set(routeParts.map(normalize));
         const collectMarker = marker => {
           if (!marker?.title) return;
-          const key = marker.id ? "id:" + marker.id : "text:" + normalize(marker.title) + "|" + normalize(marker.description);
+          const aliases = markerTargetNames(marker.title).map(normalize);
+          const routeDuplicate = aliases.some(alias => routeAliases.has(alias))
+            || routeParts.some(part => normalize(part).length >= 3 && normalize(marker.title).includes(normalize(part)));
+          if (routeDuplicate) return;
+          const key = normalize(marker.title) + "|" + normalize(marker.description);
           if (markerKeys.has(key)) return;
           markerKeys.add(key); orderedMarkers.push(marker);
         };
