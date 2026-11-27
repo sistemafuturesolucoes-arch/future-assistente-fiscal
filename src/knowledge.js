@@ -34,7 +34,7 @@
 
   function getDocumentedActions(lesson, markers = []) {
     const available = new Set(markers.flatMap(marker => markerTargetNames(marker.title).map(normalize)));
-    const allowed = /^(salvar|gerar|emitir|enviar|finalizar venda|confirmar|entrar|concluir|imprimir|fechar)$/;
+    const allowed = /^(salvar|salvar rascunho|gerar|gerar cte|emitir|emitir ciot|enviar|finalizar venda|confirmar|entrar|concluir|imprimir|fechar|pre-visualizar)$/;
     const actions = [], seen = new Set();
     for (const line of String(lesson?.content || "").split(/\n+/)) {
       for (const match of line.matchAll(/\*\*([^*]{2,60})\*\*/g)) {
@@ -42,11 +42,28 @@
         if (!allowed.test(key) || available.has(key) || seen.has(key)) continue;
         if (!/(clique|pressione|confirme|selecione|aperte|toque)/i.test(line.slice(0, match.index))) continue;
         seen.add(key);
-        actions.push({ label, description: line.replace(/\*\*/g, "").trim() });
+        actions.push({ label, kind: "final_action", description: line.replace(/\*\*/g, "").trim(), source: "lesson_text" });
+      }
+    }
+    for (const marker of markers) {
+      if (!/acoes finais/.test(normalize(marker?.title))) continue;
+      for (const line of String(marker.description || "").split(/\n+/)) {
+        const match = line.match(/^\s*[•-]?\s*(Salvar rascunho|Salvar|Pré-visualizar|Gerar CTe|Emitir CIOT)\s*:\s*(.+)$/i);
+        if (!match) continue;
+        const label = match[1].trim(), key = normalize(label);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        actions.push({
+          label,
+          kind: /pre-visualizar/.test(key) ? "click" : "final_action",
+          description: match[2].trim(),
+          source: "marker_description"
+        });
       }
     }
     return actions;
   }
+
 
   function getLessonMarkerRoute(lesson, pathOverride = "", includeRoute = true) {
     if (!lesson) return [];
@@ -87,7 +104,7 @@
     }
     for (const action of getDocumentedActions(lesson, markers)) {
       plan.push({
-        label: action.label, kind: "final_action", path, description: action.description,
+        label: action.label, kind: action.kind || "final_action", path, description: action.description,
         manualMarker: null, targetNames: markerTargetNames(action.label),
         lessonTitle: lesson.title || "", lessonId: lesson.id || "", manualActionFromContent: true
       });
@@ -679,6 +696,14 @@
           });
           if (marker.id) includedIds.add(marker.id);
         }
+        for (const action of getDocumentedActions(lesson, orderedMarkers)) {
+          completePlan.push({
+            label: action.label, kind: action.kind || "final_action", path, description: action.description,
+            manualMarker: null, targetNames: markerTargetNames(action.label),
+            manualActionFromContent: action.source === "lesson_text",
+            manualActionFromMarker: action.source === "marker_description"
+          });
+        }
         return completePlan.slice(0, 1000);
       }
     }
@@ -765,12 +790,12 @@
       });
       contentActions.forEach((action, actionIndex) => {
         plan.push({
-          label: action.label, kind: "final_action", path,
+          label: action.label, kind: action.kind || "final_action", path,
           lessonId: lesson.id || "", lessonIndex, lessonCount: lessons.length,
           lessonStepIndex: markers.length + actionIndex + 2, lessonStepCount: total,
           lessonTitle: lesson.title, moduleTitle: module?.title || "Manual Future",
           description: action.description, manualMarker: null,
-          targetNames: markerTargetNames(action.label), manualActionFromContent: true
+          targetNames: markerTargetNames(action.label), manualActionFromContent: action.source === "lesson_text", manualActionFromMarker: action.source === "marker_description"
         });
       });
     });
