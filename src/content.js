@@ -1462,7 +1462,7 @@
     card.hidden = true;
     card.innerHTML = `
       <div class="guide-kicker"></div><div class="guide-title"></div><div class="guide-desc"></div>
-      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-skip" type="button">Pular etapa</button><button class="guide-finish-lesson" type="button" hidden>Concluir aula</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
+      <div class="guide-controls"><button class="guide-back" type="button">← Voltar</button><button class="guide-retry" type="button">Procurar novamente</button><button class="guide-manual-next" type="button" hidden>Já abri — avançar</button><button class="guide-skip" type="button">Pular etapa</button><button class="guide-finish-lesson" type="button" hidden>Concluir aula</button><button class="guide-restart" type="button" hidden>Reiniciar tour</button><button class="guide-end" type="button">Encerrar</button></div><div class="guide-hint">Clique no item destacado para continuar. Você está no controle: nada será preenchido ou enviado automaticamente.</div>
     `;
     shadow.append(frame, marker, dismiss, card);
     const onOutsideClick = event => {
@@ -1639,6 +1639,19 @@
       closeGuide();
       if (!advanceLocalNavigationPlan()) continueNavigationGuide();
     });
+    const restartTourButton = card.querySelector(".guide-restart");
+    if (restartTourButton) {
+      restartTourButton.hidden = !manualTourActive;
+      restartTourButton.addEventListener("click", () => {
+        if (!manualTourActive || !navigationGuideActive || !navigationPlan.length) return;
+        navigationPlanIndex = 0;
+        navigationLastCompletedStep = "";
+        navigationLastCompletedRoute = "";
+        persistNavigationTask();
+        closeGuide();
+        advanceLocalNavigationPlan();
+      });
+    }
     const finishLessonButton = card.querySelector(".guide-finish-lesson");
     if (finishLessonButton) {
       finishLessonButton.hidden = !manualTourActive;
