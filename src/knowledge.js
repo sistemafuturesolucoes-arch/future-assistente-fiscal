@@ -557,7 +557,7 @@
         if (result.some(step => normalize(step.label) === normalize(marker.title))) continue;
         const n = normalize(marker.title);
         const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
-          : /campo|pesquisa|procurar|cfop|cst|al[ií]quota|senha|cpf|e-mail|uf|natureza|chave|s[eé]rie|numera[cç][aã]o/.test(n) ? "field" : "click";
+          : /campo|pesquisa|procurar|ordenar|cfop|cst|al[ií]quota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|s[eé]rie|numera[cç][aã]o|nome|descri[cç][aã]o|c[oó]digo|pre[cç]o|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|raz[aã]o social|fantasia|endere[cç]o|bairro|munic[ií]pio|inscri[cç][aã]o|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
         const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
         step.targetNames = [marker.title];
         if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
@@ -607,7 +607,7 @@
         if (/^barra de pesquisa/i.test(title)) targetNames.push("Procurar");
         if (/^botão opções da linha/i.test(n)) targetNames.push("Opções da Linha", "Opções");
         if (/^botão\s+/i.test(title)) targetNames.push(title.replace(/^botão\s+/i, ""));
-        const field = /campo|pesquisa|procurar|cfop|cst|alíquota|senha|cpf|e-mail|uf|natureza|chave|série|numeração/.test(n);
+        const field = /campo|pesquisa|procurar|ordenar|cfop|cst|alíquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|série|numeração|nome|descrição|código|preço|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razão social|fantasia|endereço|bairro|município|inscrição|categoria|quantidade|peso|frete/.test(n);
         const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
         plan.push({
           label: title, kind: finalAction ? "final_action" : field ? "field" : "click", path,
