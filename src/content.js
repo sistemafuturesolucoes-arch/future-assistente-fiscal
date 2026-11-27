@@ -632,6 +632,8 @@
 
   async function reviewFingerprint(issues) {
     const signature = [
+      window.FutureManualBundle?.version || "manual",
+      chrome.runtime?.getManifest?.().version || "dev",
       location.pathname,
       ...issues.map(issue => [issue.title, issue.message, issue.source].map(value => normalize(value)).join("::"))
     ].join("|");
