@@ -304,31 +304,16 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function errorFingerprint(
-  message: UIMessage,
-  google: ReturnType<typeof createGoogleGenerativeAI>,
-  model: string,
-) {
+async function errorFingerprint(message: UIMessage) {
   const image = imageDataFromMessage(message);
-  let sourceText = textFromMessage(message);
   if (image) {
-    try {
-      const extracted = await generateText({
-        model: google(model),
-        system: "Analise o print enviado e extraia somente a mensagem principal do erro, código técnico e nome do serviço/tela se estiverem claramente visíveis. Ignore nomes, CPF, CNPJ, e-mails, valores e dados pessoais. Não diagnostique nem invente. Se não houver mensagem de erro legível, responda exatamente: SEM_MENSAGEM_LEGIVEL.",
-        messages: await convertToModelMessages([message]),
-        maxOutputTokens: 120,
-        maxRetries: 1,
-      });
-      sourceText = extracted.text.trim();
-    } catch (error) {
-      console.warn("Não foi possível extrair a assinatura do print; usando impressão digital da imagem.", error);
-    }
-    if (!sourceText || /SEM_MENSAGEM_LEGIVEL/i.test(sourceText)) {
-      const fingerprint = await sha256(image);
-      return { fingerprint, signature: "imagem:" + fingerprint.slice(0, 24), hasImage: true };
-    }
+    // A impressão digital do arquivo evita uma chamada extra ao Gemini apenas para OCR.
+    // Na primeira ocorrência a análise principal lê o print; após aprovação, o mesmo
+    // erro é servido diretamente do banco, sem novo OCR/captura.
+    const fingerprint = await sha256(image);
+    return { fingerprint, signature: "imagem:" + fingerprint.slice(0, 24), hasImage: true };
   }
+  const sourceText = textFromMessage(message);
   const normalized = sanitizeText(sourceText)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -337,7 +322,7 @@ async function errorFingerprint(
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized) return null;
-  return { fingerprint: await sha256(normalized), signature: normalized.slice(0, 240), hasImage: Boolean(image) };
+  return { fingerprint: await sha256(normalized), signature: normalized.slice(0, 240), hasImage: false };
 }
 
 async function knownSolution(fingerprint: string) {
@@ -616,7 +601,7 @@ Deno.serve(async (request: Request) => {
     }
 
     const fingerprintData = lastUser && !hasDocumentAttachment && !webSearchIntent && isLikelyError(userText, hasImage)
-      ? await errorFingerprint(lastUser, google, model)
+      ? await errorFingerprint(lastUser)
       : null;
 
     if (fingerprintData) {
@@ -649,14 +634,15 @@ Deno.serve(async (request: Request) => {
             : "[ERROR_MEDIA_VIDEO:" + signedUrl + "]";
         }));
         const mediaContext = mediaItems.filter((item): item is string => Boolean(item)).join("\n");
-        knowledge += "\n\n=== HISTÓRICO AUTOMÁTICO DESTE ERRO (REFERÊNCIA; RECONFIRA NO MANUAL) ===\n"
-          + "Título registrado: " + sanitizeText(known.title || "") + "\n"
-          + "Descrição registrada: " + sanitizeText(known.description || known.error_message || "") + "\n"
-          + "Ocorrências anteriores: " + String(known.occurrence_count || 1) + "\n"
-          + "Orientação registrada: " + sanitizeText(known.solution || "") + "\n"
-          + (mediaContext ? "MÍDIAS CADASTRADAS PARA ESTE ERRO (inclua os marcadores exatos na resposta, junto do passo a que pertencem):\n" + mediaContext + "\n" : "Não há mídia adicional cadastrada para este erro.\n")
-          + "Use como pista, não como verdade absoluta. Confira a orientação com o manual atual e inclua os caminhos e marcadores visuais [VISUAL:...] disponíveis no contexto. Nunca invente imagens, vídeos, caminhos ou marcadores de mídia.\n"
-          + "=== FIM DO HISTÓRICO ===";
+        const cachedText = [
+          known.title ? "ERRO REGISTRADO: " + sanitizeText(known.title) : "",
+          known.description || known.error_message ? "O QUE SIGNIFICA: " + sanitizeText(known.description || known.error_message || "") : "",
+          "ORIENTAÇÃO REGISTRADA: " + sanitizeText(known.solution),
+          mediaContext,
+          "Esta orientação foi recuperada do banco de erros aprovado da Future. Confira se a mensagem e a tela atuais correspondem ao caso antes de alterar qualquer informação fiscal."
+        ].filter(Boolean).join("\n\n");
+        console.info("Known error hit; Gemini request skipped.");
+        return cachedAnswer(cachedText);
       }
     }
 
