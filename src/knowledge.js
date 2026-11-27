@@ -403,7 +403,7 @@
       const seen = new Set();
       const add = (label, kind, description) => {
         const key = normalize(label);
-        if (!label || !key || seen.has(key) || plan.length >= 30) return;
+        if (!label || !key || seen.has(key) || plan.length >= 1000) return;
         seen.add(key);
         plan.push(makeLessonStep(bundleCache, lesson, label, kind, path, description || ""));
       };
