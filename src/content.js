@@ -591,12 +591,33 @@
   panel.querySelector(".manual-link").addEventListener("click", () => window.open(MANUAL_URL, "_blank", "noopener"));
 
   const tourButton = panel.querySelector(".tour-button");
-  tourButton.addEventListener("click", () => {
-    if (requestInProgress) return;
-    const question = "[TOUR GUIADO] Faça um tour interativo da função disponível nesta tela. Consulte primeiro o Manual Future e identifique a aula correspondente. Explique em português simples, uma etapa por vez. Comece por uma única ação que exista e esteja visível agora, usando o rótulo exato do controle. Destaque esse elemento na tela e aguarde o usuário clicar; depois detecte a mudança de tela e continue do ponto correto até concluir o procedimento. Não liste várias etapas de uma vez, não repita ações já confirmadas, não clique nem preencha pelo usuário e nunca execute emissão, transmissão ou autorização. Se não houver uma aula correspondente ou não localizar o controle com segurança, explique isso e peça um print.";
-    addMessage("Vamos começar o tour guiado desta tela.", "user");
-    ask(question, []);
-  });
+  async function startManualTour() {
+    if (requestInProgress || navigationGuideActive) return;
+    try {
+      await window.FutureManualKnowledge.load({ route: location.pathname });
+      const plan = window.FutureManualKnowledge.getManualTourPlan?.() || [];
+      const coverage = window.FutureManualKnowledge.getManualTourCoverage?.() || {};
+      if (!plan.length) {
+        addMessage("Não consegui carregar as aulas e marcadores locais do Manual Future. O tour não será iniciado.", "bot");
+        return;
+      }
+      manualTourActive = true;
+      navigationTask = "[TOUR GUIADO LOCAL DO MANUAL FUTURE]";
+      navigationLastCompletedStep = "";
+      navigationLastCompletedRoute = "";
+      navigationGuideActive = true;
+      navigationPlan = plan;
+      navigationPlanIndex = 0;
+      persistNavigationTask();
+      addMessage("Vamos percorrer o Manual Future em ordem, aula por aula. O tour usa somente o conteúdo instalado na extensão: " + coverage.lessons + " aulas e " + coverage.markers + " marcadores únicos. Não chama IA, não preenche campos e não executa ações fiscais.", "bot");
+      status.textContent = "Tour local iniciado — " + coverage.lessons + " aulas e " + coverage.markers + " marcadores.";
+      advanceLocalNavigationPlan();
+    } catch (error) {
+      console.warn("Falha ao iniciar o Tour Guiado local", error);
+      addMessage("Não foi possível iniciar o Tour Guiado local: " + (error?.message || "erro ao ler o Manual instalado."), "bot");
+    }
+  }
+  tourButton.addEventListener("click", startManualTour);
 
   const reviewButton = panel.querySelector(".review-button");
   let reviewActive = false;
@@ -1197,6 +1218,7 @@
   let navigationLastCompletedRoute = "";
   let navigationPlan = [];
   let navigationPlanIndex = 0;
+  let manualTourActive = false;
   const NAVIGATION_PLAN_OPEN = "[[FUTURE_NAVIGATION_PLAN]]";
   const NAVIGATION_PLAN_CLOSE = "[[/FUTURE_NAVIGATION_PLAN]]";
   const NAVIGATION_SESSION_KEY = "futureAssistenteNavigationTask";
@@ -1205,14 +1227,14 @@
     const snapshot = {
       task: navigationTask, lastCompletedStep: navigationLastCompletedStep,
       lastCompletedRoute: navigationLastCompletedRoute, currentRoute: location.pathname,
-      plan: navigationPlan, planIndex: navigationPlanIndex, savedAt: Date.now()
+      plan: navigationPlan, planIndex: navigationPlanIndex, manualTourActive, savedAt: Date.now()
     };
     try { sessionStorage.setItem(NAVIGATION_SESSION_KEY, JSON.stringify(snapshot)); } catch {}
     // O service worker mantém o mesmo roteiro associado à aba, como no motor Lovable.
     try {
       chrome.runtime.sendMessage({
         type: "FUTURE_GUIDE_SET",
-        guide: { task: snapshot.task, plan: snapshot.plan, step: snapshot.planIndex }
+        guide: { task: snapshot.task, plan: snapshot.plan, step: snapshot.planIndex, manualTourActive: snapshot.manualTourActive }
       }).catch(() => {});
     } catch {}
   }
@@ -1228,7 +1250,7 @@
         const jsonEnd = text.lastIndexOf("]");
         const parsed = JSON.parse(jsonStart >= 0 && jsonEnd > jsonStart ? text.slice(jsonStart, jsonEnd + 1) : text);
         if (!Array.isArray(parsed)) return "";
-        const valid = parsed.slice(0, 30).filter(item =>
+        const valid = parsed.slice(0, 1000).filter(item =>
           item && typeof item.label === "string" && item.label.trim() &&
           typeof item.description === "string" && item.description.trim()
         ).map(item => ({
@@ -1277,6 +1299,7 @@
   }
   function clearNavigationTask() {
     navigationGuideActive = false;
+    manualTourActive = false;
     navigationPlan = [];
     navigationPlanIndex = 0;
     try { sessionStorage.removeItem(NAVIGATION_SESSION_KEY); } catch {}
@@ -1697,6 +1720,7 @@
       return;
     }
     navigationTask = saved.task;
+    manualTourActive = Boolean(saved.manualTourActive || response?.guide?.manualTourActive);
     navigationLastCompletedStep = saved.lastCompletedStep || "";
     navigationLastCompletedRoute = saved.lastCompletedRoute || "";
     navigationPlan = Array.isArray(saved.plan) ? saved.plan : [];
@@ -2180,6 +2204,7 @@
     if (requestInProgress) return;
     const isNavigationContinuation = (question || "").startsWith("[CONTINUAR NAVEGAÇÃO ASSISTIDA]");
     if (question && !isNavigationContinuation) {
+      manualTourActive = false;
       navigationTask = question;
       navigationLastCompletedStep = "";
       navigationLastCompletedRoute = "";
