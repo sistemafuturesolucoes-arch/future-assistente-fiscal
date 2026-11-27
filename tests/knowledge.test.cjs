@@ -434,7 +434,7 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/dashboard" });
   const candidates = manualBundle.lessons.filter(lesson =>
-    !/cadastro de (clientes|produtos|servicos|serviços|veiculos|veículos|condutores)/i.test(lesson.title || "")
+    !/cliente|produto|servi[cç]o|ve[ií]culo|condutor/i.test(lesson.title || "")
   );
   for (const lesson of candidates) {
     const question = "Como executar a rotina " + lesson.title;
@@ -450,8 +450,7 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
     };
     (lesson.hotspots || []).forEach(add);
     (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
-    for (const id of expectedIds) {
-      assert.ok(actualIds.includes(id), "marcador " + id + " ausente no roteiro da aula " + lesson.title);
-    }
+    assert.deepEqual(actualIds.filter(id => expectedIds.includes(id)), expectedIds,
+      "os marcadores devem aparecer na mesma ordem do Manual: " + lesson.title);
   }
 });
