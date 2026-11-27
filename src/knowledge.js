@@ -607,7 +607,7 @@
         if (/^barra de pesquisa/i.test(title)) targetNames.push("Procurar");
         if (/^botão opções da linha/i.test(n)) targetNames.push("Opções da Linha", "Opções");
         if (/^botão\s+/i.test(title)) targetNames.push(title.replace(/^botão\s+/i, ""));
-        const field = /campo|pesquisa|procurar|ordenar|cfop|cst|alíquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|série|numeração|nome|descrição|código|preço|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razão social|fantasia|endereço|bairro|município|inscrição|categoria|quantidade|peso|frete/.test(n);
+        const field = /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n);
         const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
         plan.push({
           label: title, kind: finalAction ? "final_action" : field ? "field" : "click", path,
