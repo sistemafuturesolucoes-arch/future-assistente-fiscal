@@ -619,3 +619,21 @@ test("rotas fiscais essenciais chegam às ações finais documentadas", async ()
       "a última etapa deve ser uma ação final documentada em " + question);
   }
 });
+
+
+test("as rotas locais cobrem os módulos completos de Cadastros, Documentos, Relatórios e Configurações", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const expectedModules = ["Cadastros", "Emitindo documentos", "Relatórios", "Configurações"];
+  const moduleIds = new Set(manualBundle.modules.filter(module => expectedModules.includes(module.title)).map(module => module.id));
+  for (const moduleId of moduleIds) {
+    const lessons = manualBundle.lessons.filter(lesson => lesson.module_id === moduleId);
+    assert.ok(lessons.length, "módulo sem aulas: " + moduleId);
+    for (const lesson of lessons) {
+      const plan = ctx.knowledge.getLocalNavigationPlan("Me guie pela aula " + lesson.title);
+      assert.ok(Array.isArray(plan) && plan.length > 0, "rota ausente em " + lesson.title);
+      assert.ok(plan.some(step => step.lessonId === lesson.id), "rota não vinculada à aula " + lesson.title);
+    }
+  }
+  assert.equal(moduleIds.size, 4, "o Manual deve manter os quatro módulos operacionais");
+});
