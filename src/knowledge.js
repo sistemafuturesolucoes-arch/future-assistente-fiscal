@@ -316,6 +316,66 @@
       return inspectionOnly ? plan.slice(0, 8) : plan;
     }
 
+    if (editRequest || deleteRequest) {
+      const editRoutes = [
+        { re: /\b(cliente|clientes)\b/, title: "Lista de Clientes" },
+        { re: /\b(produto|produtos)\b/, title: "Lista de Produtos" },
+        { re: /\b(servico|servicos)\b/, title: "Lista de Serviços" },
+        { re: /\b(veiculo|veiculos)\b/, title: "Gerenciamento e Edição de Veículos" },
+        { re: /\b(condutor|condutores|motorista|motoristas)\b/, title: "Cadastro de Condutores" },
+        { re: /grupo.?tributario|regra.?tributaria/, title: "Gerenciamento e Edição de Grupos Tributários" },
+        { re: /natureza.?de.?operacao/, title: "Natureza de Operação" }
+      ];
+      const selected = editRoutes.find(item => item.re.test(q));
+      const lesson = selected && bundleCache.lessons.find(item => item.title === selected.title);
+      if (lesson) {
+        const routeParts = String(lesson.path || "").split(/\s*>\s*/).map(part => part.trim())
+          .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
+        if (routeParts.length && /^(novo|nova)\b/i.test(routeParts[routeParts.length - 1])) routeParts.pop();
+        const path = routeParts.join(" > ") || lesson.title;
+        const plan = routeParts.map(label => makeLessonStep(bundleCache, lesson, label, "click", path,
+          "Abra a listagem documentada no Manual para localizar o registro existente."));
+        const markers = [], seen = new Set();
+        const collect = marker => {
+          if (!marker?.title) return;
+          const key = marker.id || normalize(marker.title) + "|" + normalize(marker.description);
+          if (seen.has(key)) return;
+          seen.add(key); markers.push(marker);
+        };
+        (lesson.hotspots || []).forEach(collect);
+        (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collect));
+        let hasEditAction = false;
+        for (const marker of markers) {
+          const label = String(marker.title).trim(), n = normalize(label);
+          if (/^(novo|nova|adicionar|incluir|duplicar)\b/.test(n)) continue;
+          const relevant = deleteRequest
+            ? /procurar|pesquisa|linha|opcoes|excluir|remover|apagar/.test(n)
+            : /procurar|pesquisa|linha|opcoes|editar|regra/.test(n);
+          if (!relevant) continue;
+          if (deleteRequest && /excluir|remover|apagar/.test(n)) hasEditAction = true;
+          if (editRequest && /editar|edicao/.test(n)) hasEditAction = true;
+          const targetNames = [label];
+          if (/^botao\s+/i.test(label)) targetNames.push(label.replace(/^botao\s+/i, ""));
+          if (/^botao opcoes da linha/.test(n)) targetNames.push("Opções da Linha", "Opções");
+          plan.push({
+            label, kind: "click", path,
+            description: marker.description || marker.tip || "Siga este controle conforme o Manual Future.",
+            manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
+            targetNames: [...new Set(targetNames)]
+          });
+        }
+        if (!hasEditAction) {
+          plan.push({
+            label: "Limite da documentação",
+            kind: "info",
+            path,
+            description: "O Manual Future mostra a listagem e os controles disponíveis, mas não documenta o passo específico de " + (deleteRequest ? "exclusão" : "edição") + " deste registro. Não vou inventar o próximo botão. Se você enviar uma captura da opção aberta, posso identificar o controle correto."
+          });
+        }
+        if (plan.length) return plan;
+      }
+    }
+
     if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
       const path = "Cadastros > Condutores > Novo Condutor";
       return [
