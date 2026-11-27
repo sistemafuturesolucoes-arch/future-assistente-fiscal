@@ -613,7 +613,7 @@
       navigationPlan = plan;
       navigationPlanIndex = 0;
       persistNavigationTask();
-      addMessage("Vamos percorrer o Manual Future em ordem, aula por aula. O tour usa somente o conteúdo instalado na extensão: " + coverage.lessons + " aulas e " + coverage.markers + " marcadores únicos. Não chama IA, não preenche campos e não executa ações fiscais.", "bot");
+      addMessage("Vamos percorrer o Manual Future em ordem, aula por aula. O tour usa somente o conteúdo instalado na extensão: " + coverage.lessons + " aulas, " + coverage.markers + " marcadores únicos e " + (coverage.actions || 0) + " ações finais complementares. Não chama IA, não preenche campos e não executa ações fiscais.", "bot");
       status.textContent = "Tour local iniciado — " + coverage.lessons + " aulas e " + coverage.markers + " marcadores.";
       advanceLocalNavigationPlan();
     } catch (error) {
