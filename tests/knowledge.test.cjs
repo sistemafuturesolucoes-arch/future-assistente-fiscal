@@ -104,7 +104,7 @@ test("gera roteiro local para ajustar CFOP em grupo tributário sem chamar a IA"
   const plan = ctx.knowledge.getLocalNavigationPlan("como ajustar o cfop no grupo tributario");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Regras Tributárias", "Editar Regra", "CFOP", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
   assert.equal(plan.find(step => step.label === "CFOP").kind, "field");
@@ -330,7 +330,7 @@ test("conferência de CFOP no grupo tributário para no campo e não oferece sal
   await ctx.knowledge.load({ route: "/app/dashboard", question });
   const plan = ctx.knowledge.getLocalNavigationPlan(question);
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Regras Tributárias", "Editar Regra", "CFOP"
   ]);
   assert.equal(plan.at(-1).kind, "field");
   assert.ok(!plan.some(step => step.kind === "final_action"));
@@ -355,11 +355,11 @@ test("pedido simples para alterar CFOP inicia roteiro visual mesmo sem mencionar
   await ctx.knowledge.load({ route: "/app/dashboard", question });
   const plan = ctx.knowledge.getLocalNavigationPlan(question);
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Regras Tributárias", "Editar Regra", "CFOP", "Salvar"
   ]);
   assert.equal(plan[0].kind, "click");
   assert.equal(plan.at(-1).kind, "final_action");
-  assert.match(plan.find(step => step.label === "Procurar").description, /digite o nome do grupo/i);
+  assert.match(plan.find(step => step.label === "Procurar").description, /pesquisa.*grupo/i);
   assert.match(plan.find(step => step.label === "Botão Opções da Linha").description, /linha/i);
   assert.equal(plan.find(step => step.label === "Botão Opções da Linha").manualMarker.title, "Botão Opções da Linha");
   assert.equal(plan.find(step => step.label === "CFOP").manualMarker.title, "CFOP");
@@ -373,10 +373,85 @@ test("variação 'Como ajusto o CFOP?' inicia o guia visual local com marcadores
   const plan = ctx.knowledge.getLocalNavigationPlan(question);
   assert.ok(Array.isArray(plan), "a pergunta deve gerar um plano visual local, não cair na resposta textual de fallback");
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Editar Regra", "CFOP", "Salvar"
+    "Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar", "Regras Tributárias", "Editar Regra", "CFOP", "Salvar"
   ]);
   for (const label of ["Cadastros", "Grupo Tributário", "Procurar", "Botão Opções da Linha", "Editar Regra", "CFOP"]) {
     const step = plan.find(item => item.label === label);
     assert.ok(step?.manualMarker?.id, `o passo ${label} deve carregar o marcador do Manual Future`);
+  }
+});
+
+test("Tour Guiado local percorre as 26 aulas e cada marcador único do Manual", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getManualTourPlan();
+  const expectedLessons = [...manualBundle.lessons].sort((a, b) => {
+    const ma = manualBundle.modules.find(m => m.id === a.module_id)?.position ?? 999;
+    const mb = manualBundle.modules.find(m => m.id === b.module_id)?.position ?? 999;
+    return ma - mb || (a.position ?? 0) - (b.position ?? 0);
+  });
+  const expected = new Set();
+  for (const lesson of expectedLessons) {
+    const seen = new Set();
+    const add = marker => {
+      if (!marker?.title) return;
+      const key = marker.id ? "id:" + marker.id : "text:" + marker.title + "|" + (marker.description || "");
+      if (seen.has(key)) return;
+      seen.add(key);
+      expected.add(lesson.id + ":" + key);
+    };
+    (lesson.hotspots || []).forEach(add);
+    (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+  }
+  const lessonStarts = plan.filter(step => step.lessonStart);
+  const markers = plan.filter(step => step.manualMarker);
+  assert.equal(lessonStarts.length, 26);
+  assert.equal(markers.length, expected.size);
+  assert.deepEqual(Array.from(lessonStarts, step => step.lessonId), Array.from(expectedLessons, lesson => lesson.id));
+  const actual = new Set(markers.map(step => step.lessonId + ":" + (step.manualMarker.id
+    ? "id:" + step.manualMarker.id
+    : "text:" + step.manualMarker.title + "|" + step.manualMarker.description)));
+  assert.deepEqual(actual, expected);
+  assert.equal(ctx.knowledge.getManualTourCoverage().modules, 5);
+  assert.equal(ctx.knowledge.getManualTourCoverage().lessons, 26);
+  assert.equal(ctx.knowledge.getManualTourCoverage().markers, expected.size);
+});
+
+test("Tour Guiado conserva título, descrição, dica e aliases de cada marcador", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getManualTourPlan();
+  for (const step of plan.filter(item => item.manualMarker)) {
+    assert.ok(step.lessonTitle, "cada marcador deve estar vinculado à aula");
+    assert.ok(step.moduleTitle, "cada marcador deve estar vinculado ao módulo");
+    assert.ok(step.manualMarker.title);
+    assert.ok(Array.isArray(step.targetNames) && step.targetNames.includes(step.label));
+    assert.equal(step.description.includes(step.manualMarker.description), Boolean(step.manualMarker.description));
+  }
+});
+
+test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem do Manual", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const candidates = manualBundle.lessons.filter(lesson =>
+    !/cadastro de (clientes|produtos|servicos|serviços|veiculos|veículos|condutores)/i.test(lesson.title || "")
+  );
+  for (const lesson of candidates) {
+    const question = "Como executar a rotina " + lesson.title;
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(Array.isArray(plan) && plan.length, "sem roteiro para a aula: " + lesson.title);
+    const actualIds = plan.map(step => step.manualMarker?.id).filter(Boolean);
+    const expectedIds = [];
+    const seen = new Set();
+    const add = marker => {
+      if (!marker?.title || !marker.id || seen.has(marker.id)) return;
+      seen.add(marker.id);
+      expectedIds.push(marker.id);
+    };
+    (lesson.hotspots || []).forEach(add);
+    (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+    for (const id of expectedIds) {
+      assert.ok(actualIds.includes(id), "marcador " + id + " ausente no roteiro da aula " + lesson.title);
+    }
   }
 });
