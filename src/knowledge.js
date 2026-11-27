@@ -16,6 +16,20 @@
   function normalize(value) {
     return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
+  function markerTargetNames(title) {
+    const raw = String(title || "").trim();
+    const n = normalize(raw);
+    const names = [raw];
+    if (/^menu:\s*/i.test(raw)) names.push(raw.replace(/^menu:\s*/i, ""));
+    else if (/^menu\s+/i.test(raw)) names.push(raw.replace(/^menu\s+/i, ""));
+    if (/^(botao|campo|chave|aba)\s+/.test(n)) names.push(raw.replace(/^(bot[aã]o|campo|chave|aba)\s+/i, ""));
+    if (/^barra de pesquisa|^campo procurar/.test(n)) names.push("Procurar");
+    if (/^ordenar por\s*\/\s*procurar/.test(n)) names.push("Ordenar por", "Procurar");
+    if (/^situacao:\s*/.test(n)) names.push(raw.replace(/^situa[cç][aã]o:\s*/i, ""));
+    if (/^botao opcoes da linha/.test(n)) names.push("Opções da Linha", "Opções");
+    return [...new Set(names.filter(Boolean))];
+  }
+
 
   function relevance(lesson, route, question) {
     const title = normalize(lesson.title);
@@ -355,284 +369,7 @@
           if (!relevant) continue;
           if (deleteRequest && /excluir|remover|apagar/.test(n)) hasEditAction = true;
           if (editRequest && /editar|edicao/.test(n)) hasEditAction = true;
-          const targetNames = [label];
-          if (/^botao\s+/i.test(label)) targetNames.push(label.replace(/^botao\s+/i, ""));
-          if (/^botao opcoes da linha/.test(n)) targetNames.push("Opções da Linha", "Opções");
-          plan.push({
-            label, kind: "click", path,
-            description: marker.description || marker.tip || "Siga este controle conforme o Manual Future.",
-            manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
-            targetNames: [...new Set(targetNames)]
-          });
-        }
-        if (!hasEditAction) {
-          plan.push({
-            label: "Limite da documentação",
-            kind: "info",
-            path,
-            description: "O Manual Future mostra a listagem e os controles disponíveis, mas não documenta o passo específico de " + (deleteRequest ? "exclusão" : "edição") + " deste registro. Não vou inventar o próximo botão. Se você enviar uma captura da opção aberta, posso identificar o controle correto."
-          });
-        }
-        if (plan.length) return plan;
-      }
-    }
-
-    if (/\b(condutor|condutores|motorista|motoristas)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Condutores > Novo Condutor";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "No menu lateral esquerdo, abra Cadastros."),
-        makeStep(bundleCache, "Condutores", "click", path, "No submenu Cadastros, selecione Condutores."),
-        makeStep(bundleCache, "Novo Condutor", "click", path, "Na listagem, clique em Novo Condutor."),
-        makeStep(bundleCache, "Ativo", "field", path, "Deixe a chave Ativo ligada para que o condutor possa ser utilizado."),
-        makeStep(bundleCache, "CPF", "field", path, "Informe o CPF válido do motorista."),
-        makeStep(bundleCache, "Nome", "field", path, "Digite o nome completo do condutor."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar para gravar o cadastro.")
-      ];
-    }
-
-    if (/\b(veiculo|veiculos)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Veículos > Novo Veículo";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros na barra lateral."),
-        makeStep(bundleCache, "Veículos", "click", path, "No submenu Cadastros, selecione Veículos."),
-        makeStep(bundleCache, "Novo Veículo", "click", path, "Na listagem, clique em Novo Veículo para abrir o formulário."),
-        makeStep(bundleCache, "Placa", "field", path, "Informe a placa do veículo."),
-        makeStep(bundleCache, "UF", "field", path, "Selecione a UF de emplacamento."),
-        makeStep(bundleCache, "Tipo Rodado", "field", path, "Selecione o tipo de rodado correspondente."),
-        makeStep(bundleCache, "Tipo Carroceria", "field", path, "Selecione o tipo de carroceria correspondente."),
-        makeStep(bundleCache, "Número de eixos", "field", path, "Informe o número de eixos do veículo."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar. Se necessário, configure a aba Reboques e use Adicionar Reboque antes de salvar.")
-      ];
-    }
-
-    if (/\b(cliente|clientes)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Clientes > Novo Cliente";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Clientes", "click", path, "No submenu Cadastros, escolha Clientes."),
-        makeStep(bundleCache, "Novo Cliente", "click", path, "Na listagem, clique em Novo Cliente para abrir o formulário."),
-        makeStep(bundleCache, "CPF/CNPJ", "field", path, "Confira se Cliente está habilitado em Tipo de Cadastro e informe o CPF ou CNPJ."),
-        makeStep(bundleCache, "Nome", "field", path, "Informe o nome. Telefone e e-mail podem ser preenchidos nos campos opcionais se desejar."),
-        makeStep(bundleCache, "Consumidor Final", "field", path),
-        makeStep(bundleCache, "Contribuinte ICMS", "field", path),
-        makeStep(bundleCache, "Endereço Principal", "click", path, "Abra a aba Endereço Principal para informar o endereço do cliente."),
-        makeStep(bundleCache, "CEP", "field", path, "Informe o CEP e use a lupa para buscar/preencher o endereço."),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os dados e clique em Salvar quando estiver tudo correto.")
-      ];
-    }
-
-    if (/\b(produto|produtos)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Produtos > Novo Produto";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Produtos", "click", path, "No submenu Cadastros, escolha Produtos."),
-        makeStep(bundleCache, "Novo Produto", "click", path, "Na listagem, clique em Novo Produto."),
-        makeStep(bundleCache, "Descrição", "field", path),
-        makeStep(bundleCache, "Un. Medida", "field", path),
-        makeStep(bundleCache, "Preço Unitário", "field", path),
-        makeStep(bundleCache, "NCM", "field", path, "Informe o NCM correto; se houver dúvida, confirme com a contabilidade. Código de barras e CEST são complementares quando aplicáveis."),
-        makeStep(bundleCache, "Aba Tributação", "click", path, "Abra a aba Tributação do cadastro do produto."),
-        makeStep(bundleCache, "Grupo Tributário", "field", path, "Selecione o grupo definido para a operação pela contabilidade."),
-        makeStep(bundleCache, "Origem", "field", path),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Confira os dados e clique em Salvar para gravar o produto.")
-      ];
-    }
-
-    if (/\b(servico|servicos)\b/.test(q) && createRequest) {
-      const path = "Cadastros > Serviços > Novo Serviço";
-      return [
-        makeStep(bundleCache, "Cadastros", "click", path, "Abra o menu Cadastros no menu lateral."),
-        makeStep(bundleCache, "Serviços", "click", path, "No submenu Cadastros, escolha Serviços."),
-        makeStep(bundleCache, "Novo Serviço", "click", path, "Na listagem, clique em Novo Serviço."),
-        makeStep(bundleCache, "Descrição", "field", path),
-        makeStep(bundleCache, "Valor", "field", path),
-        makeStep(bundleCache, "Unidade", "field", path),
-        makeStep(bundleCache, "CNAE", "field", path, "Informe o código conforme a atividade e orientação da contabilidade."),
-        makeStep(bundleCache, "Código Trib. Município", "field", path),
-        makeStep(bundleCache, "Item Lista de Serviço", "field", path),
-        makeStep(bundleCache, "Cód. Trib. Nacional", "field", path),
-        makeStep(bundleCache, "NBS", "field", path),
-        makeStep(bundleCache, "Salvar", "final_action", path, "Revise os códigos fiscais com a contabilidade e clique em Salvar.")
-      ];
-    }
-    // Roteiro genérico orientado pelo conteúdo real da aula. Funciona para os demais
-    // módulos sem criar rótulos fictícios: o content script só destaca controles com nome acessível exato.
-    const rankedLessons = [...bundleCache.lessons].map(lesson => ({
-      lesson, score: relevance(lesson, location.pathname, question)
-    })).sort((a, b) => b.score - a.score);
-    const best = rankedLessons[0];
-    if (best?.lesson && best.score >= 18) {
-      const lesson = best.lesson;
-      let path = lesson.path || lesson.title;
-      const plan = [];
-      const seen = new Set();
-      const add = (label, kind, description) => {
-        const key = normalize(label);
-        if (!label || !key || seen.has(key) || plan.length >= 1000) return;
-        seen.add(key);
-        plan.push(makeLessonStep(bundleCache, lesson, label, kind, path, description || ""));
-      };
-
-      const routeParts = String(lesson.path || "").split(/\s*>\s*/).map(part => part.trim())
-        .filter(part => part && !/^(menu lateral|tela inicial|menu)$/i.test(part));
-      if ((editRequest || deleteRequest) && routeParts.length && /^(novo|nova|novo\s+|nova\s+)/i.test(routeParts[routeParts.length - 1])) routeParts.pop();
-      path = routeParts.join(" > ") || path;
-      for (const part of routeParts) {
-        add(part, "click", "Siga o caminho documentado no Manual e abra esta opção no sistema.");
-      }
-
-      const isCreate = /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
-      const isEdit = /\b(editar|edite|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
-      const isIssue = /\b(emitir|emita|gerar|gere|transmitir|transmita|finalizar|finalize)\b/.test(q);
-      const isExport = /\b(exportar|exporte|baixar|download|enviar xml)\b/.test(q);
-      const isConfigure = /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija)\b/.test(q);
-
-      // Campos citados pelo usuário podem estar descritos em bullets ou hotspots de screenshots.
-      const requestedTerms = q.split(/[^a-z0-9]+/).filter(term => term.length >= 3);
-      const hotspotPool = [
-        ...(lesson.hotspots || []),
-        ...(lesson.screenshots || []).flatMap(shot => shot.hotspots || [])
-      ];
-      for (const hotspot of hotspotPool) {
-        const description = String(hotspot.description || "");
-        for (const line of description.split(/\n+/)) {
-          const match = line.match(/^\s*(?:[-•*]\s*)?(?:\*\*)?([^:\n]{2,70}?)(?:\*\*)?\s*:\s*(.+)$/);
-          if (!match) continue;
-          const fieldLabel = match[1].replace(/^[\s•*\d.]+/, "").replace(/\*\*/g, "").trim();
-          const fieldText = match[2].replace(/\*\*/g, "").trim();
-          const fieldNorm = normalize(fieldLabel);
-          if (!fieldLabel || !requestedTerms.some(term => fieldNorm.includes(term))) continue;
-          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
-        }
-      }
-      for (const line of String(lesson.content || "").split(/\n+/)) {
-        const match = line.match(/^\s*(?:[-•*]\s*)?(?:\*\*)?([^:\n]{2,70}?)(?:\*\*)?\s*:\s*(.+)$/);
-        if (!match) continue;
-        const fieldLabel = match[1].replace(/^[\s•*\d.]+/, "").replace(/\*\*/g, "").trim();
-        const fieldText = match[2].replace(/\*\*/g, "").trim();
-        const fieldNorm = normalize(fieldLabel);
-        if (fieldLabel && requestedTerms.some(term => fieldNorm.includes(term))) {
-          add(fieldLabel, "field", fieldText || "Confira este campo conforme a aula do Manual.");
-        }
-      }
-
-      if (isCreate || isIssue) {
-        const action = (lesson.hotspots || []).find(h => isIssue
-          ? /^(emitir|gerar)/i.test(String(h.title || "").trim())
-          : /^(novo|nova|adicionar|incluir)/i.test(String(h.title || "").trim()));
-        if (action) add(action.title, "click", action.description || "Abra o formulário indicado pela aula.");
-        const boldActions = [...String(lesson.content || "").matchAll(/\*\*([^*]{2,60})\*\*/g)]
-          .map(match => match[1].trim()).filter(label => /^(novo|nova|emitir|adicionar|incluir|gerar|finalizar)/i.test(label));
-        for (const label of boldActions.slice(0, 3)) add(label, /^(gerar|emitir|finalizar)/i.test(label) ? "final_action" : "click");
-      } else if (isEdit) {
-        for (const h of (lesson.hotspots || [])) {
-          if (/procurar|pesquisa|opções|opcoes|editar/i.test(h.title || "")) {
-            add(h.title, "click", h.description || "Use este controle para localizar e editar o registro desejado.");
-          }
-        }
-        for (const label of ["Procurar", "Opções", "Editar"]) {
-          if (new RegExp(label, "i").test(lesson.content || "")) add(label, "click");
-        }
-      }
-
-      const content = String(lesson.content || "");
-      const fieldLabels = [];
-      for (const match of content.matchAll(/\*\*([^*]{2,55})\*\*/g)) {
-        const label = match[1].trim().replace(/\s+/g, " ");
-        const at = match.index || 0;
-        const context = content.slice(Math.max(0, at - 140), Math.min(content.length, at + match[0].length + 180));
-        if (/^(passo|passo a passo|introdução|introducao|objetivo|print \d+|o que fazer|importante|dica)$/i.test(label)) continue;
-        if (!/campo|preench|informe|digite|selecione|escolha|confira|seção|secao|aba|clique|marque|ative|defina/i.test(context)) continue;
-        fieldLabels.push(label);
-      }
-      const needsFieldSteps = isCreate || isEdit || isIssue || /\b(configurar|configure|preencher|preencha|informar|informe|ajustar|ajuste|corrigir|corrija|campo|campos)\b/.test(q);
-      if (needsFieldSteps) {
-        for (const label of fieldLabels) {
-          const finalAction = /^(salvar|salvar configurações|salvar configuracoes|gerar|emitir|finalizar venda|concluir)$/i.test(label);
-          add(label, finalAction ? "final_action" : "field");
-        }
-      }
-      // Para os módulos com capturas de tela, aproveite os hotspots ordenados
-      // por etapa do Manual (listagem, formulário, seções e ações finais).
-      // Isso amplia a cobertura sem inventar rótulos que não estejam documentados.
-      const screenshots = Array.isArray(lesson.screenshots) ? lesson.screenshots : [];
-      if (screenshots.length && (isCreate || isEdit || isIssue || isExport || isConfigure)) {
-        for (let si = 0; si < screenshots.length; si++) {
-          const shot = screenshots[si];
-          const caption = normalize(shot.caption || "");
-          const isList = /listagem|notas emitidas|painel inicial|tela inicial|menu lateral/.test(caption)
-            || (/^\d+$/.test(caption) && si === 1);
-          const isForm = /formulario|dados gerais|lancamento|secao|totais|transporte|pagamento|informacoes|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)
-            || (/^\d+$/.test(caption) && si >= 2);
-          for (const h of (shot.hotspots || [])) {
-            const label = String(h.title || "").trim();
-            const labelNorm = normalize(label);
-            if (!label || /^(listagem|painel|area|acoes finais|secoes complementares)$/i.test(labelNorm)) {
-              if (isIssue || isExport) {
-                const actions = [...String(h.description || "").matchAll(/(?:^|\n)\s*[•-]?\s*(Salvar(?: rascunho)?|Pré-visualizar|Gerar [A-ZÀ-Ú -]+|Emitir [A-ZÀ-Ú -]+|Enviar)\\s*:/gi)];
-                for (const action of actions) {
-                  const actionLabel = action[1].trim();
-                  add(actionLabel, /gerar|emitir|enviar/i.test(actionLabel) ? "final_action" : "click", "Ação descrita nesta etapa do Manual. Confira todos os dados antes de confirmar.");
-                }
-              }
-              continue;
-            }
-            if (isIssue && isList && !/emitir|gerar/i.test(label)) continue;
-            if (isIssue && si > 0 && !isForm && !/formulario|dados|secao|totais|transporte|pagamento|finalizacao|configuracao|tribut|carga|valores|veiculo|percurso|servico/.test(caption)) continue;
-            if (isEdit && isList && !/procurar|busca|opcoes|editar/i.test(label)) continue;
-            if (!isList && !isForm && si > 0) continue;
-            const isFinal = /^(salvar|salvar configuracoes|botao salvar|botao gerar|gerar nfe|gerar nfse|gerar cte|emitir ciot|emitir mdfe|emitir nfce)$/i.test(labelNorm);
-            const isAction = /^(emitir|gerar|novo|adicionar|botao emitir|botao gerar)/i.test(labelNorm);
-            add(label, isFinal ? "final_action" : isAction ? "click" : "field", h.description || h.tip || "");
-          }
-        }
-      }
-
-      if (isExport) {
-        const exportLines = String(lesson.content || "").split(/\n+/);
-        for (const line of exportLines) {
-          let match = line.match(/\bno campo\s+([^,.:;]+)/i);
-          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
-          match = line.match(/\bchave\s+([^,.:;?]+\??)/i);
-          if (match) add(match[1].replace(/[“”"]/g, "").trim(), "field", line.replace(/^\s*\d+\.\s*/, "").trim());
-          match = line.match(/\bbot[aã]o\s+([^,.:;]+)/i);
-          if (match) add(match[1].trim(), /enviar|exportar|gerar/i.test(match[1]) ? "final_action" : "click", line.replace(/^\s*\d+\.\s*/, "").trim());
-        }
-      }
-
-      if (plan.length) {
-        // Para uma tarefa genérica, reconstrói a sequência na ordem do Manual:
-        // caminho da tela primeiro e, depois, cada marcador único das capturas.
-        // Isso evita que filtros por tipo de ação deixem a navegação pela metade.
-        const routeSteps = routeParts.map(label => {
-          const step = plan.find(item => normalize(item.label) === normalize(label));
-          return step ? { ...step, manualMarker: null } : null;
-        }).filter(Boolean);
-        const orderedMarkers = [], markerKeys = new Set();
-        const collectMarker = marker => {
-          if (!marker?.title) return;
-          const key = marker.id ? "id:" + marker.id : "text:" + normalize(marker.title) + "|" + normalize(marker.description);
-          if (markerKeys.has(key)) return;
-          markerKeys.add(key); orderedMarkers.push(marker);
-        };
-        (lesson.hotspots || []).forEach(collectMarker);
-        (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(collectMarker));
-        const includedIds = new Set(routeSteps.map(step => step.manualMarker?.id).filter(Boolean));
-        const completePlan = [...routeSteps];
-        for (const marker of orderedMarkers) {
-          if (marker.id && includedIds.has(marker.id)) continue;
-          const label = String(marker.title).trim(), n = normalize(label);
-          if (editRequest && /^(novo|nova|adicionar|incluir|duplicar|excluir|remover)\b/.test(n)) continue;
-          if (createRequest && /^(editar|edicao|duplicar|excluir|remover)\b/.test(n)) continue;
-          if (deleteRequest && !/^(procurar|barra de pesquisa|campo procurar|opcoes|botao opcoes|botao opcoes da linha|excluir|remover|apagar)\b/.test(n)) continue;
-          const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info"
-            : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar/.test(n) ? "final_action"
-            : /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
-          const targetNames = [label];
-          if (/^menu:\\s*/i.test(label)) targetNames.push(label.replace(/^menu:\\s*/i, ""));
-          if (/^barra de pesquisa/i.test(label)) targetNames.push("Procurar");
-          if (/^botao\\s+/i.test(n)) targetNames.push(label.replace(/^botao\\s+/i, ""));
-          if (/^botao opcoes da linha/.test(n)) targetNames.push("Opções da Linha", "Opções");
+          const targetNames = markerTargetNames(label);
           completePlan.push({
             label, kind, path, description: [marker.description, marker.tip ? "Dica: " + marker.tip : ""].filter(Boolean).join("\\n\\n") || "Siga esta etapa conforme o Manual Future.",
             manualMarker: { id: marker.id || "", title: label, tip: marker.tip || "", description: marker.description || "", x: Number.isFinite(marker.x) ? marker.x : null, y: Number.isFinite(marker.y) ? marker.y : null, w: Number.isFinite(marker.w) ? marker.w : null, h: Number.isFinite(marker.h) ? marker.h : null },
@@ -672,11 +409,7 @@
         const kind = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n) ? "final_action"
           : /campo|pesquisa|procurar|ordenar|cfop|cst|al[ií]quota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|s[eé]rie|numera[cç][aã]o|nome|descri[cç][aã]o|c[oó]digo|pre[cç]o|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|raz[aã]o social|fantasia|endere[cç]o|bairro|munic[ií]pio|inscri[cç][aã]o|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
         const step = makeLessonStep(bundleCache, lesson, marker.title, kind, routeParts.join(" > "), marker.description || marker.tip || "");
-        step.targetNames = [marker.title];
-        if (/^menu:\s*/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^menu:\s*/i, ""));
-        if (/^barra de pesquisa/i.test(marker.title)) step.targetNames.push("Procurar");
-        if (/^botão\s+/i.test(marker.title)) step.targetNames.push(marker.title.replace(/^botão\s+/i, ""));
-        if (/^botão opções da linha/i.test(n)) step.targetNames.push("Opções da Linha", "Opções");
+        step.targetNames = markerTargetNames(marker.title);
         result.push(step);
       }
       if (result.length) return result.slice(0, 1000);
@@ -715,11 +448,7 @@
         manualMarker: null, targetNames: []
       });
       markers.forEach((marker, markerIndex) => {
-        const title = String(marker.title || "").trim(), targetNames = [title], n = normalize(title);
-        if (/^menu:\s*/i.test(title)) targetNames.push(title.replace(/^menu:\s*/i, ""));
-        if (/^barra de pesquisa/i.test(title)) targetNames.push("Procurar");
-        if (/^botão opções da linha/i.test(n)) targetNames.push("Opções da Linha", "Opções");
-        if (/^botão\s+/i.test(title)) targetNames.push(title.replace(/^botão\s+/i, ""));
+        const title = String(marker.title || "").trim(), targetNames = markerTargetNames(title), n = normalize(title);
         const field = /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n);
         const finalAction = /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir/.test(n);
         plan.push({
