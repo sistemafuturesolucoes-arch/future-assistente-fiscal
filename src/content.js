@@ -628,6 +628,48 @@
   let reviewWash = null;
   let reviewFrames = [];
   let reviewReposition = null;
+  const REVIEW_CACHE_KEY = "futureAssistenteDocumentReviewCacheV1";
+
+  async function reviewFingerprint(issues) {
+    const signature = [
+      location.pathname,
+      ...issues.map(issue => [issue.title, issue.message, issue.source].map(value => normalize(value)).join("::"))
+    ].join("|");
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(signature));
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function readSavedDocumentReview(fingerprint) {
+    try {
+      if (!globalThis.chrome?.storage?.local) return null;
+      const saved = await chrome.storage.local.get(REVIEW_CACHE_KEY);
+      return saved?.[REVIEW_CACHE_KEY]?.[fingerprint] || null;
+    } catch (error) {
+      console.warn("Não foi possível ler o histórico local de revisões.", error);
+      return null;
+    }
+  }
+
+  async function saveDocumentReview(fingerprint, answer, issues) {
+    try {
+      if (!globalThis.chrome?.storage?.local || !answer) return;
+      const sensitive = /\\b\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}\\b|\\b\\d{2}\\.?\\d{3}\\.?\\d{3}\\/?\\d{4}-?\\d{2}\\b|[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}/i;
+      const source = issues.map(issue => issue.title + " " + issue.message).join(" ");
+      if (sensitive.test(source) || sensitive.test(answer)) return;
+      const saved = await chrome.storage.local.get(REVIEW_CACHE_KEY);
+      const entries = { ...(saved?.[REVIEW_CACHE_KEY] || {}) };
+      entries[fingerprint] = {
+        answer: redactSensitiveText(String(answer).slice(0, 8000)),
+        route: location.pathname,
+        issueCount: issues.length,
+        savedAt: Date.now()
+      };
+      const ordered = Object.entries(entries).sort((a, b) => (b[1]?.savedAt || 0) - (a[1]?.savedAt || 0)).slice(0, 40);
+      await chrome.storage.local.set({ [REVIEW_CACHE_KEY]: Object.fromEntries(ordered) });
+    } catch (error) {
+      console.warn("Não foi possível salvar a revisão local.", error);
+    }
+  }
 
   function clearDocumentReview() {
     reviewActive = false;
@@ -773,6 +815,13 @@
     reviewWash.className = "review-wash";
     shadow.appendChild(reviewWash);
     const issues = collectDocumentIssues();
+    if (!issues.length) {
+      status.textContent = "Revisão visual concluída sem alertas visíveis. Nenhuma captura de tela ou chamada à IA foi necessária.";
+      addMessage("A revisão visual não encontrou campos inválidos nem mensagens de rejeição visíveis nesta tela. Isso não garante a correção fiscal do documento; apenas indica que o navegador não encontrou alertas visíveis agora.", "bot");
+      reviewButton.disabled = false;
+      reviewButton.textContent = "Revisar novamente";
+      return;
+    }
     reviewFrames = issues.map(issue => {
       const frame = document.createElement("div");
       frame.className = "review-frame" + (issue.source.includes("erro") || issue.source.includes("inválido") ? " error" : "");
@@ -803,11 +852,21 @@
       "Não altere campos, não clique, não salve, não emita, não transmita, não autorize e não encerre o documento. Oriente o usuário sobre cada campo identificado e peça conferência manual quando necessário."
     ].join("\n");
     try {
+      const fingerprint = await reviewFingerprint(issues);
+      const cachedReview = await readSavedDocumentReview(fingerprint);
+      if (cachedReview?.answer) {
+        const cachedMessage = addMessage("Orientação recuperada do histórico desta extensão — nenhuma nova chamada ao Gemini foi feita.", "bot");
+        renderSafeMarkdown(cachedReview.answer, cachedMessage);
+        renderReviewIssueCards(issues, cachedMessage);
+        status.textContent = "Revisão carregada do histórico local. Os erros foram reconhecidos e os campos atuais estão destacados.";
+        return;
+      }
       const reviewMessage = await ask(question, []);
       const reviewText = String(reviewMessage?.textContent || "").trim();
-      if (!reviewText || /Não recebi uma resposta desta vez|Não consegui conectar ao assistente agora|A IA retornou HTTP/i.test(reviewText)) {
+      if (!reviewText || /Não recebi uma resposta desta vez|Não consegui conectar ao assistente agora|A IA retornou HTTP|A conexão foi interrompida/i.test(reviewText)) {
         throw new Error("A IA não retornou uma análise válida. Os destaques visuais foram mantidos; tente novamente quando a conexão estiver normal.");
       }
+      await saveDocumentReview(fingerprint, reviewText, issues);
       if (issues.length) renderReviewIssueCards(issues, reviewMessage);
       status.textContent = "Revisão concluída. Confira cada item e use “Destacar no Emissor” para localizar o campo ou aviso."
       addMessage("Revisão concluída. Os contornos mostram os campos ou avisos encontrados. Clique em “Finalizar revisão” para voltar à tela normal.", "bot");
@@ -2355,18 +2414,29 @@
     status.textContent = "Consultando o assistente compartilhado da Future...";
     try {
       const requestAssistantStream = async (initialAnswer = "") => {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
-          body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge }),
-          signal
-        });
-        return readStream(response, target, initialAnswer, signal);
+        const requestController = new AbortController();
+        const abortFromCaller = () => requestController.abort(signal.reason);
+        if (signal.aborted) abortFromCaller();
+        else signal.addEventListener("abort", abortFromCaller, { once: true });
+        const requestTimeout = window.setTimeout(() => requestController.abort(new DOMException("A consulta excedeu 60 segundos.", "TimeoutError")), 60000);
+        try {
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "apikey": "sb_publishable_J3-cgRigKn2QardNRaOFRQ_Jja51yof" },
+            body: JSON.stringify({ messages: conversationMessages.slice(-20), tela: location.pathname.slice(0, 80), knowledge }),
+            signal: requestController.signal
+          });
+          return await readStream(response, target, initialAnswer, signal);
+        } finally {
+          window.clearTimeout(requestTimeout);
+          signal.removeEventListener("abort", abortFromCaller);
+        }
       };
       let streamResult = await requestAssistantStream();
       let answer = streamResult.answer;
       let recoveryAttempts = 0;
-      while (!signal.aborted && !streamResult.completed && answer.trim() && recoveryAttempts < 3) {
+      const maxRecoveryAttempts = lastRequestKind === "document-review" ? 0 : 3;
+      while (!signal.aborted && !streamResult.completed && answer.trim() && recoveryAttempts < maxRecoveryAttempts) {
         recoveryAttempts += 1;
         status.textContent = "A resposta foi interrompida. Estou recuperando a continuação automaticamente (" + recoveryAttempts + "/3)...";
         const partialAnswerMessage = { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: answer }] };
