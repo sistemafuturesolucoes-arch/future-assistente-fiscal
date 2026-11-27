@@ -434,7 +434,7 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/dashboard" });
   const candidates = manualBundle.lessons.filter(lesson =>
-    !/cliente|produto|servi[cç]o|ve[ií]culo|condutor/i.test(lesson.title || "")
+    !/^(Cadastrar cliente|Cadastrar produto:|Cadastrar serviço|Gerenciamento e Edição de Veículos|Cadastro de Condutores|Gerenciamento e Edição de Grupos Tributários)$/i.test(lesson.title || "")
   );
   for (const lesson of candidates) {
     const question = "Como executar a rotina " + lesson.title;
@@ -455,20 +455,22 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
   }
 });
 
-test("perguntas de edição não são confundidas com cadastro de novo registro", async () => {
+test("edição de cliente começa na listagem e não abre o formulário de novo cadastro", async () => {
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/dashboard" });
   const plan = ctx.knowledge.getLocalNavigationPlan("Como editar cadastro de cliente?");
   assert.ok(Array.isArray(plan) && plan.length);
+  assert.equal(plan[0].label, "Cadastros");
+  assert.ok(plan.some(step => step.label === "Opções do cliente"));
   assert.ok(!plan.some(step => /^Novo Cliente$/i.test(step.label)));
-  assert.ok(plan.some(step => /Editar|Opções da Linha/i.test(step.label)));
 });
 
-test("perguntas de exclusão orientam a linha existente e não abrem formulário novo", async () => {
+test("exclusão de regra tributária usa a opção da regra documentada no Manual", async () => {
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/dashboard" });
-  const plan = ctx.knowledge.getLocalNavigationPlan("Como excluir um cliente?");
+  const plan = ctx.knowledge.getLocalNavigationPlan("Como excluir uma regra tributária?");
   assert.ok(Array.isArray(plan) && plan.length);
-  assert.ok(!plan.some(step => /^Novo Cliente$/i.test(step.label)));
-  assert.ok(plan.some(step => /Excluir/i.test(step.label)));
+  assert.equal(plan[0].label, "Cadastros");
+  assert.ok(plan.some(step => step.label === "Excluir Regra"));
+  assert.ok(!plan.some(step => /^Novo Grupo Tributário$/i.test(step.label)));
 });
