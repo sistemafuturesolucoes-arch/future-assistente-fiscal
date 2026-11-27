@@ -62,8 +62,9 @@ test("gera roteiro local completo para cadastro de cliente sem precisar da IA", 
   const plan = ctx.knowledge.getLocalNavigationPlan("Como cadastrar um cliente?");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Clientes", "Novo Cliente", "CPF/CNPJ", "Nome",
-    "Consumidor Final", "Contribuinte ICMS", "Endereço Principal", "CEP", "Salvar"
+    "Cadastros", "Clientes", "Novo Cliente", "Ativo", "Tipo de Cadastro", "CPF/CNPJ", "Nome",
+    "Nome Fantasia", "Consumidor Final", "Contribuinte ICMS", "Inscrição Estadual", "Inscrição Municipal",
+    "SUFRAMA", "Telefone", "E-mail(s)", "Abas de Endereço", "CEP", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
   assert.ok(plan.some(step => step.kind === "field"));
@@ -87,8 +88,8 @@ test("gera roteiro local documentado para cadastrar veículo sem depender da IA"
   const plan = ctx.knowledge.getLocalNavigationPlan("como cadastrar um veículo");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Veículos", "Novo Veículo", "Placa", "UF",
-    "Tipo Rodado", "Tipo Carroceria", "Número de eixos", "Salvar"
+    "Cadastros", "Cadastro", "Veículos", "Listagem de Veículos", "Opções", "Procurar",
+    "Veículo próprio", "Salvar / Avançar", "Ativo", "Adicionar Reboque", "Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
 });
@@ -175,7 +176,8 @@ test("reconhece a aula de condutores mesmo quando o usuário usa o singular e pe
   const plan = ctx.knowledge.getLocalNavigationPlan("Como cadastrar um condutor?");
   assert.ok(Array.isArray(plan));
   assert.deepEqual(Array.from(plan, step => step.label), [
-    "Cadastros", "Condutores", "Novo Condutor", "Ativo", "CPF", "Nome", "Salvar"
+    "Menu Cadastros", "Condutores", "Campo Procurar", "Botão Novo Condutor", "Ordenar por Nome",
+    "Campo Procurar", "Botão Novo Condutor", "Botão Opções", "Chave Ativo", "Campo CPF", "Campo Nome", "Botão Salvar"
   ]);
   assert.equal(plan.at(-1).kind, "final_action");
 });
@@ -434,7 +436,7 @@ test("roteiro genérico de cada aula inclui todos os marcadores únicos na ordem
   const ctx = createKnowledgeContext();
   await ctx.knowledge.load({ route: "/app/dashboard" });
   const candidates = manualBundle.lessons.filter(lesson =>
-    !/^(Cadastrar cliente|Cadastrar produto:|Cadastrar serviço|Gerenciamento e Edição de Veículos|Cadastro de Condutores|Gerenciamento e Edição de Grupos Tributários)$/i.test(lesson.title || "")
+    !(/^(Cadastrar cliente|Cadastrar serviço|Gerenciamento e Edição de Veículos|Cadastro de Condutores|Gerenciamento e Edição de Grupos Tributários)$/i.test(lesson.title || "") || /^Cadastrar produto:/i.test(lesson.title || ""))
   );
   for (const lesson of candidates) {
     const question = "Como executar a rotina " + lesson.title;
@@ -493,4 +495,41 @@ test("marcadores com prefixos do Manual recebem aliases de texto acessível", as
     assert.ok(step, "marcador ausente: " + label);
     assert.ok(step.targetNames.includes(alias), "alias ausente para " + label);
   }
+});
+
+test("rotas de criação percorrem todos os marcadores e terminam na ação final documentada", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const cases = [
+    ["Como cadastrar um cliente?", "Cadastrar cliente", "Salvar"],
+    ["Como cadastrar um produto?", "Cadastrar produto: Tributação", "Salvar"],
+    ["Como cadastrar um serviço?", "Cadastrar serviço", "Salvar"],
+    ["Como cadastrar um veículo?", "Gerenciamento e Edição de Veículos", "Salvar"],
+    ["Como cadastrar um condutor?", "Cadastro de Condutores", "Botão Salvar"]
+  ];
+  for (const [question, lessonTitle, lastLabel] of cases) {
+    const lesson = manualBundle.lessons.find(item => item.title === lessonTitle);
+    const plan = ctx.knowledge.getLocalNavigationPlan(question);
+    assert.ok(plan.length, "sem rota: " + question);
+    assert.equal(plan.at(-1).label, lastLabel, "ação final divergente: " + question);
+    const markerIds = new Set(plan.map(step => step.manualMarker?.id).filter(Boolean));
+    const expected = new Set();
+    const add = marker => { if (marker?.id) expected.add(marker.id); };
+    (lesson.hotspots || []).forEach(add);
+    (lesson.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+    if (lessonTitle === "Cadastrar produto: Tributação") {
+      const data = manualBundle.lessons.find(item => item.title === "Cadastrar produto: Dados do Produto");
+      (data.hotspots || []).forEach(add);
+      (data.screenshots || []).forEach(shot => (shot.hotspots || []).forEach(add));
+    }
+    for (const id of expected) assert.ok(markerIds.has(id), "marcador ausente " + id + " em " + question);
+  }
+});
+
+test("Tour inclui ações finais descritas no texto mesmo quando não há marcador visual", async () => {
+  const ctx = createKnowledgeContext();
+  await ctx.knowledge.load({ route: "/app/dashboard" });
+  const plan = ctx.knowledge.getManualTourPlan();
+  assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Cadastrar cliente" && step.label === "Salvar"));
+  assert.ok(plan.some(step => step.manualActionFromContent && step.lessonTitle === "Gerenciamento e Edição de Grupos Tributários" && step.label === "Salvar"));
 });
