@@ -184,9 +184,10 @@
     const q = normalize(question);
     const taskWords = /\b(onde fica|onde esta|onde encontro|onde acho|onde acesso|qual caminho|qual menu|como|configur\w*|mudar|mude|mud\w*|remover|remova|excluir|exclua|cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua|editar|edite|ajust\w*|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|configurar|configure|emitir|emita|gerar|gere|consultar|consulte|acessar|acesse|abrir|abra|localizar|localize|encontrar|encontre|baixar|exportar|cancelar|cancele|carregar|carregue|enviar|envie|anexar|anexe|instalar|instale|renovar|renove|atualizar|atualize|informar|informe|preencher|preencha|selecionar|selecione|definir|defina|altero|conferir|confira|verificar|verifique|revisar|revise|validar|valide|checar|cheque|me ajude|me ajuda|me guie|passo a passo|como faco|como fazer)\b/;
     if (!taskWords.test(q)) return null;
-    const editRequest = /\b(editar|edite|edicao|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque|remover|remova|excluir|exclua)\b/.test(q);
+    const deleteRequest = /\b(remover|remova|excluir|exclua|apagar|apague)\b/.test(q);
+    const editRequest = !deleteRequest && /\b(editar|edite|edicao|ajustar|ajuste|alterar|altere|modificar|modifique|corrigir|corrija|trocar|troque)\b/.test(q);
     const lookupRequest = /\b(consultar|consulte|listar|liste|pesquisar|pesquise|ver|mostrar|mostre|localizar|localize)\b/.test(q);
-    const createRequest = !editRequest && !lookupRequest
+    const createRequest = !editRequest && !deleteRequest && !lookupRequest
       && /\b(cadastrar|cadastre|cadastro|novo|nova|criar|crie|adicionar|adicione|incluir|inclua)\b/.test(q);
 
 
@@ -558,6 +559,9 @@
         for (const marker of orderedMarkers) {
           if (marker.id && includedIds.has(marker.id)) continue;
           const label = String(marker.title).trim(), n = normalize(label);
+          if (editRequest && /^(novo|nova|adicionar|incluir|duplicar|excluir|remover)\\b/.test(n)) continue;
+          if (createRequest && /^(editar|edicao|duplicar|excluir|remover)\\b/.test(n)) continue;
+          if (deleteRequest && !/^(procurar|barra de pesquisa|campo procurar|opcoes|botao opcoes|botao opcoes da linha|excluir|remover|apagar)\\b/.test(n)) continue;
           const kind = /^(listagem|painel|area|acoes finais|secoes complementares)$/.test(n) ? "info"
             : /salvar|emitir|transmitir|autorizar|cancelar|excluir|finalizar|concluir|gerar/.test(n) ? "final_action"
             : /campo|pesquisa|procurar|ordenar|cfop|cst|aliquota|senha|cpf|cnpj|e-mail|email|telefone|cep|uf|natureza|chave|serie|numeracao|nome|descricao|codigo|preco|valor|unidade|ativo|ncm|cest|ean|gtin|cnae|nbs|issqn|origem|placa|renavam|razao social|fantasia|endereco|bairro|municipio|inscricao|categoria|quantidade|peso|frete/.test(n) ? "field" : "click";
