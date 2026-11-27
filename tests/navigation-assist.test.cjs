@@ -389,3 +389,8 @@ test("etapas do Tour exibem aula, módulo e progresso do marcador", () => {
   assert.match(source, /card\.hidden = !manualTourActive/);
   assert.match(source, /max-height:calc\(100vh - 32px\)/);
 });
+
+test("re-renderizações do Emissor preservam aliases e não destacam títulos de aulas", () => {
+  assert.match(source, /if \(current\?\.kind === "info"\) return/);
+  assert.match(source, /findElementForPlanStep\(\{ label: current\.title, targetNames: current\.targetNames \|\| \[\] \}\)/);
+});
