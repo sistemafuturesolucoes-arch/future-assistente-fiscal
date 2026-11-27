@@ -482,6 +482,7 @@ test("marcadores com prefixos do Manual recebem aliases de texto acessível", as
   const cases = [
     ["Menu Documentos", "Documentos"],
     ["Menu Cadastros", "Cadastros"],
+    ["Menu do usuário", "usuário"],
     ["Campo Procurar", "Procurar"],
     ["Botão Salvar", "Salvar"],
     ["Aba Tributação", "Tributação"],
